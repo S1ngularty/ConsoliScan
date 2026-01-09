@@ -1,9 +1,12 @@
 const Product = require("../models/productModel");
 
 const create = async (request) => {
-  if (!req.body) throw new Error(`theres no payload`);
-  if(req.files) return
+  if (!request.body) throw new Error(`theres no payload`);
+  if (request.files) return;
   const product = await Product.create(request.body);
   if (!product) throw new Error("failed to create the product");
+  console.log(product)
   return product;
 };
+
+module.exports = { create };

@@ -1,9 +1,15 @@
-const express = require("express")
-const app = express()
-const cors = require("cors")
+const express = require("express");
+const app = express();
+const cors = require("cors");
 
-app.use(cors())
-app.use(express.urlencoded({extended:true,}))
-app.use(express.json())
+const { product } = require("./routes/index");
+const productModel = require("./models/productModel");
 
-module.exports = app
+app.use(cors());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+//registered Routes
+app.use("/api/v1", product);
+
+module.exports = app;

@@ -34,7 +34,7 @@ const productSchema = new mongoose.Schema(
     categoryId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "category",
-      required: true,
+      // required: true,
     },
     price: {
       type: Number,
@@ -56,4 +56,4 @@ const productSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("ProductModel", productSchema);
+module.exports = mongoose.model("Product", productSchema);
