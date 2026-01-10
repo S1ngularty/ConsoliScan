@@ -1,0 +1,65 @@
+.user-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: fadeIn 0.5s ease;
+}
+
+.user-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.add-user-btn {
+  background-color: #00A86B !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  padding: 8px 20px !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+}
+
+.add-user-btn:hover {
+  background-color: #008f5b !important;
+}
+
+.table-card {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #eef0f2;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.action-icon-btn {
+  min-width: 36px !important;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px !important;
+  color: #6b7280 !important;
+}
+
+.action-icon-btn:hover {
+  background-color: #f3f4f6 !important;
+  color: #00A86B !important;
+}
+
+.action-icon-btn.delete:hover {
+  background-color: #fff1f2 !important;
+  color: #e11d48 !important;
+}
+
+/* Customizing MUI DataGrid Header */
+.MuiDataGrid-columnHeaderTitle {
+  font-weight: 700 !important;
+  color: #374151;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
