@@ -1,0 +1,284 @@
+:root {
+  --primary-green: #00A86B;
+  --dark-bg: #1a1a1a;
+  --white: #ffffff;
+  --gray-text: #666666;
+  --input-bg: #f9f9f9;
+}
+
+.login-page-split {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  font-family: 'Inter', sans-serif;
+  overflow: hidden;
+}
+
+/* LEFT SIDE - 1/3 Width */
+.form-section {
+  flex: 1; /* Takes 1 part */
+  background-color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  z-index: 2;
+}
+
+.form-content {
+  width: 100%;
+  max-width: 350px;
+}
+
+.form-content h2 {
+  font-size: 2rem;
+  margin-bottom: 8px;
+  color: #111;
+}
+
+.subtitle {
+  color: var(--gray-text);
+  margin-bottom: 30px;
+  font-size: 0.95rem;
+}
+
+/* RIGHT SIDE - 2/3 Width */
+.hero-section {
+  flex: 2; /* Takes 2 parts */
+  background-color: var(--primary-green);
+  background-image: linear-gradient(135deg, #00A86B 0%, #007d50 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* Decorative background element */
+.hero-section::before {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: url('https://www.transparenttextures.com/patterns/cubes.png'); /* Optional texture */
+  opacity: 0.1;
+}
+
+.hero-logo-container {
+  text-align: center;
+  color: white;
+}
+
+.big-logo {
+  font-size: 4rem;
+  font-weight: 800;
+  letter-spacing: -2px;
+}
+
+.hero-content {
+  color: #ffffff;
+  padding: 0 15px;
+  border-radius: 12px;
+  margin-right: 5px;
+text-align: center;
+}
+
+/* Input Styling */
+.input-group {
+  margin-bottom: 20px;
+}
+
+.input-group label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 14px;
+  border: 1.5px solid #eee;
+  background: var(--input-bg);
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.input-group input:focus {
+  outline: none;
+  border-color: var(--primary-green);
+  background: white;
+  box-shadow: 0 0 0 4px rgba(0, 168, 107, 0.1);
+}
+
+.login-button {
+  width: 100%;
+  padding: 16px;
+  background-color: var(--primary-green);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.footer-text {
+  margin-top: 25px;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--gray-text);
+}
+
+.link {
+  color: var(--primary-green);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Responsive: stack on small screens */
+@media (max-width: 900px) {
+  .hero-section {
+    display: none; /* Hide the big logo on mobile for better UX */
+  }
+  .form-section {
+    flex: 1;
+  }
+}
+
+:root {
+  --primary-green: #00A86B;
+  --white: #ffffff;
+  --border: #e4e4e4;
+  --text-main: #1a1a1a;
+  --text-muted: #717171;
+}
+
+/* Logo Alignment */
+.logo-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 40px;
+}
+
+.cart-icon-wrapper {
+  color: var(--primary-green);
+  display: flex;
+  align-items: center;
+}
+
+.logo-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-main);
+}
+
+.brand-c { color: var(--primary-green); }
+
+/* Google Button */
+.google-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: white;
+  border: 1px solid var(--border);
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-bottom: 20px;
+}
+
+.google-btn:hover { background: #f9f9f9; }
+.google-btn img { width: 18px; }
+
+/* Divider Line */
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 20px 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--border);
+}
+
+.divider span { padding: 0 10px; }
+
+/* Hero Side Adjustments */
+.hero-logo-horizontal {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 10px;
+}
+
+.hero-text {
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: white;
+}
+
+.hero-content .sub-header {
+    color:"#ffff"
+}
+
+.google-btn {
+  /* Layout */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: 12px;
+  
+  /* Sizing & Spacing */
+  padding: 12px;
+  margin-bottom: 20px;
+  
+  /* Branding & Border */
+  background-color: #ffffff;
+  border: 1px solid #e0e0e0; /* Subtle light gray border */
+  border-radius: 10px;       /* Matching your input field radius */
+  
+  /* Typography */
+  color: #3c4043;            /* Standard Google text color */
+  font-size: 1rem;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+  
+  /* Interaction */
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* Resize the image within the button */
+.google-btn img {
+  width: 20px;   /* Overrides the 50px attribute for a cleaner look */
+  height: 20px;
+  object-fit: contain;
+}
+
+/* Hover effect to give it depth */
+.google-btn:hover {
+  background-color: #f8f9fa;
+  border-color: #d2d2d2;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* Active/Click effect */
+.google-btn:active {
+  background-color: #eeeeee;
+  transform: translateY(1px);
+}
