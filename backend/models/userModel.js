@@ -18,7 +18,7 @@ const userSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
-      validator: [validator.isEmail(), "field must be in email format"],
+      validator: [validator.isEmail, "field must be in email format"],
     },
     address: {
       type: String,

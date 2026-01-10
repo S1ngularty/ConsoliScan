@@ -1,7 +1,7 @@
 const User = require("../models/userModel");
 const admin = require("../configs/firebase");
 
-const googleAuth = async (request, response) => {
+ exports.googleAuth = async (request, response) => {
   const { token } = request.body;
   const decoded = await admin.auth().verifyIdToken(token);
 
