@@ -8,6 +8,8 @@ const userSchema = new mongoose.Schema(
     firebaseUid: {
       type: String,
       required: true,
+      unique:true,
+      index:true
     },
     name: {
       type: String,
@@ -20,6 +22,7 @@ const userSchema = new mongoose.Schema(
     },
     address: {
       type: String,
+      trim:true
     },
     street: {
       type: String,
