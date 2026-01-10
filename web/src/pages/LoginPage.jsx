@@ -1,6 +1,7 @@
 import React from "react";
 import axios from "axios";
-import "../styles/LoginStyle.css"; // Importing the separate CSS file
+import "../styles/LoginStyle.css";
+import { googleSignIn } from "../services/loginService";
 
 function LoginPage() {
   const [credentials, setCredentials] = React.useState({
@@ -8,19 +9,14 @@ function LoginPage() {
     password: "",
   });
 
-  const submitCredentials = async () => {
-    // ... same logic as before
-  };
+  const submitCredentials = async () => {};
 
   return (
     <div className="login-page-split">
-      {/* LEFT SIDE: Form (1/3 width) */}
       <div className="form-section">
         <div className="form-content">
-          {/* Horizontal Logo Group */}
           <div className="logo-group">
             <div className="cart-icon-wrapper">
-              {/* Using a simple CSS/SVG representation of a cart */}
               <svg
                 width="24"
                 height="24"
@@ -41,8 +37,7 @@ function LoginPage() {
           <h2>Welcome back</h2>
           <p className="subtitle">Please enter your details.</p>
 
-          {/* Google Sign In Option */}
-          <button className="google-btn">
+          <button className="google-btn" onClick={googleSignIn}>
             <img
               width="50"
               height="50"
