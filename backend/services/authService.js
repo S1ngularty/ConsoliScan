@@ -6,11 +6,11 @@ exports.googleAuth = async (request, response) => {
   const decoded = await admin.auth().verifyIdToken(token);
 
   const { uid, email, name, picture } = decoded;
-  const user = await User.find({ firebaseUid: uid });
+  let user = await User.findOne({ firebaseUid: uid });
 
   if (!user) {
     user = await User.create({
-      firebase: uid,
+      firebaseUid: uid,
       name,
       email,
       avatar: {
@@ -19,14 +19,15 @@ exports.googleAuth = async (request, response) => {
     });
   }
 
+
   if (!user) throw new Error("user is undefined");
   const jwtToken = await user.getToken();
 
   response.cookie("token", token, {
     httpOnly: true,
     maxAge: 1000 * 60 * 60 * 24 * 365 * 10,
-    secure: true,
-    sameSite: "strict",
+    secure: false,
+    sameSite: "lax",
     path: "/",
   });
   
