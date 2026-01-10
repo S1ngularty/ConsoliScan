@@ -11,4 +11,16 @@ const create = async (request) => {
   return product;
 };
 
-module.exports = { create };
+const getAll = async (request) => {
+  const products = await Product.find();
+  return products;
+};
+
+const getById = async (request = {}) => {
+  const { productId } = request.params;
+  const product = await Product.findById(productId);
+  if (!product) throw new Error("product is not found");
+  return product;
+};
+
+module.exports = { create, getAll, getById };
