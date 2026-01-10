@@ -1,11 +1,11 @@
 const cloudinary = require("../configs/cloudinary");
 
-const uploadImage = async (images=[]) => {
+const uploadImage = async (images=[],path="") => {
   const imagePromises = images.map((image) => {
     return new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         {
-          folder: "ConsoliScan/productAssets/",
+          folder: `ConsoliScan/${path}/`,
         },
         (err, result) => {
           if (err instanceof Error) return reject(err);
