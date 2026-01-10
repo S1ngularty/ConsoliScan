@@ -2,10 +2,8 @@ import React from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "../components/SidebarComponent";
 import "../styles/layouts/AdminLayoutStyle.css";
-import { useNavigate } from "react-router-dom";
 
-function AdminLayout() {
-  
+function AdminLayout() {  
   return (
     <div className="admin-layout-wrapper">
       <Sidebar />

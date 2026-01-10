@@ -70,7 +70,6 @@ const Sidebar = () => {
             }}>
             <div className="nav-icon">{item.icon}</div>
             {!isCollapsed && <span className="nav-label">{item.name}</span>}
-            {isCollapsed && <div className="tooltip">{item.name}</div>}
           </div>
         ))}
       </nav>
