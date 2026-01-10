@@ -1,0 +1,58 @@
+.admin-layout-wrapper {
+  display: flex; /* This puts Sidebar and Main side-by-side */
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden; /* Prevents double scrollbars */
+  background-color: #f9fafb; /* Light neutral background for the app body */
+  font-family: "Inter", sans-serif;
+}
+
+.admin-main-container {
+  flex: 1; /* Takes up all remaining space next to sidebar */
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow-y: auto; /* Allows content to scroll while sidebar stays fixed */
+}
+
+/* ConsoliScan Theme Top Nav */
+.admin-top-nav {
+  height: 64px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #eef0f2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+}
+
+.breadcrumb {
+  color: #636e72;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.admin-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.profile-badge {
+  width: 32px;
+  height: 32px;
+  background-color: #00a86b; /* ConsoliScan Green */
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The actual page content padding */
+.admin-content-body {
+  padding: 32px;
+  flex: 1;
+}

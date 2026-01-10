@@ -1,14 +1,29 @@
 import React from "react";
 import { Outlet } from "react-router-dom";
-import DashboardPage from "../pages/admin/DashboardPage";
-import UserPage from "../pages/admin/UserPage";
+import Sidebar from "../components/SidebarComponent";
+import "../styles/layouts/AdminLayoutStyle.css";
+import { useNavigate } from "react-router-dom";
 
 function AdminLayout() {
+  
   return (
-    <div>
-      <div> admin layout</div>
-      <div className="main">
-        <Outlet></Outlet>
+    <div className="admin-layout-wrapper">
+      <Sidebar />
+
+      <div className="admin-main-container">
+        {/* Optional Header to match ConsoliScan theme */}
+        <header className="admin-top-nav">
+          <div className="breadcrumb">Admin / Dashboard</div>
+          <div className="admin-profile">
+            <span>Admin User</span>
+            <div className="profile-badge">A</div>
+          </div>
+        </header>
+
+        {/* This is where your page content (Outlet) renders */}
+        <main className="admin-content-body">
+          <Outlet />
+        </main>
       </div>
     </div>
   );
