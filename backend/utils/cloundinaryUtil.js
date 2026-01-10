@@ -1,6 +1,6 @@
 const cloudinary = require("../configs/cloudinary");
 
-const uploadImage = async (images) => {
+const uploadImage = async (images=[]) => {
   const imagePromises = images.map((image) => {
     return new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
