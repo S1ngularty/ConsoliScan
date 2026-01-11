@@ -1,7 +1,7 @@
 import React from "react";
 import axios from "axios";
 import "../styles/LoginStyle.css";
-import { googleSignIn } from "../services/loginService.js";
+import { googleSignIn, autoLogin } from "../services/loginService.js";
 import { useNavigate } from "react-router-dom";
 
 function LoginPage() {
@@ -10,6 +10,11 @@ function LoginPage() {
     password: "",
   });
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    autoLogin(navigate);
+    return;
+  }, []);
   const submitCredentials = async () => {};
 
   return (

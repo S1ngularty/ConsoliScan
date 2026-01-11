@@ -28,3 +28,14 @@ export async function googleSignIn(navigate) {
     return console.log(error);
   }
 }
+
+export async function autoLogin(navigate) {
+  const authenticate = await axios.post(
+    `${import.meta.env.VITE_APP_API}api/v1/me`,
+    {},
+    { headers: {}, withCredentials: true }
+  );
+  if (!authenticate) throw new Error("failed to authenticate using token");
+  const data = authenticate.data;
+  navigate("/admin/dashboard");
+}
