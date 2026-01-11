@@ -11,7 +11,7 @@ export async function getAllUser() {
     const data = result.data.result;
     let toDisplay = data.map((user) => {
       return {
-        userId:user._id,
+        userId: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
@@ -22,5 +22,16 @@ export async function getAllUser() {
   } catch (error) {
     console.log(error);
     return error;
+  }
+}
+
+export async function getOneUser(id) {
+  try {
+    const result = await axios.get(`api/v1/user/${id}`);
+    if (!result) throw new Error("failed to get the user");
+    const data = result.data;
+    return data;
+  } catch (error) {
+    console.log(error);
   }
 }
