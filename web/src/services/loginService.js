@@ -1,9 +1,9 @@
 import { app } from "../configs/firebase.js";
 import { signInWithPopup, getAuth, GoogleAuthProvider } from "firebase/auth";
+import axios from "axios";
 
-export async function googleSignIn() {
+export async function googleSignIn(navigate) {
   try {
-    console.log(`${import.meta.env.VITE_APP_API}api/v1/signIn`);
     const auth = getAuth(app);
     const googleProvider = new GoogleAuthProvider();
     const result = await signInWithPopup(auth, googleProvider);
@@ -22,7 +22,8 @@ export async function googleSignIn() {
     if (!authenticate)
       throw new Error("failed to authecticate, please try again");
     const data = authenticate.data;
-    console.log(data);
+    navigate("/admin/dashboard");
+    return true;
   } catch (error) {
     return console.log(error);
   }

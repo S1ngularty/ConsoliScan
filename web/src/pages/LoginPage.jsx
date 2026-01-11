@@ -1,14 +1,15 @@
 import React from "react";
 import axios from "axios";
 import "../styles/LoginStyle.css";
-import { googleSignIn } from "../services/loginService";
+import { googleSignIn } from "../services/loginService.js";
+import { useNavigate } from "react-router-dom";
 
 function LoginPage() {
   const [credentials, setCredentials] = React.useState({
     email: "",
     password: "",
   });
-
+  const navigate = useNavigate();
   const submitCredentials = async () => {};
 
   return (
@@ -37,7 +38,7 @@ function LoginPage() {
           <h2>Welcome back</h2>
           <p className="subtitle">Please enter your details.</p>
 
-          <button className="google-btn" onClick={googleSignIn}>
+          <button className="google-btn" onClick={() => googleSignIn(navigate)}>
             <img
               width="50"
               height="50"
