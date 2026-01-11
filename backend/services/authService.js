@@ -23,11 +23,11 @@ exports.googleAuth = async (request, response) => {
   if (!user) throw new Error("user is undefined");
   const jwtToken = await user.getToken();
 
-  response.cookie("token", token, {
+  response.cookie("token", jwtToken, {
     httpOnly: true,
     maxAge: 1000 * 60 * 60 * 24 * 365 * 10,
-    secure: false,
-    sameSite: "lax",
+    secure: true,
+    sameSite: "none",
     path: "/",
   });
   
