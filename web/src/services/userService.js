@@ -2,6 +2,8 @@ import axios from "axios";
 
 axios.defaults.withCredentials = true;
 axios.defaults.baseURL = import.meta.env.VITE_APP_API;
+axios.defaults.headers.put["Content-Type"] = "application/json";
+axios.defaults.headers.post["Content-Type"] = "application/json";
 
 export async function getAllUser() {
   try {
@@ -25,7 +27,7 @@ export async function getAllUser() {
   }
 }
 
-export async function getOneUser(id) {
+export async function getOneUser(id = "") {
   try {
     const result = await axios.get(`api/v1/user/${id}`);
     if (!result) throw new Error("failed to get the user");
@@ -33,5 +35,18 @@ export async function getOneUser(id) {
     return data;
   } catch (error) {
     console.log(error);
+    return error;
+  }
+}
+
+export async function updateProfile(id = "", data = {}) {
+  try {
+    const isUpdated = await axios.put(`api/v1/profile/user/${id}`, data);
+    if (!isUpdated) throw new Error("failed to update the user profile");
+    const data = isUpdated.data.result;
+    return data;
+  } catch (error) {
+    console.log(error);
+    return error;
   }
 }
