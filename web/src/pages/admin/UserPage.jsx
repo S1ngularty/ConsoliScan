@@ -3,6 +3,7 @@ import { DataGrid } from "@mui/x-data-grid";
 import { Box, Typography, Button, Chip, Avatar } from "@mui/material";
 import { UserPlus, Mail, ShieldCheck, Trash2, Edit } from "lucide-react";
 import "../../styles/admin/UserPageStyle.css";
+import { getAllUser } from "../../services/userService";
 
 const columns = [
   {
@@ -10,13 +11,31 @@ const columns = [
     headerName: "User",
     flex: 1.5,
     renderCell: (params) => (
-      <Box sx={{ display: "flex", justifyContent:"start", alignItems: "center", gap: 2 }}>
-        <Avatar sx={{ bgcolor: "#f0fdf4", color: "#00A86B", fontSize: "0.85rem" }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "start",
+          alignItems: "center",
+          gap: 2,
+        }}>
+        <Avatar
+          sx={{ bgcolor: "#f0fdf4", color: "#00A86B", fontSize: "0.85rem" }}>
           {params.row.name.charAt(0)}
         </Avatar>
-        <Box  sx={{ display: "flex", flexDirection:"column", justifyContent:"end", alignItems: "start", gap: 0.5 }}>
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>{params.row.name}</Typography>
-          <Typography variant="caption" color="textSecondary">{params.row.email}</Typography>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "end",
+            alignItems: "start",
+            gap: 0.5,
+          }}>
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            {params.row.name}
+          </Typography>
+          <Typography variant="caption" color="textSecondary">
+            {params.row.email}
+          </Typography>
         </Box>
       </Box>
     ),
@@ -26,7 +45,13 @@ const columns = [
     headerName: "Role",
     flex: 1,
     renderCell: (params) => (
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, color: "#6b7280" }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+          color: "#6b7280",
+        }}>
         <ShieldCheck size={16} />
         <Typography variant="body2">{params.value}</Typography>
       </Box>
@@ -64,21 +89,30 @@ const columns = [
     sortable: false,
     renderCell: () => (
       <Box sx={{ display: "flex", gap: 1 }}>
-        <Button size="small" className="action-icon-btn"><Edit size={18} /></Button>
-        <Button size="small" className="action-icon-btn delete"><Trash2 size={18} /></Button>
+        <Button size="small" className="action-icon-btn">
+          <Edit size={18} />
+        </Button>
+        <Button size="small" className="action-icon-btn delete">
+          <Trash2 size={18} />
+        </Button>
       </Box>
     ),
   },
 ];
 
-const rows = [
-  { id: 1, name: "John Doe", email: "john@example.com", role: "Admin", status: "Active", lastLogin: "2 hours ago" },
-  { id: 2, name: "Anna Smith", email: "anna.s@example.com", role: "Editor", status: "Active", lastLogin: "5 mins ago" },
-  { id: 3, name: "Robert Fox", email: "robert@fox.com", role: "Viewer", status: "Inactive", lastLogin: "2 days ago" },
-  { id: 4, name: "Mila Kunis", email: "mila@shop.com", role: "Editor", status: "Active", lastLogin: "Just now" },
-];
-
 function UserPage() {
+  const [users, setUsers] = React.useState([]);
+
+  React.useEffect(() => {
+    const fetchUsers = async () => {
+      const users = await getAllUser();
+      console.log(users);
+      setUsers(users);
+    };
+
+    fetchUsers();
+  }, []);
+
   return (
     <Box className="user-page-container">
       <Box className="user-page-header">
@@ -93,16 +127,16 @@ function UserPage() {
         <Button
           variant="contained"
           startIcon={<UserPlus size={18} />}
-          className="add-user-btn"
-        >
+          className="add-user-btn">
           Add New User
         </Button>
       </Box>
 
       <Box className="table-card">
         <DataGrid
-          rows={rows}
+          rows={users}
           columns={columns}
+          getRowId={(row)=>row.userId}
           initialState={{
             pagination: { paginationModel: { pageSize: 5 } },
           }}
