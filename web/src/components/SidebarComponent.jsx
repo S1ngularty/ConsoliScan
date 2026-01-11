@@ -10,11 +10,28 @@ import {
 } from "lucide-react";
 import "../styles/admin/SidebarStyle.css";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeItem, setActiveItem] = useState("Dashboard");
   const navigate = useNavigate();
+
+  async function logout() {
+    try {
+      const isLogout =await  axios.post(
+        `${import.meta.env.VITE_APP_API}api/v1/logout`,
+        {},
+        {
+          withCredentials: true,
+        }
+      );
+      console.log(isLogout)
+      if (isLogout.data.success) navigate("/");
+    } catch (error) {
+      console.log(error);
+    }
+  }
 
   const menuItems = [
     {
@@ -78,7 +95,7 @@ const Sidebar = () => {
       <div className="sidebar-footer">
         <div className="nav-item logout">
           <div className="nav-icon">
-            <LogOut size={22} />
+            <LogOut size={22} onClick={logout} />
           </div>
           {!isCollapsed && <span className="nav-label">Logout</span>}
         </div>

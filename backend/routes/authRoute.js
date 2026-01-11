@@ -10,4 +10,8 @@ router.route("/me").post(authMiddleware.verifyToken, (req, res) => {
   res.status(200).json({ status: true, role: req.user.role });
 });
 
+router
+  .route("/logout")
+  .post(authMiddleware.verifyToken, authController.logoutUser);
+
 module.exports = router;

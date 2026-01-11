@@ -19,7 +19,6 @@ exports.googleAuth = async (request, response) => {
     });
   }
 
-
   if (!user) throw new Error("user is undefined");
   const jwtToken = await user.getToken();
 
@@ -30,9 +29,19 @@ exports.googleAuth = async (request, response) => {
     sameSite: "none",
     path: "/",
   });
-  
+
   return {
     token: jwtToken,
     role: user.role,
   };
+};
+
+exports.logout = async (request, response) => {
+  response.clearCookie("token", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    path: "/",
+  });
+  return;
 };
