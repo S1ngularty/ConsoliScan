@@ -4,6 +4,7 @@ import { Box, Typography, Button, Chip, Avatar } from "@mui/material";
 import { UserPlus, Mail, ShieldCheck, Trash2, Edit } from "lucide-react";
 import "../../styles/admin/UserPageStyle.css";
 import { getAllUser } from "../../services/userService";
+import UserModalComponent from "../../components/admin/UserModalComponent";
 
 const columns = [
   {
@@ -102,6 +103,7 @@ const columns = [
 
 function UserPage() {
   const [users, setUsers] = React.useState([]);
+  const [isOpen, setIsOpen] = React.useState(false);
 
   React.useEffect(() => {
     const fetchUsers = async () => {
@@ -115,6 +117,13 @@ function UserPage() {
 
   return (
     <Box className="user-page-container">
+      {isOpen && (
+        <UserModalComponent
+          isOpen={true}
+          data={{}}
+          Onclose={() => setIsOpen(false)}></UserModalComponent>
+      )}
+
       <Box className="user-page-header">
         <Box>
           <Typography variant="h5" sx={{ fontWeight: 700, color: "#111827" }}>
@@ -127,7 +136,8 @@ function UserPage() {
         <Button
           variant="contained"
           startIcon={<UserPlus size={18} />}
-          className="add-user-btn">
+          className="add-user-btn"
+          onClick={() => setIsOpen(true)}>
           Add New User
         </Button>
       </Box>
@@ -136,7 +146,7 @@ function UserPage() {
         <DataGrid
           rows={users}
           columns={columns}
-          getRowId={(row)=>row.userId}
+          getRowId={(row) => row.userId}
           initialState={{
             pagination: { paginationModel: { pageSize: 5 } },
           }}
