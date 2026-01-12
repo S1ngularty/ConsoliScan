@@ -50,10 +50,32 @@ export async function updateProfile(id = "", data = {}) {
 
 export async function createUser(userInfo) {
   try {
-    console.log(userInfo)
-    const result = await axios.post("api/v1/user", userInfo,{headers:{
-      "Content-Type":"multipart/form-data"
-    }});
+    console.log(userInfo);
+    const result = await axios.post("api/v1/user", userInfo, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    if (!result) throw new Error("failed to create User");
+    return result.data.result;
+  } catch (error) {
+    console.log(error);
+    return error;
+  }
+}
+
+export async function editUser(userInfo,userId) {
+  try {
+    console.log(userInfo);
+    const result = await axios.put(
+      `api/v1/profile/user/${userId}`,
+      userInfo,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
     if (!result) throw new Error("failed to create User");
     return result.data.result;
   } catch (error) {

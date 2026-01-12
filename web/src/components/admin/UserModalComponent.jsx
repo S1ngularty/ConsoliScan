@@ -1,11 +1,10 @@
 import React from "react";
 import { X, Save, User, MapPin, Phone, Mail, ShieldCheck } from "lucide-react";
 import "../../styles/admin/UserModalStyle.css";
-import { createUser } from "../../services/userService";
+import { createUser, editUser } from "../../services/userService";
 
-function UserModalComponent({ isOpen, data, Onclose }) {
-  const [userInfo, setUserInfo] = React.useState({
-  });
+function UserModalComponent({ isOpen, data, mode, Onclose }) {
+  const [userInfo, setUserInfo] = React.useState({});
 
   function handleInput(field, value) {
     setUserInfo((prev) => ({ ...prev, [field]: value }));
@@ -22,7 +21,9 @@ function UserModalComponent({ isOpen, data, Onclose }) {
               <User size={20} />
             </div>
             <div>
-              <h2>{data ? "Edit User Profile" : "Create New User"}</h2>
+              <h2>
+                {mode === "edit" ? "Edit User Profile" : "Create New User"}
+              </h2>
               <p className="subtitle">ID: {data?.firebaseUid || "New User"}</p>
             </div>
           </div>
@@ -181,9 +182,15 @@ function UserModalComponent({ isOpen, data, Onclose }) {
           <button className="btn-secondary" onClick={Onclose}>
             Discard Changes
           </button>
-          <button className="btn-primary" onClick={() => createUser(userInfo)}>
+          <button
+            className="btn-primary"
+            onClick={() =>
+              mode !== "edit"
+                ? createUser(userInfo)
+                : editUser(userInfo, data._id)
+            }>
             <Save size={18} />
-            <span>Update User</span>
+            <span>{mode === "create" ? "Create" : "Update"} User</span>
           </button>
         </footer>
       </div>

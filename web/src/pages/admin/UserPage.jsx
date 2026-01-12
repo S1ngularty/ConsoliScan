@@ -131,6 +131,7 @@ function UserPage() {
         <UserModalComponent
           isOpen={true}
           data={toEdit}
+          mode={toEdit?.name ? "edit" : "create"}
           Onclose={() => setIsOpen(false)}></UserModalComponent>
       )}
 
