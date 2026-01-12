@@ -29,7 +29,7 @@ function UserModalComponent({ isOpen, data, Onclose }) {
             
             <div className="avatar-upload-section">
               <img 
-                src={data?.avatar?.url || "https://via.placeholder.com/80"} 
+                src={data?.avatar?.url || "https://www.pngall.com/wp-content/uploads/12/Avatar-Profile-PNG-Image.png"} 
                 alt="Avatar" 
                 className="modal-avatar-preview"
               />
