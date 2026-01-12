@@ -8,7 +8,7 @@ import {
   LogOut,
   Settings,
 } from "lucide-react";
-import "../styles/admin/SidebarStyle.css";
+import "../../styles/admin/SidebarStyle.css";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
