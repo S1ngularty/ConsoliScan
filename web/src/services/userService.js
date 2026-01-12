@@ -10,7 +10,7 @@ export async function getAllUser() {
   try {
     const result = await axios.get(`api/v1/user`);
     if (!result) throw new Error("failed to access the resource");
-    let data =result.data.result
+    let data = result.data.result;
     data = data.map((user) => {
       return {
         ...user,
@@ -42,6 +42,20 @@ export async function updateProfile(id = "", data = {}) {
     if (!isUpdated) throw new Error("failed to update the user profile");
     const data = isUpdated.data.result;
     return data;
+  } catch (error) {
+    console.log(error);
+    return error;
+  }
+}
+
+export async function createUser(userInfo) {
+  try {
+    console.log(userInfo)
+    const result = await axios.post("api/v1/user", userInfo,{headers:{
+      "Content-Type":"multipart/form-data"
+    }});
+    if (!result) throw new Error("failed to create User");
+    return result.data.result;
   } catch (error) {
     console.log(error);
     return error;

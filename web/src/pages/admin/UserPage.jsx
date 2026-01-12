@@ -147,7 +147,9 @@ function UserPage() {
           variant="contained"
           startIcon={<UserPlus size={18} />}
           className="add-user-btn"
-          onClick={() => setIsOpen(true)}>
+          onClick={() => {setIsOpen(true)
+            setToEdit({})
+          }}>
           Add New User
         </Button>
       </Box>
