@@ -12,7 +12,9 @@ router
 
 router
   .route("/user")
-  .get(authMiddleware.verifyToken, userController.getAllUser);
+  .get(authMiddleware.verifyToken, userController.getAllUser)
+  .post(upload.single("avatar"),authMiddleware.verifyToken, userController.createUser);
+
 router
   .route("/user/:userId")
   .get(authMiddleware.verifyToken, userController.getUserById);

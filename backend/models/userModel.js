@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema(
   {
     firebaseUid: {
       type: String,
-      required: true,
+      // required: true,
       unique:true,
       index:true
     },
@@ -18,7 +18,7 @@ const userSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
-      validator: [validator.isEmail, "field must be in email format"],
+      validate: [validator.isEmail, "field must be in email format"],
     },
     address: {
       type: String,

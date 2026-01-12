@@ -25,3 +25,11 @@ exports.getById = async (request) => {
   if (!user) throw new Error("user is not found in the collection");
   return user;
 };
+
+exports.create = async (request) => {
+  if (!request.body) throw new Error("empty body object");
+  const data = { ...request.body };
+  const user = await User.create(data);
+  if (!user) throw new Error("failed to create the user");
+  return user;
+};
