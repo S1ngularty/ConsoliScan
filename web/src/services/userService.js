@@ -1,4 +1,5 @@
 import axios from "axios";
+import { timeAgo } from "../utils/parseDate";
 
 axios.defaults.withCredentials = true;
 axios.defaults.baseURL = import.meta.env.VITE_APP_API;
@@ -17,7 +18,8 @@ export async function getAllUser() {
         name: user.name,
         email: user.email,
         role: user.role,
-        lastLogin: user.lastLogin,
+        status:user.status,
+        lastLogin: timeAgo(user.lastLogin),
       };
     });
     return toDisplay;

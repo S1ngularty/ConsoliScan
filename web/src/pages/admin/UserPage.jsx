@@ -62,7 +62,7 @@ const columns = [
     headerName: "Status",
     flex: 1,
     renderCell: (params) => {
-      const isActive = params.value === "Active";
+      const isActive = params.value === "active";
       return (
         <Chip
           label={params.value}

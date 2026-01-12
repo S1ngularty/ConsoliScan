@@ -7,8 +7,8 @@ const userController = require("../controllers/userController");
 const authMiddleware = require("../middlewares/authMiddleware");
 
 router
-  .route("/profile/user")
-  .post(upload.single("avatar"), userController.updateProfile);
+  .route("/profile/user/:userId")
+  .put(upload.single("avatar"), userController.updateProfile);
 
 router
   .route("/user")
