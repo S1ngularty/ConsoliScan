@@ -18,6 +18,15 @@ function UserModalComponent({ isOpen, data, mode, Onclose }) {
     return;
   }
 
+  function handleAvatar(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      setUserInfo((prev) => ({ ...prev, avatar: { url: reader.result } }));
+    };
+    reader.readAsDataURL(file);
+    updateAvatar(file, data._id);
+  }
+
   if (!isOpen) return null;
 
   return (
@@ -50,7 +59,8 @@ function UserModalComponent({ isOpen, data, mode, Onclose }) {
             <div className="avatar-upload-section">
               <img
                 src={
-                  data?.avatar[0]?.url ||
+                  userInfo.avatar?.url ||
+                  data?.avatar?.url ||
                   "https://www.pngall.com/wp-content/uploads/12/Avatar-Profile-PNG-Image.png"
                 }
                 alt="Avatar"
@@ -60,7 +70,7 @@ function UserModalComponent({ isOpen, data, mode, Onclose }) {
                 type="file"
                 className="change-photo-btn"
                 onChange={(e) => {
-                  updateAvatar(e.target.files[0],data._id);
+                  handleAvatar(e.target.files[0]);
                 }}
               />
             </div>
