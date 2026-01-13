@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema(
     firebaseUid: {
       type: String,
       // required: true,
-      unique:true,
+      // unique:true,
       index:true
     },
     name: {
@@ -60,7 +60,7 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       default: "user",
-      enum: ["user", "admin", "guest"],
+      enum: ["user", "admin", "checker"],
     },
     status: {
       type: String,

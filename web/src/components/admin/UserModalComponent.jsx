@@ -1,13 +1,21 @@
 import React from "react";
 import { X, Save, User, MapPin, Phone, Mail, ShieldCheck } from "lucide-react";
 import "../../styles/admin/UserModalStyle.css";
-import { createUser, editUser } from "../../services/userService";
+import { createUser, editUser, updateAvatar } from "../../services/userService";
 
 function UserModalComponent({ isOpen, data, mode, Onclose }) {
   const [userInfo, setUserInfo] = React.useState({});
 
   function handleInput(field, value) {
     setUserInfo((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function handleSubmit() {
+    const result =
+      mode !== "edit" ? createUser(userInfo) : editUser(userInfo, data._id);
+    setUserInfo({});
+    Onclose();
+    return;
   }
 
   if (!isOpen) return null;
@@ -42,13 +50,19 @@ function UserModalComponent({ isOpen, data, mode, Onclose }) {
             <div className="avatar-upload-section">
               <img
                 src={
-                  data?.avatar?.url ||
+                  data?.avatar[0]?.url ||
                   "https://www.pngall.com/wp-content/uploads/12/Avatar-Profile-PNG-Image.png"
                 }
                 alt="Avatar"
                 className="modal-avatar-preview"
               />
-              <input type="file" className="change-photo-btn" />
+              <input
+                type="file"
+                className="change-photo-btn"
+                onChange={(e) => {
+                  updateAvatar(e.target.files[0],data._id);
+                }}
+              />
             </div>
 
             <div className="input-grid">
@@ -89,17 +103,17 @@ function UserModalComponent({ isOpen, data, mode, Onclose }) {
                 <label>Role</label>
                 <select
                   defaultValue={data?.role}
-                  onSelect={(e) => handleInput("role", e.target.value)}>
+                  onChange={(e) => handleInput("role", e.target.value)}>
                   <option value="user">User</option>
                   <option value="admin">Admin</option>
-                  <option value="guest">Checker</option>
+                  <option value="checker">Checker</option>
                 </select>
               </div>
               <div className="input-group">
                 <label>Status</label>
                 <select
                   defaultValue={data?.status}
-                  onSelect={(e) => handleInput("status", e.target.value)}>
+                  onChange={(e) => handleInput("status", e.target.value)}>
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </select>
@@ -182,13 +196,7 @@ function UserModalComponent({ isOpen, data, mode, Onclose }) {
           <button className="btn-secondary" onClick={Onclose}>
             Discard Changes
           </button>
-          <button
-            className="btn-primary"
-            onClick={() =>
-              mode !== "edit"
-                ? createUser(userInfo)
-                : editUser(userInfo, data._id)
-            }>
+          <button className="btn-primary" onClick={handleSubmit}>
             <Save size={18} />
             <span>{mode === "create" ? "Create" : "Update"} User</span>
           </button>

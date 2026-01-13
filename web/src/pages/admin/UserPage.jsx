@@ -112,16 +112,15 @@ function UserPage() {
   ];
 
   function editMode(data) {
-    setToEdit(data)
-    setIsOpen(true)
+    setToEdit(data);
+    setIsOpen(true);
   }
+  const fetchUsers = async () => {
+    const users = await getAllUser();
+    setUsers(users);
+  };
 
   React.useEffect(() => {
-    const fetchUsers = async () => {
-      const users = await getAllUser();
-      setUsers(users);
-    };
-
     fetchUsers();
   }, []);
 
@@ -132,7 +131,10 @@ function UserPage() {
           isOpen={true}
           data={toEdit}
           mode={toEdit?.name ? "edit" : "create"}
-          Onclose={() => setIsOpen(false)}></UserModalComponent>
+          Onclose={() => {
+            setIsOpen(false);
+            fetchUsers();
+          }}></UserModalComponent>
       )}
 
       <Box className="user-page-header">
@@ -148,8 +150,9 @@ function UserPage() {
           variant="contained"
           startIcon={<UserPlus size={18} />}
           className="add-user-btn"
-          onClick={() => {setIsOpen(true)
-            setToEdit({})
+          onClick={() => {
+            setIsOpen(true);
+            setToEdit({});
           }}>
           Add New User
         </Button>

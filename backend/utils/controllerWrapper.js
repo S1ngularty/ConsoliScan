@@ -7,7 +7,7 @@ function controllerWrapper(fn) {
         result,
       });
     } catch (error) {
-      console.log(error.message);
+      console.log(error.message,error.line,error);
       return res.status(500).json(error);
     }
   };

@@ -8,7 +8,7 @@ const authMiddleware = require("../middlewares/authMiddleware");
 
 router
   .route("/profile/user/:userId")
-  .put(upload.single("avatar"), userController.updateProfile);
+  .put(authMiddleware.verifyToken,upload.single("avatar"), userController.updateProfile);
 
 router
   .route("/user")

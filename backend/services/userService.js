@@ -2,7 +2,8 @@ const User = require("../models/userModel");
 const { uploadImage } = require("../utils/cloundinaryUtil");
 
 exports.update = async (request) => {
-  const userId = request.params.userId;
+  const { userId } = request.params;
+  if (!request.body) throw new Error("undefined request content");
   if (request.file)
     request.body.avatar = await uploadImage([request.file], "users");
   const user = await User.findByIdAndUpdate(userId, request.body, {

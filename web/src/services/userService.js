@@ -3,7 +3,6 @@ import { timeAgo } from "../utils/parseDate";
 
 axios.defaults.withCredentials = true;
 axios.defaults.baseURL = import.meta.env.VITE_APP_API;
-axios.defaults.headers.put["Content-Type"] = "application/json";
 axios.defaults.headers.post["Content-Type"] = "application/json";
 
 export async function getAllUser() {
@@ -64,20 +63,39 @@ export async function createUser(userInfo) {
   }
 }
 
-export async function editUser(userInfo,userId) {
+export async function editUser(userInfo, userId) {
   try {
     console.log(userInfo);
-    const result = await axios.put(
-      `api/v1/profile/user/${userId}`,
-      userInfo,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      }
-    );
+    const result = await axios.put(`api/v1/profile/user/${userId}`, userInfo, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
     if (!result) throw new Error("failed to create User");
     return result.data.result;
+  } catch (error) {
+    console.log(error);
+    return error;
+  }
+}
+
+export async function updateAvatar(file,userId) {
+  try {
+    if (!file) throw new Error("Please upload a file first!");
+    if (!String(file.type).startsWith("image/"))
+      throw new Error("invalid file type");
+    if (file.size > 5 * 1024 * 1024) throw new Error("image is too big");
+
+    const formData = new FormData();
+    formData.append("avatar", file);
+
+    const isUpload = await axios.put(`api/v1/profile/user/${userId}`, formData,{
+      headers:{
+        "Content-Type":"multipart/form-data"
+      }
+    });
+    if (!isUpload) throw new Error("failed to update the avatar");
+    // return isUpload;
   } catch (error) {
     console.log(error);
     return error;
