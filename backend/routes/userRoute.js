@@ -17,6 +17,7 @@ router
 
 router
   .route("/user/:userId")
-  .get(authMiddleware.verifyToken, userController.getUserById);
+  .get(authMiddleware.verifyToken, userController.getUserById)
+  .delete(authMiddleware.verifyToken, userController.deleteUser)
 
 module.exports = router;

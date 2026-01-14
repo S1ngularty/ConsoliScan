@@ -34,3 +34,10 @@ exports.create = async (request) => {
   if (!user) throw new Error("failed to create the user");
   return user;
 };
+
+exports.delete = async(request)=>{
+  const {userId} = request.params
+  const isDeleted = await User.findByIdAndDelete(userId)
+  if(!isDeleted) throw new Error("failed to delete the user")
+  return 
+}
