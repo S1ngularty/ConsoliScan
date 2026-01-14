@@ -11,10 +11,12 @@ import {
 import "../../styles/admin/SidebarStyle.css";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import ConfirmModalComponent from "../common/ConfirmModalComponent";
 
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeItem, setActiveItem] = useState("Dashboard");
+  const [showConfirmModal, setshowConfirmModal] = useState(false)
   const navigate = useNavigate();
 
   async function logout() {
@@ -46,6 +48,14 @@ const Sidebar = () => {
 
   return (
     <div className={`sidebar ${isCollapsed ? "collapsed" : ""}`}>
+      {showConfirmModal && (
+        <ConfirmModalComponent
+          isOpen={showConfirmModal}
+        title={"Do you want to Logout?"}
+        onConfirm={logout}
+        onCancel={()=> setshowConfirmModal(false)}
+        ></ConfirmModalComponent>
+      )}
       {/* Sidebar Header */}
       <div className="sidebar-header">
         <div className="logo-container">
@@ -95,7 +105,7 @@ const Sidebar = () => {
       <div className="sidebar-footer">
         <div className="nav-item logout">
           <div className="nav-icon">
-            <LogOut size={22} onClick={logout} />
+            <LogOut size={22} onClick={()=>setshowConfirmModal(true)} />
           </div>
           {!isCollapsed && <span className="nav-label">Logout</span>}
         </div>
