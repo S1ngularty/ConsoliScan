@@ -1,0 +1,95 @@
+.confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(2px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 3000; /* Higher than the main modal */
+    animation: fadeIn 0.2s ease;
+}
+
+.confirm-container {
+    background: white;
+    width: 100%;
+    max-width: 400px; /* Small and focused */
+    border-radius: 12px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+    animation: scaleIn 0.2s ease;
+}
+
+.confirm-body {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 16px;
+}
+
+/* Icon Styles */
+.confirm-icon-box {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.confirm-icon-box.danger { background: #fee2e2; color: #ef4444; }
+.confirm-icon-box.primary { background: #ecfdf5; color: #00A86B; }
+
+.confirm-text h3 {
+    font-size: 1.15rem;
+    color: #1e293b;
+    margin: 0 0 8px 0;
+}
+
+.confirm-text p {
+    font-size: 0.9rem;
+    color: #64748b;
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* Footer Buttons */
+.confirm-footer {
+    padding: 16px 24px;
+    background: #f8fafc;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.confirm-btn {
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+
+.confirm-btn.cancel {
+    background: white;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+}
+
+.confirm-btn.cancel:hover { background: #f1f5f9; }
+
+.confirm-btn.action.danger { background: #ef4444; color: white; }
+.confirm-btn.action.danger:hover { background: #dc2626; }
+
+.confirm-btn.action.primary { background: #00A86B; color: white; }
+.confirm-btn.action.primary:hover { background: #008f5b; }
+
+/* Animations */
+@keyframes scaleIn {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}

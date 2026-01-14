@@ -5,11 +5,14 @@ import { UserPlus, Mail, ShieldCheck, Trash2, Edit } from "lucide-react";
 import "../../styles/admin/UserPageStyle.css";
 import { getAllUser, deleteUser } from "../../services/userService";
 import UserModalComponent from "../../components/admin/UserModalComponent";
+import ConfirmModalComponent from "../../components/common/ConfirmModalComponent";
 
 function UserPage() {
   const [users, setUsers] = React.useState([]);
   const [isOpen, setIsOpen] = React.useState(false);
   const [toEdit, setToEdit] = React.useState();
+  const [showConfirmModal, setshowConfirmModal]= React.useState(false)
+  const [toDelete, setToDelete] = React.useState("")
   const [error, setError] = React.useState("")
 
   const columns = [
@@ -105,7 +108,10 @@ function UserPage() {
             <Edit size={18} />
           </Button>
           <Button size="small" className="action-icon-btn delete"
-          onClick={()=>handleDelete(params.row._id)}>
+          onClick={()=>{
+            setshowConfirmModal(true)
+            setToDelete(params.row._id)  
+          }}>
             <Trash2 size={18} />
           </Button>
         </Box>
@@ -122,10 +128,10 @@ function UserPage() {
     setUsers(users);
   };
 
-  function handleDelete(id){
+  function handleDelete(){
     try {
-      if(!id) return
-    deleteUser(id)
+      if(!toDelete) return
+    deleteUser(toDelete)
     fetchUsers()
     } catch (error) {
       setError(error)
@@ -150,6 +156,23 @@ function UserPage() {
             fetchUsers();
           }}></UserModalComponent>
       )}
+
+      {
+        showConfirmModal && (
+          <ConfirmModalComponent
+          isOpen={showConfirmModal}
+          title={"Do you want to delete this user"}
+          message={"once its deleted, it cannot reverted"}
+          onConfirm={()=>{handleDelete()
+            setToDelete("")
+            setshowConfirmModal(false)
+          }}
+          onCancel={()=>setshowConfirmModal(false)}
+          >
+
+          </ConfirmModalComponent>
+        )
+      }
 
       <Box className="user-page-header">
         <Box>
