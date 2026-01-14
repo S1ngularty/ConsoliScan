@@ -6,6 +6,7 @@ import "../../styles/admin/UserPageStyle.css";
 import { getAllUser, deleteUser } from "../../services/userService";
 import UserModalComponent from "../../components/admin/UserModalComponent";
 import ConfirmModalComponent from "../../components/common/ConfirmModalComponent";
+import Toast from "../../components/common/SnackbarComponent";
 
 function UserPage() {
   const [users, setUsers] = React.useState([]);
@@ -13,7 +14,11 @@ function UserPage() {
   const [toEdit, setToEdit] = React.useState();
   const [showConfirmModal, setshowConfirmModal]= React.useState(false)
   const [toDelete, setToDelete] = React.useState("")
-  const [error, setError] = React.useState("")
+  const [snackbar,setSnackbar] = React.useState({
+    open:false,
+    message:"",
+    severity:"success"
+  })
 
   const columns = [
     {
@@ -128,17 +133,35 @@ function UserPage() {
     setUsers(users);
   };
 
-  function handleDelete(){
+async  function handleDelete(){
     try {
       if(!toDelete) return
-    deleteUser(toDelete)
+    await deleteUser(toDelete)
     fetchUsers()
+    showToast("User deleted successfully", "success");
     } catch (error) {
-      setError(error)
-      return
+        showToast(
+      error instanceof Error ? error.message : "Something went wrong",
+      "error"
+    );
     }
     
   }
+
+  function showToast(msg,sv){
+    setSnackbar({
+      open:true,
+      message:msg,
+      severity:sv
+    })
+  }
+
+  function handleCloseToast(){
+  setSnackbar({
+    open: false,
+    message: "",
+    severity: snackbar.severity,
+  });  }
 
   React.useEffect(() => {
     fetchUsers();
@@ -173,6 +196,13 @@ function UserPage() {
           </ConfirmModalComponent>
         )
       }
+
+      <Toast 
+        open={snackbar.open} 
+        handleClose={handleCloseToast} 
+        message={snackbar.message} 
+        severity={snackbar.severity} 
+      />
 
       <Box className="user-page-header">
         <Box>
