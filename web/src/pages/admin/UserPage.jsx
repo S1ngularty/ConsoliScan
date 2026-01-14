@@ -3,13 +3,14 @@ import { DataGrid } from "@mui/x-data-grid";
 import { Box, Typography, Button, Chip, Avatar } from "@mui/material";
 import { UserPlus, Mail, ShieldCheck, Trash2, Edit } from "lucide-react";
 import "../../styles/admin/UserPageStyle.css";
-import { getAllUser } from "../../services/userService";
+import { getAllUser, deleteUser } from "../../services/userService";
 import UserModalComponent from "../../components/admin/UserModalComponent";
 
 function UserPage() {
   const [users, setUsers] = React.useState([]);
   const [isOpen, setIsOpen] = React.useState(false);
   const [toEdit, setToEdit] = React.useState();
+  const [error, setError] = React.useState("")
 
   const columns = [
     {
@@ -103,7 +104,8 @@ function UserPage() {
             }}>
             <Edit size={18} />
           </Button>
-          <Button size="small" className="action-icon-btn delete">
+          <Button size="small" className="action-icon-btn delete"
+          onClick={()=>handleDelete(params.row._id)}>
             <Trash2 size={18} />
           </Button>
         </Box>
@@ -119,6 +121,18 @@ function UserPage() {
     const users = await getAllUser();
     setUsers(users);
   };
+
+  function handleDelete(id){
+    try {
+      if(!id) return
+    deleteUser(id)
+    fetchUsers()
+    } catch (error) {
+      setError(error)
+      return
+    }
+    
+  }
 
   React.useEffect(() => {
     fetchUsers();

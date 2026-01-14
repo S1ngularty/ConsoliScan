@@ -105,3 +105,9 @@ export async function updateAvatar(file,userId) {
     return error;
   }
 }
+
+export async function deleteUser(id){
+  const result = await axios.delete(`api/v1/user/${String(id).trim()}`)
+  if(!result) throw new Error("failed to delete the user")
+  return true
+}
