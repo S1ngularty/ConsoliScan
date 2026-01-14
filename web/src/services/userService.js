@@ -7,7 +7,11 @@ axios.defaults.headers.post["Content-Type"] = "application/json";
 
 export async function getAllUser() {
   try {
-    const result = await axios.get(`api/v1/user`);
+    const result = await axios.get(`api/v1/user`,{
+      headers:{
+        "Cache-Control":"no-cache"
+      }
+    });
     if (!result) throw new Error("failed to access the resource");
     let data = result.data.result;
     data = data.map((user) => {
