@@ -1,5 +1,5 @@
 const User = require("../models/userModel");
-const { uploadImage } = require("../utils/cloundinaryUtil");
+const { uploadImage, deleteAssets } = require("../utils/cloundinaryUtil");
 
 exports.update = async (request) => {
   const { userId } = request.params;
@@ -7,10 +7,10 @@ exports.update = async (request) => {
   if (request.file)
     request.body.avatar = await uploadImage([request.file], "users");
   const user = await User.findByIdAndUpdate(userId, request.body, {
-    new: true,
     runValidators: true,
   });
-  if (!user) throw new Error("failed to update the user");
+  if (user?.avatar?.public_id) deleteAssets([user.avatar.public_id])
+    if (!user) throw new Error("failed to update the user");
   return user;
 };
 
@@ -35,9 +35,10 @@ exports.create = async (request) => {
   return user;
 };
 
-exports.delete = async(request)=>{
-  const {userId} = request.params
-  const isDeleted = await User.findByIdAndDelete(userId)
-  if(!isDeleted) throw new Error("failed to delete the user")
-  return 
-}
+exports.delete = async (request) => {
+  const { userId } = request.params;
+  const isDeleted = await User.findByIdAndDelete(userId);
+  if (!isDeleted) throw new Error("failed to delete the user");
+  
+  return;
+};
