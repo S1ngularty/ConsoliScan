@@ -17,10 +17,10 @@ const Toast = ({ open, handleClose, message, severity = "success" }) => {
   return (
     <Snackbar
       open={open}
-      autoHideDuration={4000} // ⏱ visible duration
+      autoHideDuration={4000} 
       onClose={handleClose}
       anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      TransitionComponent={FadeTransition} // 👈 fade out
+      TransitionComponent={FadeTransition}
     >
       <Alert
         onClose={handleClose}

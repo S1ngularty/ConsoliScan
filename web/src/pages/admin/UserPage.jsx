@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import { Box, Typography, Button, Chip, Avatar } from "@mui/material";
-import { UserPlus, Mail, ShieldCheck, Trash2, Edit } from "lucide-react";
+import { UserPlus, ShieldCheck, Trash2, Edit } from "lucide-react";
+
 import "../../styles/admin/UserPageStyle.css";
 import { getAllUser, deleteUser } from "../../services/userService";
 import UserModalComponent from "../../components/admin/UserModalComponent";
@@ -9,204 +10,183 @@ import ConfirmModalComponent from "../../components/common/ConfirmModalComponent
 import Toast from "../../components/common/SnackbarComponent";
 
 function UserPage() {
-  const [users, setUsers] = React.useState([]);
-  const [isOpen, setIsOpen] = React.useState(false);
-  const [toEdit, setToEdit] = React.useState();
-  const [showConfirmModal, setshowConfirmModal]= React.useState(false)
-  const [toDelete, setToDelete] = React.useState("")
-  const [snackbar,setSnackbar] = React.useState({
-    open:false,
-    message:"",
-    severity:"success"
-  })
+  const [users, setUsers] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editUser, setEditUser] = useState(null);
+  const [deleteUserId, setDeleteUserId] = useState("");
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-  const columns = [
-    {
-      field: "user",
-      headerName: "User",
-      flex: 1.5,
-      renderCell: (params) => (
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "start",
-            alignItems: "center",
-            gap: 2,
-          }}>
-          <Avatar
-            sx={{ bgcolor: "#f0fdf4", color: "#00A86B", fontSize: "0.85rem" }}>
-            {params.row.name.charAt(0)}
-          </Avatar>
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "end",
-              alignItems: "start",
-              gap: 0.5,
-            }}>
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              {params.row.name}
-            </Typography>
-            <Typography variant="caption" color="textSecondary">
-              {params.row.email}
-            </Typography>
-          </Box>
-        </Box>
-      ),
-    },
-    {
-      field: "role",
-      headerName: "Role",
-      flex: 1,
-      renderCell: (params) => (
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-            color: "#6b7280",
-          }}>
-          <ShieldCheck size={16} />
-          <Typography variant="body2">{params.value}</Typography>
-        </Box>
-      ),
-    },
-    {
-      field: "status",
-      headerName: "Status",
-      flex: 1,
-      renderCell: (params) => {
-        const isActive = params.value === "active";
-        return (
-          <Chip
-            label={params.value}
-            size="small"
-            sx={{
-              bgcolor: isActive ? "#ecfdf5" : "#fff1f2",
-              color: isActive ? "#00A86B" : "#e11d48",
-              fontWeight: 600,
-              borderRadius: "6px",
-            }}
-          />
-        );
-      },
-    },
-    {
-      field: "lastLogin",
-      headerName: "Last Login",
-      flex: 1,
-    },
-    {
-      field: "actions",
-      headerName: "Actions",
-      flex: 1,
-      sortable: false,
-      renderCell: (params) => (
-        <Box sx={{ display: "flex", gap: 1 }}>
-          <Button
-            size="small"
-            className="action-icon-btn"
-            onClick={() => {
-              editMode(params.row);
-            }}>
-            <Edit size={18} />
-          </Button>
-          <Button size="small" className="action-icon-btn delete"
-          onClick={()=>{
-            setshowConfirmModal(true)
-            setToDelete(params.row._id)  
-          }}>
-            <Trash2 size={18} />
-          </Button>
-        </Box>
-      ),
-    },
-  ];
-
-  function editMode(data) {
-    setToEdit(data);
-    setIsOpen(true);
-  }
-  const fetchUsers = async () => {
-    const users = await getAllUser();
-    setUsers(users);
-  };
-
-async  function handleDelete(){
-    try {
-      if(!toDelete) return
-    await deleteUser(toDelete)
-    fetchUsers()
-    showToast("User deleted successfully", "success");
-    } catch (error) {
-        showToast(
-      error instanceof Error ? error.message : "Something went wrong",
-      "error"
-    );
-    }
-    
-  }
-
-  function showToast(msg,sv){
-    setSnackbar({
-      open:true,
-      message:msg,
-      severity:sv
-    })
-  }
-
-  function handleCloseToast(){
-  setSnackbar({
+  const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
-    severity: snackbar.severity,
-  });  }
+    severity: "success",
+  });
 
-  React.useEffect(() => {
-    fetchUsers();
+  const showToast = useCallback((message, severity = "success") => {
+    setSnackbar({ open: true, message, severity });
   }, []);
+
+  const closeToast = () => {
+    setSnackbar((prev) => ({ ...prev, open: false }));
+  };
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      const data = await getAllUser();
+      setUsers(data);
+    } catch {
+      showToast("Failed to fetch users", "error");
+    }
+  }, [showToast]);
+
+  const handleDeleteUser = async () => {
+    if (!deleteUserId) return;
+
+    try {
+      await deleteUser(deleteUserId);
+      showToast("User deleted successfully");
+      fetchUsers();
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : "Something went wrong",
+        "error"
+      );
+    } finally {
+      setDeleteUserId("");
+      setShowConfirmModal(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const columns = useMemo(
+    () => [
+      {
+        field: "user",
+        headerName: "User",
+        flex: 1.5,
+        renderCell: ({ row }) => (
+          <Box display="flex" alignItems="center" gap={2}>
+            <Avatar sx={{ bgcolor: "#f0fdf4", color: "#00A86B", fontSize: 14 }}>
+              {row.name?.charAt(0)}
+            </Avatar>
+            <Box display={"flex"} flexDirection={"column"} alignItems={"start"} gap={1}>
+              <Typography variant="body2" fontWeight={600}>
+                {row.name}
+              </Typography>
+              <Typography variant="caption" color="textSecondary">
+                {row.email}
+              </Typography>
+            </Box>
+          </Box>
+        ),
+      },
+      {
+        field: "role",
+        headerName: "Role",
+        flex: 1,
+        renderCell: ({ value }) => (
+          <Box display="flex"  alignItems="center" justifyContent={"start"} gap={1} color="#6b7280">
+            <ShieldCheck size={16} />
+            <Typography variant="body2">{value}</Typography>
+          </Box>
+        ),
+      },
+      {
+        field: "status",
+        headerName: "Status",
+        flex: 1,
+        renderCell: ({ value }) => {
+          const isActive = value === "active";
+          return (
+            <Chip
+              label={value}
+              size="small"
+              sx={{
+                bgcolor: isActive ? "#ecfdf5" : "#fff1f2",
+                color: isActive ? "#00A86B" : "#e11d48",
+                fontWeight: 600,
+                borderRadius: "6px",
+              }}
+            />
+          );
+        },
+      },
+      {
+        field: "lastLogin",
+        headerName: "Last Login",
+        flex: 1,
+      },
+      {
+        field: "actions",
+        headerName: "Actions",
+        flex: 1,
+        sortable: false,
+        renderCell: ({ row }) => (
+          <Box display="flex" gap={1}>
+            <Button
+              size="small"
+              className="action-icon-btn"
+              onClick={() => {
+                setEditUser(row);
+                setIsModalOpen(true);
+              }}
+            >
+              <Edit size={18} />
+            </Button>
+            <Button
+              size="small"
+              className="action-icon-btn delete"
+              onClick={() => {
+                setDeleteUserId(row._id);
+                setShowConfirmModal(true);
+              }}
+            >
+              <Trash2 size={18} />
+            </Button>
+          </Box>
+        ),
+      },
+    ],
+    []
+  );
 
   return (
     <Box className="user-page-container">
-      {isOpen && (
+      {isModalOpen && (
         <UserModalComponent
-          isOpen={true}
-          data={toEdit}
-          mode={toEdit?.name ? "edit" : "create"}
+          isOpen
+          data={editUser}
+          mode={editUser?.name ? "edit" : "create"}
           Onclose={() => {
-            setIsOpen(false);
+            setIsModalOpen(false);
             fetchUsers();
-          }}></UserModalComponent>
+          }}
+        />
       )}
 
-      {
-        showConfirmModal && (
-          <ConfirmModalComponent
+      {showConfirmModal && (
+        <ConfirmModalComponent
           isOpen={showConfirmModal}
-          title={"Do you want to delete this user"}
-          message={"once its deleted, it cannot reverted"}
-          onConfirm={()=>{handleDelete()
-            setToDelete("")
-            setshowConfirmModal(false)
-          }}
-          onCancel={()=>setshowConfirmModal(false)}
-          >
+          title="Do you want to delete this user"
+          message="Once deleted, it cannot be reverted"
+          onConfirm={handleDeleteUser}
+          onCancel={() => setShowConfirmModal(false)}
+        />
+      )}
 
-          </ConfirmModalComponent>
-        )
-      }
-
-      <Toast 
-        open={snackbar.open} 
-        handleClose={handleCloseToast} 
-        message={snackbar.message} 
-        severity={snackbar.severity} 
+      <Toast
+        open={snackbar.open}
+        handleClose={closeToast}
+        message={snackbar.message}
+        severity={snackbar.severity}
       />
 
       <Box className="user-page-header">
         <Box>
-          <Typography variant="h5" sx={{ fontWeight: 700, color: "#111827" }}>
+          <Typography variant="h5" fontWeight={700} color="#111827">
             User Management
           </Typography>
           <Typography variant="body2" color="textSecondary">
@@ -218,9 +198,10 @@ async  function handleDelete(){
           startIcon={<UserPlus size={18} />}
           className="add-user-btn"
           onClick={() => {
-            setIsOpen(true);
-            setToEdit({});
-          }}>
+            setEditUser({});
+            setIsModalOpen(true);
+          }}
+        >
           Add New User
         </Button>
       </Box>

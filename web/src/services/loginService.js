@@ -22,6 +22,7 @@ export async function googleSignIn(navigate) {
     if (!authenticate)
       throw new Error("failed to authecticate, please try again");
     const data = authenticate.data;
+    sessionStorage.setItem("isLogin","true")
     navigate("/admin/dashboard");
     return true;
   } catch (error) {
@@ -37,5 +38,6 @@ export async function autoLogin(navigate) {
   );
   if (!authenticate) throw new Error("failed to authenticate using token");
   const data = authenticate.data;
+  sessionStorage.setItem("isLogin","true")
   navigate("/admin/dashboard");
 }
