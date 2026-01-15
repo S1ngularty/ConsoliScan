@@ -3,7 +3,7 @@ const app = express();
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 
-const { product, auth, user } = require("./routes/index");
+const { product, auth, user, category } = require("./routes/index");
 const productModel = require("./models/productModel");
 
 app.use(cors({ origin: "http://localhost:5173", credentials: true }));
@@ -15,5 +15,6 @@ app.use(cookieParser());
 app.use("/api/v1", product);
 app.use("/api/v1", auth);
 app.use("/api/v1", user);
+app.use("/api/v1", category);
 
 module.exports = app;
