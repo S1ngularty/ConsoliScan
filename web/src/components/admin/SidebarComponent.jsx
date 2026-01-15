@@ -42,7 +42,7 @@ const Sidebar = () => {
       navigate: "/admin/dashboard",
     },
     { name: "Manage User", icon: <Users size={22} />, navigate: "/admin/user" },
-    { name: "Manage Product", icon: <Box size={22} />, navigate: "/admin" },
+    { name: "Manage Product", icon: <Box size={22} />, navigate: "/admin/product" },
     { name: "Settings", icon: <Settings size={22} />, navigate: "/admin" },
   ];
 

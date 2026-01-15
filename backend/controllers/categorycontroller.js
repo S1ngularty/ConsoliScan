@@ -1,5 +1,5 @@
 const categoryService = require("../services/categoryService");
-const { controllerWrapper } = require("../utils/controllerWrapper");
+const controllerWrapper  = require("../utils/controllerWrapper");
 
 exports.categoryList = controllerWrapper(categoryService.list);
 exports.addCategory = controllerWrapper(categoryService.create);

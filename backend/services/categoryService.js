@@ -1,4 +1,4 @@
-const Category = require("../models/category");
+const Category = require("../models/categoryModel");
 
 exports.list = async () => {
   const categories = await Category.aggregate([
