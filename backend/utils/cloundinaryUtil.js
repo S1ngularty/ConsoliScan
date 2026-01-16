@@ -16,7 +16,7 @@ const uploadImage = async (images = [], path = "") => {
     });
   });
   const uploadedImages = await Promise.all(imagePromises);
-  const result = uploadedImages > 1 ? uploadedImages : uploadedImages[0];
+  const result = uploadedImages.length > 1 ? uploadedImages : uploadedImages[0];
   return result;
 };
 

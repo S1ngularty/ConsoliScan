@@ -3,11 +3,10 @@ const { uploadImage } = require("../utils/cloundinaryUtil");
 
 const create = async (request) => {
   if (!request.body) throw new Error(`theres no payload`);
-  if (request.files)
+  if (request?.files)
     request.body.images = [...(await uploadImage(request.files,'products'))];
   const product = await Product.create(request.body);
   if (!product) throw new Error("failed to create the product");
-  console.log(product);
   return product;
 };
 
