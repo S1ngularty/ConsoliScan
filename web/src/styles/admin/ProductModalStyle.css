@@ -268,11 +268,11 @@ body.modal-open {
   width: 100%;
 }
 
-/* Image Upload UI */
+/* Image Upload UI - Fixed */
 .image-upload-grid {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   opacity: 0;
   animation: fadeIn 0.5s ease-out 0.7s forwards;
   flex: 1;
@@ -280,7 +280,7 @@ body.modal-open {
 
 .image-preview-main {
   width: 100%;
-  height: 180px; /* Slightly reduced for better fit */
+  height: 200px;
   background: #f8fafc;
   border: 2px dashed #e2e8f0;
   border-radius: 12px;
@@ -291,7 +291,7 @@ body.modal-open {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   position: relative;
-  flex-shrink: 0; /* Prevent shrinking */
+  flex-shrink: 0;
 }
 
 .image-preview-main:hover {
@@ -339,6 +339,7 @@ body.modal-open {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
+  min-height: 60px; /* Ensure consistent height */
 }
 
 .thumb-add,
@@ -355,19 +356,132 @@ body.modal-open {
   color: #94a3b8;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden; /* Ensure images don't overflow */
+  position: relative;
+  min-width: 60px; /* Minimum size for consistency */
+}
+
+.thumb-add {
+  font-size: 1.2rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
 }
 
 .thumb-add:hover {
-  background: #00a86b;
+  background: linear-gradient(135deg, #00a86b 0%, #00965c 100%);
   color: white;
   border-color: #00a86b;
   transform: scale(1.05);
 }
 
-.thumb-placeholder:hover {
+.thumb-placeholder {
   background: #f1f5f9;
+  border-style: solid;
+  border-color: #e2e8f0;
+}
+
+.thumb-placeholder:hover {
+  background: #f8fafc;
   border-color: #94a3b8;
   transform: translateY(-2px);
+}
+
+/* Style for thumbnail when it has an image */
+.thumb-placeholder.has-image {
+  border: 1.5px solid #e2e8f0;
+  padding: 0;
+  background: transparent;
+}
+
+.thumb-placeholder.selected {
+  border-color: #00a86b;
+  border-width: 2px;
+  box-shadow: 0 0 0 2px rgba(0, 168, 107, 0.1);
+}
+
+.thumb-placeholder img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+  transition: transform 0.3s ease;
+}
+
+.thumb-placeholder.has-image:hover img {
+  transform: scale(1.05);
+}
+
+/* Remove button for existing thumbnails */
+.thumb-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  background: #ef4444;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 2;
+}
+
+.thumb-placeholder:hover .thumb-remove {
+  opacity: 1;
+}
+
+.thumb-remove:hover {
+  background: #dc2626;
+  transform: scale(1.1);
+}
+
+/* Empty state for thumbnails */
+.thumb-placeholder:empty::after {
+  content: '';
+  width: 20px;
+  height: 20px;
+  background: #e2e8f0;
+  border-radius: 4px;
+}
+
+/* File input trigger on main image */
+.image-preview-main input[type="file"] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 3;
+}
+
+/* Loading state for images */
+.image-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(248, 250, 252, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+}
+
+.image-loading::after {
+  content: '';
+  width: 20px;
+  height: 20px;
+  border: 2px solid #00a86b;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
 /* Footer - fixed at bottom */
@@ -579,6 +693,12 @@ body.modal-open {
   }
 }
 
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Responsive Adjustments */
 @media (max-width: 768px) {
   .modal-body-columns {
@@ -611,5 +731,9 @@ body.modal-open {
   
   .image-thumbnails {
     grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .image-preview-main {
+    height: 180px;
   }
 }

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import ProductModal from "../../components/admin/ProductModalComponent";
 import "../../styles/admin/ProductPageStyle.css";
+import Toast from "../../components/common/SnackbarComponent";
 
 import { fetchProducts } from "../../services/productService";
 
@@ -137,6 +138,19 @@ function ProductPage() {
   const [editProduct, setEditProduct] = useState(null);
   const [deleteProductId, setDeleteProductId] = useState("");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
+
+  const showToast = React.useCallback((message, severity = "success") => {
+    setSnackbar({ open: true, message, severity });
+  }, []);
+
+  const closeToast = () => {
+    setSnackbar((prev) => ({ ...prev, open: false }));
+  };
 
   useEffect(() => {
     fetchData();
@@ -161,12 +175,27 @@ function ProductPage() {
       {isModalOpen && (
         <ProductModal
           isOpen={isModalOpen}
-          data={{}}
-          Onclose={() => {
+          data={editProduct}
+          onClose={() => {
             setIsModalOpen(false);
+          }}
+          onSave={() => {
+            setIsModalOpen(false);
+            showToast(
+              `Successfully ${editProduct ? "edited" : "created"} the product!`,
+              "success"
+            );
+            fetchData();
           }}
         ></ProductModal>
       )}
+
+      <Toast
+        open={snackbar.open}
+        handleClose={closeToast}
+        message={snackbar.message}
+        severity={snackbar.severity}
+      />
 
       <Box className="product-header">
         <Box>
@@ -211,7 +240,7 @@ function ProductPage() {
           initialState={{
             pagination: { paginationModel: { pageSize: 8 } },
           }}
-          getRowId={(row)=>row._id}
+          getRowId={(row) => row._id}
           pageSizeOptions={[8, 15, 30]}
           disableRowSelectionOnClick
           autoHeight
