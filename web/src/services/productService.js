@@ -18,8 +18,8 @@ export const createProduct = async (data,files) => {
     if(pair[0] === "images") break
     formData.append(pair[0],pair[1])
   }
-  if(files.fileArray){
-    for(let file of files.fileArray){
+  if(files){
+    for(let file of files){
       formData.append("images",file)
     }
   }

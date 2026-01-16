@@ -534,6 +534,72 @@ body.modal-open {
   min-width: 140px;
 }
 
+/* Error Styling */
+.input-error {
+  border-color: #ef4444 !important;
+  background: #fef2f2 !important;
+}
+
+.input-error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: #ef4444;
+  margin-top: 6px;
+  animation: fadeIn 0.3s ease;
+}
+
+.error-message svg {
+  flex-shrink: 0;
+}
+
+.form-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 32px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  margin: 0 32px 16px;
+  color: #dc2626;
+  font-size: 0.85rem;
+  animation: slideDown 0.3s ease;
+}
+
+/* Shake animation for invalid fields */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+.input-error:focus {
+  animation: shake 0.5s ease;
+}
+
+/* Required field indicator */
+.input-group label::after {
+  content: '*';
+  color: #ef4444;
+  margin-left: 4px;
+  display: none;
+}
+
+.input-group label[for]:not([for="description"]):not([for="barcode"]):not([for="barcodeType"])::after {
+  display: inline;
+}
+
+.input-group label[for="barcode"]::after,
+.input-group label[for="barcodeType"]::after {
+  display: none;
+}
+
 .btn-primary::after {
   content: '';
   position: absolute;

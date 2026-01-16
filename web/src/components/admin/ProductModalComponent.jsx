@@ -8,6 +8,7 @@ import {
   Box,
   Image as ImageIcon,
   Tag,
+  AlertCircle,
 } from "lucide-react";
 import "../../styles/admin/ProductModalStyle.css";
 import { createProduct } from "../../services/productService";
@@ -30,7 +31,9 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
   
   const [uploading, setUploading] = React.useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = React.useState(0);
-  const [fileToUpload, setFileToUpload] = React.useState([])
+  const [fileToUpload, setFileToUpload] = React.useState([]);
+  const [errors, setErrors] = React.useState({});
+  const [touched, setTouched] = React.useState({});
   const fileInputRef = React.useRef(null);
 
   // Handle body scroll lock when modal is open
@@ -51,6 +54,8 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
     if (isOpen && data) {
       setProductInfo({ ...data });
       setSelectedImageIndex(0);
+      setErrors({});
+      setTouched({});
     } else if (isOpen && !data) {
       setProductInfo({
         name: "",
@@ -63,6 +68,8 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
         images: [],
       });
       setSelectedImageIndex(0);
+      setErrors({});
+      setTouched({});
     }
   }, [isOpen, data]);
 
@@ -83,8 +90,80 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
   // Barcode Types from your Schema Enum
   const barcodeTypes = ["UPC", "EAN_13", "EAN_8", "ISBN_10", "ISBN_13", "CODE_128", "QR"];
 
+  // Validation rules
+  const validateField = (name, value) => {
+    let error = "";
+    
+    switch (name) {
+      case "name":
+        if (!value.trim()) error = "Product name is required";
+        else if (value.length < 2) error = "Product name must be at least 2 characters";
+        else if (value.length > 100) error = "Product name must be less than 100 characters";
+        break;
+        
+      case "sku":
+        if (!value.trim()) error = "SKU is required";
+        else if (!/^[A-Za-z0-9\-_]+$/.test(value)) error = "SKU can only contain letters, numbers, hyphens and underscores";
+        else if (value.length > 50) error = "SKU must be less than 50 characters";
+        break;
+        
+      case "price":
+        if (!value && value !== 0) error = "Price is required";
+        else if (isNaN(value)) error = "Price must be a number";
+        else if (parseFloat(value) < 0) error = "Price cannot be negative";
+        else if (parseFloat(value) > 1000000) error = "Price cannot exceed $1,000,000";
+        break;
+        
+      case "stockQuantity":
+        if (!value && value !== 0) error = "Stock quantity is required";
+        else if (isNaN(value)) error = "Stock quantity must be a number";
+        else if (parseInt(value) < 0) error = "Stock quantity cannot be negative";
+        else if (!Number.isInteger(parseFloat(value))) error = "Stock quantity must be a whole number";
+        break;
+        
+      case "barcode":
+        if (value && value.length > 50) error = "Barcode must be less than 50 characters";
+        break;
+        
+      default:
+        break;
+    }
+    
+    return error;
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    
+    // Validate required fields
+    newErrors.name = validateField("name", productInfo.name);
+    newErrors.sku = validateField("sku", productInfo.sku);
+    newErrors.price = validateField("price", productInfo.price);
+    newErrors.stockQuantity = validateField("stockQuantity", productInfo.stockQuantity);
+    newErrors.barcode = validateField("barcode", productInfo.barcode);
+    
+    // Validate at least one image for new products
+    if (!data && (!productInfo.images || productInfo.images.length === 0)) {
+      newErrors.images = "At least one product image is required";
+    }
+    
+    return newErrors;
+  };
+
   const handleInput = (field, value) => {
     setProductInfo((prev) => ({ ...prev, [field]: value }));
+    
+    // Validate on change if field has been touched
+    if (touched[field]) {
+      const error = validateField(field, value);
+      setErrors((prev) => ({ ...prev, [field]: error }));
+    }
+  };
+
+  const handleBlur = (field) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const error = validateField(field, productInfo[field]);
+    setErrors((prev) => ({ ...prev, [field]: error }));
   };
 
   const handleFiles = (files) => {
@@ -93,18 +172,49 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
     const fileArray = Array.from(files);
     setUploading(true);
     
-    // Process each file
+    // Clear image error when user starts uploading
+    if (errors.images) {
+      setErrors((prev) => ({ ...prev, images: "" }));
+    }
+    
+    // Validate file types and sizes
+    const validFiles = [];
+    const invalidFiles = [];
+    
+    fileArray.forEach((file) => {
+      // Check if file is an image
+      if (!file.type.startsWith('image/')) {
+        invalidFiles.push(`${file.name} is not an image`);
+        return;
+      }
+      
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        invalidFiles.push(`${file.name} exceeds 5MB limit`);
+        return;
+      }
+      
+      validFiles.push(file);
+    });
+    
+    if (invalidFiles.length > 0) {
+      setErrors((prev) => ({ 
+        ...prev, 
+        images: invalidFiles.join(', ') 
+      }));
+    }
+    
+    if (validFiles.length === 0) {
+      setUploading(false);
+      return;
+    }
+    
+    // Process each valid file
     const processFiles = async () => {
       const newImages = [...(productInfo.images || [])];
       
-      for (let i = 0; i < fileArray.length; i++) {
-        const file = fileArray[i];
-        
-        // Check if file is an image
-        if (!file.type.startsWith('image/')) {
-          console.warn(`File ${file.name} is not an image, skipping.`);
-          continue;
-        }
+      for (let i = 0; i < validFiles.length; i++) {
+        const file = validFiles[i];
         
         const reader = new FileReader();
         
@@ -135,7 +245,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
         images: newImages,
       }));
 
-      setFileToUpload((prev)=>({...prev, fileArray}))
+      setFileToUpload((prev) => [...prev, ...validFiles]);
       
       setUploading(false);
       
@@ -157,6 +267,13 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
       images: newImages,
     }));
     
+    // Remove corresponding file from fileToUpload if it exists
+    if (fileToUpload.length > index) {
+      const newFiles = [...fileToUpload];
+      newFiles.splice(index, 1);
+      setFileToUpload(newFiles);
+    }
+    
     // Adjust selected index if needed
     if (selectedImageIndex >= index) {
       if (newImages.length === 0) {
@@ -172,13 +289,50 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
   };
 
   const handleSave = async () => {
-   const isSave = createProduct(productInfo,fileToUpload)
-   if(isSave) onSave()
+    // Mark all fields as touched
+    const allFields = ["name", "sku", "price", "stockQuantity", "barcode"];
+    const newTouched = {};
+    allFields.forEach(field => {
+      newTouched[field] = true;
+    });
+    setTouched(newTouched);
+    
+    // Validate entire form
+    const formErrors = validateForm();
+    setErrors(formErrors);
+    
+    // Check if there are any errors
+    const hasErrors = Object.values(formErrors).some(error => error);
+    
+    if (hasErrors) {
+      // Scroll to first error
+      const firstErrorField = Object.keys(formErrors).find(field => formErrors[field]);
+      if (firstErrorField) {
+        const element = document.querySelector(`[data-field="${firstErrorField}"]`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.focus();
+        }
+      }
+      return;
+    }
+    
+    try {
+      const isSave = await createProduct(productInfo, fileToUpload);
+      if (isSave) {
+        onSave();
+      }
+    } catch (error) {
+      console.error("Failed to save product:", error);
+      setErrors((prev) => ({ 
+        ...prev, 
+        _form: error.message || "Failed to save product. Please try again." 
+      }));
+    }
   };
 
-  // Handle overlay click - FIXED
+  // Handle overlay click
   const handleOverlayClick = (e) => {
-    // Only close if clicking directly on the overlay (not its children)
     if (e.target === e.currentTarget) {
       onClose();
     }
@@ -217,27 +371,43 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
                   <Tag size={14} /> General Information
                 </div>
 
-                <div className="input-group full">
+                <div className="input-group full" data-field="name">
                   <label>Product Name *</label>
                   <input
                     type="text"
                     value={productInfo.name || ""}
                     placeholder="e.g. Premium Wireless Headphones"
                     onChange={(e) => handleInput("name", e.target.value)}
+                    onBlur={() => handleBlur("name")}
+                    className={errors.name ? "input-error" : ""}
                   />
+                  {errors.name && (
+                    <div className="error-message">
+                      <AlertCircle size={12} />
+                      <span>{errors.name}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="input-grid">
-                  <div className="input-group">
+                  <div className="input-group" data-field="sku">
                     <label>SKU (Stock Keeping Unit) *</label>
                     <input
                       type="text"
                       value={productInfo.sku || ""}
                       placeholder="PROD-123"
                       onChange={(e) => handleInput("sku", e.target.value)}
+                      onBlur={() => handleBlur("sku")}
+                      className={errors.sku ? "input-error" : ""}
                     />
+                    {errors.sku && (
+                      <div className="error-message">
+                        <AlertCircle size={12} />
+                        <span>{errors.sku}</span>
+                      </div>
+                    )}
                   </div>
-                  <div className="input-group">
+                  <div className="input-group" data-field="price">
                     <label>Price ($) *</label>
                     <div className="input-with-icon">
                       <DollarSign size={14} className="input-icon" />
@@ -248,8 +418,16 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
                         step="0.01"
                         min="0"
                         onChange={(e) => handleInput("price", e.target.value)}
+                        onBlur={() => handleBlur("price")}
+                        className={errors.price ? "input-error" : ""}
                       />
                     </div>
+                    {errors.price && (
+                      <div className="error-message">
+                        <AlertCircle size={12} />
+                        <span>{errors.price}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -259,14 +437,22 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
                   <Barcode size={14} /> Barcode Details
                 </div>
                 <div className="input-grid">
-                  <div className="input-group">
+                  <div className="input-group" data-field="barcode">
                     <label>Barcode Number</label>
                     <input
                       type="text"
                       value={productInfo.barcode || ""}
                       placeholder="1234567890"
                       onChange={(e) => handleInput("barcode", e.target.value)}
+                      onBlur={() => handleBlur("barcode")}
+                      className={errors.barcode ? "input-error" : ""}
                     />
+                    {errors.barcode && (
+                      <div className="error-message">
+                        <AlertCircle size={12} />
+                        <span>{errors.barcode}</span>
+                      </div>
+                    )}
                   </div>
                   <div className="input-group">
                     <label>Barcode Type</label>
@@ -285,7 +471,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
                   </div>
                 </div>
 
-                <div className="input-group full">
+                <div className="input-group full" data-field="stockQuantity">
                   <label>Stock Quantity *</label>
                   <div className="input-with-icon">
                     <Box size={14} className="input-icon" />
@@ -297,8 +483,16 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
                       onChange={(e) =>
                         handleInput("stockQuantity", e.target.value)
                       }
+                      onBlur={() => handleBlur("stockQuantity")}
+                      className={errors.stockQuantity ? "input-error" : ""}
                     />
                   </div>
+                  {errors.stockQuantity && (
+                    <div className="error-message">
+                      <AlertCircle size={12} />
+                      <span>{errors.stockQuantity}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -336,6 +530,14 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
                       </>
                     )}
                   </div>
+                  
+                  {/* Image error display */}
+                  {errors.images && (
+                    <div className="error-message">
+                      <AlertCircle size={12} />
+                      <span>{errors.images}</span>
+                    </div>
+                  )}
                   
                   {/* Thumbnails Grid */}
                   <div className="image-thumbnails">
@@ -407,6 +609,14 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
             </div>
           </div>
         </div>
+
+        {/* Form level error */}
+        {errors._form && (
+          <div className="form-error">
+            <AlertCircle size={16} />
+            <span>{errors._form}</span>
+          </div>
+        )}
 
         {/* FOOTER - Fixed */}
         <footer className="modal-footer">
