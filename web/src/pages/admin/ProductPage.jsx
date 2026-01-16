@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import {
   Box,
@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import ProductModal from "../../components/admin/ProductModalComponent";
 import "../../styles/admin/ProductPageStyle.css";
+
+import { fetchProducts } from "../../services/productService";
 
 const columns = [
   {
@@ -128,50 +130,6 @@ const columns = [
   },
 ];
 
-// Mock Data matching your Mongoose Schema
-const rows = [
-  {
-    id: 1,
-    name: "Wireless Headphones",
-    sku: "WH-1000XM4",
-    barcode: "4500123456",
-    barcodeType: "EAN_13",
-    price: 299.99,
-    stockQuantity: 45,
-    images: [{ url: "" }],
-  },
-  {
-    id: 2,
-    name: "Mechanical Keyboard",
-    sku: "RGB-MK-90",
-    barcode: "9780201379",
-    barcodeType: "CODE_128",
-    price: 89.5,
-    stockQuantity: 4,
-    images: [{ url: "" }],
-  },
-  {
-    id: 3,
-    name: "Smart Watch v2",
-    sku: "SW-V2-BLK",
-    barcode: "1234567890",
-    barcodeType: "UPC",
-    price: 199.0,
-    stockQuantity: 12,
-    images: [{ url: "" }],
-  },
-  {
-    id: 4,
-    name: "USB-C Hub Adapter",
-    sku: "HUB-9IN1",
-    barcode: "8801234567",
-    barcodeType: "QR",
-    price: 45.0,
-    stockQuantity: 150,
-    images: [{ url: "" }],
-  },
-];
-
 function ProductPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [products, setProducts] = useState([]);
@@ -180,12 +138,22 @@ function ProductPage() {
   const [deleteProductId, setDeleteProductId] = useState("");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    const result = await fetchProducts();
+    setProducts(result);
+    return;
+  };
+
   // Filtering logic
-  const filteredRows = rows.filter(
-    (row) =>
-      row.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      row.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      row.barcode.includes(searchTerm)
+  const filteredRows = products.filter(
+    (product) =>
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.barcode.includes(searchTerm)
   );
 
   return (
@@ -243,6 +211,7 @@ function ProductPage() {
           initialState={{
             pagination: { paginationModel: { pageSize: 8 } },
           }}
+          getRowId={(row)=>row._id}
           pageSizeOptions={[8, 15, 30]}
           disableRowSelectionOnClick
           autoHeight
