@@ -21,7 +21,16 @@ export const createCategory = async (categories) => {
 export const updateCategory = async (categoryName, categoryId) => {
   if (!categoryId && !categoryName)
     throw new Error("missing identifier or a field");
-  const isSave = await axios.put(`api/v1/category/${categoryId}`, { categoryName });
+  const isSave = await axios.put(`api/v1/category/${categoryId}`, {
+    categoryName,
+  });
   if (!isSave) throw new Error("failed to save the changes.");
+  return true;
+};
+
+export const deleteCategory = async (categoryId) => {
+  if (!categoryId) throw new Error("missing category id");
+  const isDeleted = await axios.delete(`api/v1/category/${categoryId}`);
+  if (!isDeleted) throw new Error("failed to delete the category");
   return true;
 };

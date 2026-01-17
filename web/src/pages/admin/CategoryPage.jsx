@@ -1,4 +1,4 @@
-import React, { useState,useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import {
   Box,
@@ -23,7 +23,10 @@ import Loader from "../../components/common/LoaderComponent";
 import ConfirmModalComponent from "../../components/common/ConfirmModalComponent";
 import CategoryModal from "../../components/admin/CategoryModalComponent";
 
-import { fetchCategories } from "../../services/categoryService";
+import {
+  fetchCategories,
+  deleteCategory,
+} from "../../services/categoryService";
 
 function CategoryPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -90,13 +93,24 @@ function CategoryPage() {
       align: "right",
       renderCell: (params) => (
         <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-          <IconButton size="small" className="action-icon-btn"
-          onClick={()=>{setEditCategory(params.row)
-            setIsModalOpen(true)
-          }}>
+          <IconButton
+            size="small"
+            className="action-icon-btn"
+            onClick={() => {
+              setEditCategory(params.row);
+              setIsModalOpen(true);
+            }}
+          >
             <Edit size={18} />
           </IconButton>
-          <IconButton size="small" className="action-icon-btn delete">
+          <IconButton
+            size="small"
+            className="action-icon-btn delete"
+            onClick={() => {
+              setDeleteCategoryId(params.row._id);
+              setShowConfirmModal(true);
+            }}
+          >
             <Trash2 size={18} />
           </IconButton>
         </Box>
@@ -120,6 +134,23 @@ function CategoryPage() {
     const result = await fetchCategories();
     setCategories(result);
     return;
+  };
+
+  const handleDelete = async () => {
+    try {
+      if (!deleteCategoryId) throw new Error("undefined category id");
+      setIsLoading(true);
+      const isDeleted = await deleteCategory(deleteCategoryId);
+      showToast("Successfully delete the category.", "success");
+      setShowConfirmModal(false);
+      setDeleteCategoryId("");
+      fetchData();
+    } catch (error) {
+      console.log(error);
+      showToast("Sorry, something went wrong, please try again.", "error");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const filteredRows = categories.filter((row) =>
@@ -149,8 +180,8 @@ function CategoryPage() {
       {showConfirmModal && (
         <ConfirmModalComponent
           isOpen={showConfirmModal}
-          title={"Do you really want to delete this product?"}
-        //   onConfirm={handleDelete}
+          title={"Do you really want to delete this category?"}
+          onConfirm={handleDelete}
           onCancel={() => {
             setShowConfirmModal(false);
             setDeleteCategoryId("");
@@ -178,7 +209,7 @@ function CategoryPage() {
           variant="contained"
           className="add-category-btn"
           startIcon={<FolderPlus size={18} />}
-          onClick={()=>setIsModalOpen(true)}
+          onClick={() => setIsModalOpen(true)}
         >
           Add Category
         </Button>
@@ -197,27 +228,31 @@ function CategoryPage() {
       </Box>
 
       <Box className="table-card">
-        <DataGrid
-          rows={filteredRows}
-          columns={columns}
-          getRowId={(row) => row._id}
-          initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-          autoHeight
-          disableRowSelectionOnClick
-          sx={{
-            border: "none",
-            "& .MuiDataGrid-columnHeaders": {
-              backgroundColor: "#f9fafb",
-              color: "#4b5563",
-              fontWeight: 700,
-              fontSize: "0.75rem",
-              textTransform: "uppercase",
-              letterSpacing: "0.5px",
-            },
-            "& .MuiDataGrid-cell": { borderBottom: "1px solid #f1f5f9" },
-            "& .MuiDataGrid-cell:focus": { outline: "none" },
-          }}
-        />
+        {isLoading ? (
+          <Loader></Loader>
+        ) : (
+          <DataGrid
+            rows={filteredRows}
+            columns={columns}
+            getRowId={(row) => row._id}
+            initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
+            autoHeight
+            disableRowSelectionOnClick
+            sx={{
+              border: "none",
+              "& .MuiDataGrid-columnHeaders": {
+                backgroundColor: "#f9fafb",
+                color: "#4b5563",
+                fontWeight: 700,
+                fontSize: "0.75rem",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+              },
+              "& .MuiDataGrid-cell": { borderBottom: "1px solid #f1f5f9" },
+              "& .MuiDataGrid-cell:focus": { outline: "none" },
+            }}
+          />
+        )}
       </Box>
     </Box>
   );

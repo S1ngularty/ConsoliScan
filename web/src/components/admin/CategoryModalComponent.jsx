@@ -215,7 +215,6 @@ function CategoryModal({ isOpen, onClose, onSave, data }) {
     setIsSubmitting(true);
 
     try {
-      console.log(dataToSave)
       const response = await (isEditMode
         ? updateCategory(dataToSave.categoryName,dataToSave.id)
         : createCategory(dataToSave));
