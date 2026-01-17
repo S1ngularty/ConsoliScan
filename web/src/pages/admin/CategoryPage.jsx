@@ -21,6 +21,9 @@ import "../../styles/admin/CategoryPageStyle.css";
 import Toast from "../../components/common/SnackbarComponent";
 import Loader from "../../components/common/LoaderComponent";
 import ConfirmModalComponent from "../../components/common/ConfirmModalComponent";
+import CategoryModal from "../../components/admin/CategoryModalComponent";
+
+import { fetchCategories } from "../../services/categoryService";
 
 function CategoryPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -123,7 +126,7 @@ function CategoryPage() {
   return (
     <Box className="category-page-view">
       {isModalOpen && (
-        <ProductModal
+        <CategoryModal
           isOpen={isModalOpen}
           data={editCategory}
           onClose={() => {
@@ -137,7 +140,7 @@ function CategoryPage() {
             );
             fetchData();
           }}
-        ></ProductModal>
+        ></CategoryModal>
       )}
 
       {showConfirmModal && (
@@ -172,6 +175,7 @@ function CategoryPage() {
           variant="contained"
           className="add-category-btn"
           startIcon={<FolderPlus size={18} />}
+          onClick={()=>setIsModalOpen(true)}
         >
           Add Category
         </Button>
