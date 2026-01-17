@@ -25,7 +25,6 @@ exports.list = async () => {
 };
 
 exports.create = async (request) => {
-  console.log(request.body);
   if (!request.body) throw new Error("undefined request body");
   const { categories } = request.body;
   if (!Array.isArray(categories))
