@@ -318,7 +318,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
     }
     
     try {
-      const isSave = await createProduct(productInfo, fileToUpload);
+      const isSave = await createProduct(productInfo, fileToUpload, (data? "put" : "post"));
       if (isSave) {
         onSave();
       }

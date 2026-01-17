@@ -1,13 +1,13 @@
 const Product = require("../models/productModel");
 const { uploadImage } = require("../utils/cloundinaryUtil");
-const slugify = require("slugify")
+const slugify = require("slugify");
 
 const create = async (request) => {
   if (!request.body) throw new Error(`theres no payload`);
   if (request?.files)
-    request.body.images = [...(await uploadImage(request.files,'products'))];
- let slug = slugify(request.body.name)
-  request.body.slug = slug
+    request.body.images = [...[await uploadImage(request.files, "products")]];
+  let slug = slugify(request.body.name);
+  request.body.slug = slug;
   const product = await Product.create(request.body);
   if (!product) throw new Error("failed to create the product");
   return product;
