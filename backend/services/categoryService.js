@@ -27,9 +27,11 @@ exports.list = async () => {
 exports.create = async (request) => {
   console.log(request.body);
   if (!request.body) throw new Error("undefined request body");
-  const newCategory = await Category.create(request.body);
-  if (!newCategory) throw new Error("failed to create the category");
-  return newCategory;
+  const { categories } = request.body;
+  if (!Array.isArray(categories))
+    throw new Error("categories must be array object type");
+
+  return await Category.insertMany(categories, { ordered: false });
 };
 
 exports.update = async (request) => {
@@ -38,7 +40,7 @@ exports.update = async (request) => {
   const updateCategory = await Category.findByIdAndUpdate(
     categoryId,
     request.body,
-    { new: true }
+    { new: true },
   );
 
   if (!updateCategory) throw new Error("failed to update the category");
