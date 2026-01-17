@@ -2,6 +2,7 @@ import React from "react";
 import DashboardPage from "../pages/admin/DashboardPage";
 import UserPage from "../pages/admin/UserPage";
 import ProductPage from "../pages/admin/ProductPage";
+import CategoryPage from "../pages/admin/CategoryPage";
 
 function adminRoute() {
   return [
@@ -18,6 +19,11 @@ function adminRoute() {
     {
       component: <ProductPage></ProductPage>,
       path: "/admin/product",
+      index: false,
+    },
+     {
+      component: <CategoryPage></CategoryPage>,
+      path: "/admin/category",
       index: false,
     },
   ];
