@@ -21,6 +21,7 @@ import {
 import ProductModal from "../../components/admin/ProductModalComponent";
 import "../../styles/admin/ProductPageStyle.css";
 import Toast from "../../components/common/SnackbarComponent";
+import Loader from "../../components/common/LoaderComponent";
 
 import { fetchProducts } from "../../services/productService";
 
@@ -181,7 +182,7 @@ function ProductPage() {
     (product) =>
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.barcode.includes(searchTerm)
+      product.barcode.includes(searchTerm),
   );
 
   return (
@@ -197,7 +198,7 @@ function ProductPage() {
             setIsModalOpen(false);
             showToast(
               `Successfully ${editProduct ? "edited" : "created"} the product!`,
-              "success"
+              "success",
             );
             fetchData();
           }}
@@ -247,34 +248,38 @@ function ProductPage() {
       </Box>
 
       {/* 3. DATA GRID */}
-      <Box className="table-card">
-        <DataGrid
-          rows={filteredRows}
-          columns={columns}
-          initialState={{
-            pagination: { paginationModel: { pageSize: 8 } },
-          }}
-          getRowId={(row) => row._id}
-          pageSizeOptions={[8, 15, 30]}
-          disableRowSelectionOnClick
-          autoHeight
-          sx={{
-            border: "none",
-            "& .MuiDataGrid-columnHeaders": {
-              backgroundColor: "#f9fafb",
-              color: "#4b5563",
-              fontWeight: 700,
-              textTransform: "uppercase",
-              fontSize: "0.75rem",
-              letterSpacing: "0.5px",
-            },
-            "& .MuiDataGrid-cell": {
-              borderBottom: "1px solid #f1f5f9",
-            },
-            "& .MuiDataGrid-cell:focus": { outline: "none" },
-          }}
-        />
-      </Box>
+      {!filteredRows ? (
+        <Loader></Loader>
+      ) : (
+        <Box className="table-card">
+          <DataGrid
+            rows={filteredRows}
+            columns={columns}
+            initialState={{
+              pagination: { paginationModel: { pageSize: 8 } },
+            }}
+            getRowId={(row) => row._id}
+            pageSizeOptions={[8, 15, 30]}
+            disableRowSelectionOnClick
+            autoHeight
+            sx={{
+              border: "none",
+              "& .MuiDataGrid-columnHeaders": {
+                backgroundColor: "#f9fafb",
+                color: "#4b5563",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                fontSize: "0.75rem",
+                letterSpacing: "0.5px",
+              },
+              "& .MuiDataGrid-cell": {
+                borderBottom: "1px solid #f1f5f9",
+              },
+              "& .MuiDataGrid-cell:focus": { outline: "none" },
+            }}
+          />
+        </Box>
+      )}
     </Box>
   );
 }

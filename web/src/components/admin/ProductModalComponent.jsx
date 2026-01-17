@@ -15,6 +15,7 @@ import {
   handleProductRequest,
   removeImageRequest,
 } from "../../services/productService";
+import Loader from "../common/LoaderComponent";
 
 function ProductModal({ isOpen, data, onClose, onSave }) {
   const [productInfo, setProductInfo] = React.useState(
@@ -29,7 +30,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
           stockQuantity: "",
           description: "",
           images: [],
-        }
+        },
   );
 
   const [uploading, setUploading] = React.useState(false);
@@ -37,6 +38,8 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
   const [fileToUpload, setFileToUpload] = React.useState([]);
   const [errors, setErrors] = React.useState({});
   const [touched, setTouched] = React.useState({});
+  const [isLoading, setIsLoading] = React.useState(false);
+
   const fileInputRef = React.useRef(null);
 
   // Handle body scroll lock when modal is open
@@ -161,7 +164,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
     newErrors.price = validateField("price", productInfo.price);
     newErrors.stockQuantity = validateField(
       "stockQuantity",
-      productInfo.stockQuantity
+      productInfo.stockQuantity,
     );
     newErrors.barcode = validateField("barcode", productInfo.barcode);
 
@@ -313,6 +316,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
 
   const handleSave = async () => {
     // Mark all fields as touched
+    setIsLoading(true);
     const allFields = ["name", "sku", "price", "stockQuantity", "barcode"];
     const newTouched = {};
     allFields.forEach((field) => {
@@ -330,17 +334,18 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
     if (hasErrors) {
       // Scroll to first error
       const firstErrorField = Object.keys(formErrors).find(
-        (field) => formErrors[field]
+        (field) => formErrors[field],
       );
       if (firstErrorField) {
         const element = document.querySelector(
-          `[data-field="${firstErrorField}"]`
+          `[data-field="${firstErrorField}"]`,
         );
         if (element) {
           element.scrollIntoView({ behavior: "smooth", block: "center" });
           element.focus();
         }
       }
+      setIsLoading(false);
       return;
     }
 
@@ -348,7 +353,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
       const isSave = await handleProductRequest(
         productInfo,
         fileToUpload,
-        data ? "put" : "post"
+        data ? "put" : "post",
       );
       if (isSave) {
         onSave();
@@ -359,10 +364,12 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
         ...prev,
         _form: error.message || "Failed to save product. Please try again.",
       }));
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const removeImg = async (publicId,index) => {
+  const removeImg = async (publicId, index) => {
     console.log(publicId);
     if (!publicId) return;
     const result = removeImageRequest(data._id, publicId);
@@ -614,7 +621,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
                             onClick={(e) => {
                               e.stopPropagation();
                               image.public_id
-                                ? removeImg(image.public_id,index)
+                                ? removeImg(image.public_id, index)
                                 : removeImage(index);
                             }}
                           >
@@ -628,7 +635,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
                     {Array.from({
                       length: Math.max(
                         0,
-                        3 - (productInfo.images?.length || 0)
+                        3 - (productInfo.images?.length || 0),
                       ),
                     }).map((_, index) => (
                       <div
@@ -670,9 +677,19 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
           <button className="btn-secondary" onClick={onClose}>
             Cancel
           </button>
-          <button className="btn-primary" onClick={handleSave}>
-            <Save size={18} />
-            <span>{data ? "Update Product" : "Save Product"}</span>
+          <button
+            className="btn-primary"
+            onClick={handleSave}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <Loader variant={"button"} color={"white"}></Loader>
+            ) : (
+              <>
+                <Save size={18} />
+                <span>{data ? "Update Product" : "Save Product"}</span>
+              </>
+            )}
           </button>
         </footer>
       </div>
