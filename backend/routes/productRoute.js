@@ -20,4 +20,8 @@ router
     productController.updateProduct
   );
 
+router
+  .route("/product/removeImg/:productId")
+  .post(authMiddleware.verifyToken, productController.deleteImg);
+
 module.exports = router;

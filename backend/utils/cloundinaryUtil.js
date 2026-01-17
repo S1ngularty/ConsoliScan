@@ -20,18 +20,17 @@ const uploadImage = async (images = [], path = "") => {
   return result;
 };
 
-const deleteAssets = async(publicIds=[])=>{
-  const deletePromises = publicIds.map((publicId)=>{
-    return new Promise((resolve,reject)=>{
-      cloudinary.api.delete_resources(publicId,(error,result)=>{
-        if(error instanceof Error) reject(error)
-        if(result) resolve(result)
-      })
-    })
-  })
+const deleteAssets = async (publicIds = []) => {
+  console.log(publicIds)
+  if (!Array.isArray(publicIds) || publicIds.length === 0) {
+    return {
+      deleted: {},
+    };
+  }
 
-  const deletedAssets = await Promise.all(deletePromises)
-  return deleteAssets
-}
+  const result = await cloudinary.api.delete_resources(publicIds);
+  console.log(result)
+  return result;
+};
 
-module.exports = { uploadImage,deleteAssets };
+module.exports = { uploadImage, deleteAssets };

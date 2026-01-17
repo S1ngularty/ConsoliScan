@@ -4,9 +4,15 @@ axios.defaults.withCredentials = true;
 axios.defaults.baseURL = import.meta.env.VITE_APP_API;
 
 export const fetchProducts = async () => {
-  const result = await axios.get(`api/v1/product`);
+  const result = await axios.get(`api/v1/product`,{
+    headers:{
+      "Cache-Control":"no-cache"
+    }
+  });
   if (!result) throw new Error("failed to fetch the products");
   const data = result.data.result;
+    console.log("fetch data",data)
+
   return data;
 };
 
@@ -37,4 +43,18 @@ export const handleProductRequest = async (data, files, requestMethod) => {
   if (!createdProduct)
     throw new Error("failed to create the product, please try again.");
   return true;
+};
+
+export const removeImageRequest = async (productId, publicId) => {
+  const isDeleted = await axios.post(
+    `api/v1/product/removeImg/${productId}?publicId=${publicId}`,
+    {},
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  if (!isDeleted) throw new Error("failed to delete the image");
 };

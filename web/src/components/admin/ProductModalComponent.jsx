@@ -11,7 +11,10 @@ import {
   AlertCircle,
 } from "lucide-react";
 import "../../styles/admin/ProductModalStyle.css";
-import { handleProductRequest } from "../../services/productService";
+import {
+  handleProductRequest,
+  removeImageRequest,
+} from "../../services/productService";
 
 function ProductModal({ isOpen, data, onClose, onSave }) {
   const [productInfo, setProductInfo] = React.useState(
@@ -28,7 +31,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
           images: [],
         }
   );
-  
+
   const [uploading, setUploading] = React.useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = React.useState(0);
   const [fileToUpload, setFileToUpload] = React.useState([]);
@@ -76,83 +79,103 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
   // Add escape key handler
   useEffect(() => {
     const handleEscape = (e) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === "Escape" && isOpen) {
         onClose();
       }
     };
 
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   // Barcode Types from your Schema Enum
-  const barcodeTypes = ["UPC", "EAN_13", "EAN_8", "ISBN_10", "ISBN_13", "CODE_128", "QR"];
+  const barcodeTypes = [
+    "UPC",
+    "EAN_13",
+    "EAN_8",
+    "ISBN_10",
+    "ISBN_13",
+    "CODE_128",
+    "QR",
+  ];
 
   // Validation rules
   const validateField = (name, value) => {
     let error = "";
-    
+
     switch (name) {
       case "name":
         if (!value.trim()) error = "Product name is required";
-        else if (value.length < 2) error = "Product name must be at least 2 characters";
-        else if (value.length > 100) error = "Product name must be less than 100 characters";
+        else if (value.length < 2)
+          error = "Product name must be at least 2 characters";
+        else if (value.length > 100)
+          error = "Product name must be less than 100 characters";
         break;
-        
+
       case "sku":
         if (!value.trim()) error = "SKU is required";
-        else if (!/^[A-Za-z0-9\-_]+$/.test(value)) error = "SKU can only contain letters, numbers, hyphens and underscores";
-        else if (value.length > 50) error = "SKU must be less than 50 characters";
+        else if (!/^[A-Za-z0-9\-_]+$/.test(value))
+          error =
+            "SKU can only contain letters, numbers, hyphens and underscores";
+        else if (value.length > 50)
+          error = "SKU must be less than 50 characters";
         break;
-        
+
       case "price":
         if (!value && value !== 0) error = "Price is required";
         else if (isNaN(value)) error = "Price must be a number";
         else if (parseFloat(value) < 0) error = "Price cannot be negative";
-        else if (parseFloat(value) > 1000000) error = "Price cannot exceed $1,000,000";
+        else if (parseFloat(value) > 1000000)
+          error = "Price cannot exceed $1,000,000";
         break;
-        
+
       case "stockQuantity":
         if (!value && value !== 0) error = "Stock quantity is required";
         else if (isNaN(value)) error = "Stock quantity must be a number";
-        else if (parseInt(value) < 0) error = "Stock quantity cannot be negative";
-        else if (!Number.isInteger(parseFloat(value))) error = "Stock quantity must be a whole number";
+        else if (parseInt(value) < 0)
+          error = "Stock quantity cannot be negative";
+        else if (!Number.isInteger(parseFloat(value)))
+          error = "Stock quantity must be a whole number";
         break;
-        
+
       case "barcode":
-        if (value && value.length > 50) error = "Barcode must be less than 50 characters";
+        if (value && value.length > 50)
+          error = "Barcode must be less than 50 characters";
         break;
-        
+
       default:
         break;
     }
-    
+
     return error;
   };
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     // Validate required fields
     newErrors.name = validateField("name", productInfo.name);
     newErrors.sku = validateField("sku", productInfo.sku);
     newErrors.price = validateField("price", productInfo.price);
-    newErrors.stockQuantity = validateField("stockQuantity", productInfo.stockQuantity);
+    newErrors.stockQuantity = validateField(
+      "stockQuantity",
+      productInfo.stockQuantity
+    );
     newErrors.barcode = validateField("barcode", productInfo.barcode);
-    
+
     // Validate at least one image for new products
     if (!data && (!productInfo.images || productInfo.images.length === 0)) {
       newErrors.images = "At least one product image is required";
     }
-    
+
     return newErrors;
   };
 
   const handleInput = (field, value) => {
     setProductInfo((prev) => ({ ...prev, [field]: value }));
-    
+
     // Validate on change if field has been touched
     if (touched[field]) {
       const error = validateField(field, value);
@@ -168,60 +191,60 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
 
   const handleFiles = (files) => {
     if (!files || files.length === 0) return;
-    
+
     const fileArray = Array.from(files);
     setUploading(true);
-    
+
     // Clear image error when user starts uploading
     if (errors.images) {
       setErrors((prev) => ({ ...prev, images: "" }));
     }
-    
+
     // Validate file types and sizes
     const validFiles = [];
     const invalidFiles = [];
-    
+
     fileArray.forEach((file) => {
       // Check if file is an image
-      if (!file.type.startsWith('image/')) {
+      if (!file.type.startsWith("image/")) {
         invalidFiles.push(`${file.name} is not an image`);
         return;
       }
-      
+
       // Check file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         invalidFiles.push(`${file.name} exceeds 5MB limit`);
         return;
       }
-      
+
       validFiles.push(file);
     });
-    
+
     if (invalidFiles.length > 0) {
-      setErrors((prev) => ({ 
-        ...prev, 
-        images: invalidFiles.join(', ') 
+      setErrors((prev) => ({
+        ...prev,
+        images: invalidFiles.join(", "),
       }));
     }
-    
+
     if (validFiles.length === 0) {
       setUploading(false);
       return;
     }
-    
+
     // Process each valid file
     const processFiles = async () => {
       const newImages = [...(productInfo.images || [])];
-      
+
       for (let i = 0; i < validFiles.length; i++) {
         const file = validFiles[i];
-        
+
         const reader = new FileReader();
-        
+
         await new Promise((resolve) => {
           reader.onload = (e) => {
             const imageUrl = e.target.result;
-            
+
             if (i === 0 && newImages.length === 0) {
               // First image becomes main image
               newImages.unshift({ url: imageUrl });
@@ -230,50 +253,50 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
             }
             resolve();
           };
-          
+
           reader.onerror = () => {
             console.error("Failed to read file:", file.name);
             resolve();
           };
-          
+
           reader.readAsDataURL(file);
         });
       }
-      
+
       setProductInfo((prev) => ({
         ...prev,
         images: newImages,
       }));
 
       setFileToUpload((prev) => [...prev, ...validFiles]);
-      
+
       setUploading(false);
-      
+
       // Reset file input
       if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+        fileInputRef.current.value = "";
       }
     };
-    
+
     processFiles();
   };
 
   const removeImage = (index) => {
     const newImages = [...productInfo.images];
     newImages.splice(index, 1);
-    
+
     setProductInfo((prev) => ({
       ...prev,
       images: newImages,
     }));
-    
+
     // Remove corresponding file from fileToUpload if it exists
     if (fileToUpload.length > index) {
       const newFiles = [...fileToUpload];
       newFiles.splice(index, 1);
       setFileToUpload(newFiles);
     }
-    
+
     // Adjust selected index if needed
     if (selectedImageIndex >= index) {
       if (newImages.length === 0) {
@@ -292,43 +315,58 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
     // Mark all fields as touched
     const allFields = ["name", "sku", "price", "stockQuantity", "barcode"];
     const newTouched = {};
-    allFields.forEach(field => {
+    allFields.forEach((field) => {
       newTouched[field] = true;
     });
     setTouched(newTouched);
-    
+
     // Validate entire form
     const formErrors = validateForm();
     setErrors(formErrors);
-    
+
     // Check if there are any errors
-    const hasErrors = Object.values(formErrors).some(error => error);
-    
+    const hasErrors = Object.values(formErrors).some((error) => error);
+
     if (hasErrors) {
       // Scroll to first error
-      const firstErrorField = Object.keys(formErrors).find(field => formErrors[field]);
+      const firstErrorField = Object.keys(formErrors).find(
+        (field) => formErrors[field]
+      );
       if (firstErrorField) {
-        const element = document.querySelector(`[data-field="${firstErrorField}"]`);
+        const element = document.querySelector(
+          `[data-field="${firstErrorField}"]`
+        );
         if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
           element.focus();
         }
       }
       return;
     }
-    
+
     try {
-      const isSave = await handleProductRequest(productInfo, fileToUpload, (data? "put" : "post"));
+      const isSave = await handleProductRequest(
+        productInfo,
+        fileToUpload,
+        data ? "put" : "post"
+      );
       if (isSave) {
         onSave();
       }
     } catch (error) {
       console.error("Failed to save product:", error);
-      setErrors((prev) => ({ 
-        ...prev, 
-        _form: error.message || "Failed to save product. Please try again." 
+      setErrors((prev) => ({
+        ...prev,
+        _form: error.message || "Failed to save product. Please try again.",
       }));
     }
+  };
+
+  const removeImg = async (publicId,index) => {
+    console.log(publicId);
+    if (!publicId) return;
+    const result = removeImageRequest(data._id, publicId);
+    if (result) removeImage(index);
   };
 
   // Handle overlay click
@@ -337,7 +375,6 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
       onClose();
     }
   };
-
   return (
     <div className="modal-overlay" onClick={handleOverlayClick}>
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
@@ -506,14 +543,17 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
 
                 <div className="image-upload-grid">
                   {/* Main Image Preview */}
-                  <div className="image-preview-main" onClick={handleMainImageClick}>
+                  <div
+                    className="image-preview-main"
+                    onClick={handleMainImageClick}
+                  >
                     {uploading ? (
                       <div className="image-loading"></div>
                     ) : productInfo.images?.length > 0 ? (
                       <>
-                        <img 
-                          src={productInfo.images[selectedImageIndex]?.url} 
-                          alt="Product" 
+                        <img
+                          src={productInfo.images[selectedImageIndex]?.url}
+                          alt="Product"
                         />
                         <input
                           type="file"
@@ -530,7 +570,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
                       </>
                     )}
                   </div>
-                  
+
                   {/* Image error display */}
                   {errors.images && (
                     <div className="error-message">
@@ -538,7 +578,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
                       <span>{errors.images}</span>
                     </div>
                   )}
-                  
+
                   {/* Thumbnails Grid */}
                   <div className="image-thumbnails">
                     <input
@@ -560,18 +600,22 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
 
                     {/* Existing Images */}
                     {productInfo.images?.map((image, index) => (
-                      <div 
-                        key={index} 
-                        className={`thumb-placeholder has-image ${index === selectedImageIndex ? 'selected' : ''}`}
+                      <div
+                        key={index}
+                        className={`thumb-placeholder has-image ${
+                          index === selectedImageIndex ? "selected" : ""
+                        }`}
                         onClick={() => setSelectedImageIndex(index)}
                       >
                         <img src={image.url} alt={`Thumbnail ${index + 1}`} />
                         {productInfo.images.length > 1 && (
-                          <div 
+                          <div
                             className="thumb-remove"
                             onClick={(e) => {
                               e.stopPropagation();
-                              removeImage(index);
+                              image.public_id
+                                ? removeImg(image.public_id,index)
+                                : removeImage(index);
                             }}
                           >
                             ×
@@ -579,13 +623,16 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
                         )}
                       </div>
                     ))}
-                    
+
                     {/* Empty Placeholders */}
-                    {Array.from({ 
-                      length: Math.max(0, 3 - (productInfo.images?.length || 0)) 
+                    {Array.from({
+                      length: Math.max(
+                        0,
+                        3 - (productInfo.images?.length || 0)
+                      ),
                     }).map((_, index) => (
-                      <div 
-                        key={`empty-${index}`} 
+                      <div
+                        key={`empty-${index}`}
                         className="thumb-placeholder"
                       ></div>
                     ))}

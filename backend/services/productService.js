@@ -1,5 +1,5 @@
 const Product = require("../models/productModel");
-const { uploadImage } = require("../utils/cloundinaryUtil");
+const { uploadImage, deleteAssets } = require("../utils/cloundinaryUtil");
 const slugify = require("slugify");
 
 const create = async (request) => {
@@ -51,4 +51,22 @@ const update = async (request = {}) => {
   return product;
 };
 
-module.exports = { create, getAll, getById, update };
+const removeImg = async (request) => {
+  const { publicId } = request.query;
+  const { productId } = request.params;
+  const result = await deleteAssets([publicId]);
+  const deletionStatus = result?.deleted?.[publicId];
+  if (deletionStatus !== "deleted" && deletionStatus !== "not_found") {
+    throw new Error("failed to delete image from Cloudinary");
+  }
+  if (!result) throw new Error("failed to delete the image");
+  const updateProductImage = await Product.findById(productId);
+  updateProductImage.images = updateProductImage.images.filter(
+    (image) => image.public_id !== publicId
+  );
+  console.log(updateProductImage.images);
+  await updateProductImage.save();
+  return deletionStatus;
+};
+
+module.exports = { create, getAll, getById, update, removeImg };
