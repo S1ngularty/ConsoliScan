@@ -82,14 +82,37 @@ const softDelete = async (request) => {
   return isUpdated;
 };
 
+const restore = async (request) => {
+  const { productId } = request.params;
+  const restoredProduct = await Product.findByIdAndUpdate(
+    productId,
+    {
+      deletedAt: null,
+    },
+    { new: true, runValidators: true },
+  );
+
+  if (!restoredProduct) throw new Error("failed to restore the product");
+  return true;
+};
+
 const hardDelete = async (request) => {
   const { productId } = request.params;
   const deletedProduct = await Product.findByIdAndDelete(productId);
-  if(!deletedProduct) throw new Error("failed to delete the product")
-  if(deletedProduct.images){
-    const publicIds = deletedProduct.map((image)=>image.public_id)
-    const imageDeleted = deleteAssets(publicIds)
+  if (!deletedProduct) throw new Error("failed to delete the product");
+  if (deletedProduct.images) {
+    const publicIds = deletedProduct.map((image) => image.public_id);
+    const imageDeleted = deleteAssets(publicIds);
   }
-  };
+};
 
-module.exports = { create, getAll, getById, update, removeImg, softDelete,hardDelete };
+module.exports = {
+  create,
+  getAll,
+  getById,
+  update,
+  removeImg,
+  softDelete,
+  hardDelete,
+  restore
+};

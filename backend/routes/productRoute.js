@@ -23,6 +23,10 @@ router
   .delete(authMiddleware.verifyToken, productController.permanentDelete);
 
 router
+  .route("/product/restore/:productId")
+  .put(authMiddleware.verifyToken, productController.restoreProduct);
+
+router
   .route("/product/removeImg/:productId")
   .post(authMiddleware.verifyToken, productController.deleteImg);
 
