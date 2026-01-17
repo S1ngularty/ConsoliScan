@@ -4,3 +4,4 @@ const controllerWrapper = require("../utils/controllerWrapper");
 exports.createProduct = controllerWrapper(productService.create);
 exports.getAllProduct = controllerWrapper(productService.getAll);
 exports.getProductById = controllerWrapper(productService.getById);
+exports.updateProduct = controllerWrapper(productService.update);

@@ -10,7 +10,7 @@ export const fetchProducts = async () => {
   return data;
 };
 
-export const createProduct = async (data, files, requestMethod) => {
+export const handleProductRequest = async (data, files, requestMethod) => {
   if (!data) throw new Error("data is undefined");
   const formData = new FormData();
   console.log(data, files);
@@ -24,12 +24,8 @@ export const createProduct = async (data, files, requestMethod) => {
     }
   }
 
-  for (let i of formData.entries()) {
-    console.log(`${i[0]}=>${i[1]}`);
-  }
-
   const createdProduct = await axios[requestMethod](
-    "/api/v1/product",
+    `/api/v1/product${requestMethod === "put" && `/${data._id}`}`,
     formData,
     {
       headers: {

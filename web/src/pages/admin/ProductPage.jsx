@@ -24,113 +24,6 @@ import Toast from "../../components/common/SnackbarComponent";
 
 import { fetchProducts } from "../../services/productService";
 
-const columns = [
-  {
-    field: "product",
-    headerName: "Product Info",
-    flex: 2,
-    renderCell: (params) => (
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-        <Avatar
-          src={params.row.images[0]?.url}
-          variant="rounded"
-          sx={{
-            width: 45,
-            height: 45,
-            border: "1px solid #f1f5f9",
-            bgcolor: "#f8fafc",
-          }}
-        >
-          <Layers size={20} color="#94a3b8" />
-        </Avatar>
-        <Box>
-          <Typography
-            variant="body2"
-            sx={{ fontWeight: 600, color: "#1e293b" }}
-          >
-            {params.row.name}
-          </Typography>
-          <Typography variant="caption" color="textSecondary">
-            SKU: {params.row.sku}
-          </Typography>
-        </Box>
-      </Box>
-    ),
-  },
-  {
-    field: "barcode",
-    headerName: "Identifier",
-    flex: 1.2,
-    renderCell: (params) => (
-      <Box sx={{ display: "flex", flexDirection: "column" }}>
-        <Typography
-          variant="body2"
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 0.5,
-            color: "#475569",
-          }}
-        >
-          <Barcode size={14} color="#64748b" /> {params.row.barcode}
-        </Typography>
-        <Typography
-          variant="caption"
-          sx={{ color: "#00A86B", fontWeight: 700 }}
-        >
-          {params.row.barcodeType}
-        </Typography>
-      </Box>
-    ),
-  },
-  {
-    field: "price",
-    headerName: "Price",
-    flex: 0.8,
-    renderCell: (params) => (
-      <Typography variant="body2" sx={{ fontWeight: 700, color: "#1e293b" }}>
-        ${params.value.toFixed(2)}
-      </Typography>
-    ),
-  },
-  {
-    field: "stockQuantity",
-    headerName: "Inventory",
-    flex: 1,
-    renderCell: (params) => {
-      const isLow = params.value < 10;
-      return (
-        <Chip
-          label={`${params.value} in stock`}
-          size="small"
-          sx={{
-            bgcolor: isLow ? "#fff1f2" : "#f0fdf4",
-            color: isLow ? "#e11d48" : "#00A86B",
-            fontWeight: 600,
-            borderRadius: "6px",
-          }}
-        />
-      );
-    },
-  },
-  {
-    field: "actions",
-    headerName: "Actions",
-    flex: 0.8,
-    sortable: false,
-    renderCell: () => (
-      <Box sx={{ display: "flex", gap: 1 }}>
-        <IconButton size="small" className="action-icon-btn">
-          <Edit size={18} />
-        </IconButton>
-        <IconButton size="small" className="action-icon-btn delete">
-          <Trash2 size={18} />
-        </IconButton>
-      </Box>
-    ),
-  },
-];
-
 function ProductPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [products, setProducts] = useState([]);
@@ -143,6 +36,127 @@ function ProductPage() {
     message: "",
     severity: "success",
   });
+
+  const columns = [
+    {
+      field: "product",
+      headerName: "Product Info",
+      flex: 2,
+      renderCell: (params) => (
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <Avatar
+            src={params.row.images[0]?.url}
+            variant="rounded"
+            sx={{
+              width: 45,
+              height: 45,
+              border: "1px solid #f1f5f9",
+              bgcolor: "#f8fafc",
+            }}
+          >
+            <Layers size={20} color="#94a3b8" />
+          </Avatar>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "start",
+              gap: 0.3,
+            }}
+          >
+            <Typography
+              variant="body2"
+              sx={{ fontWeight: 600, color: "#1e293b" }}
+            >
+              {params.row.name}
+            </Typography>
+            <Typography variant="caption" color="textSecondary">
+              SKU: {params.row.sku}
+            </Typography>
+          </Box>
+        </Box>
+      ),
+    },
+    {
+      field: "barcode",
+      headerName: "Identifier",
+      flex: 1.2,
+      renderCell: (params) => (
+        <Box sx={{ display: "flex", flexDirection: "column" }}>
+          <Typography
+            variant="body2"
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
+              color: "#475569",
+            }}
+          >
+            <Barcode size={14} color="#64748b" /> {params.row.barcode}
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{ color: "#00A86B", fontWeight: 700 }}
+          >
+            {params.row.barcodeType}
+          </Typography>
+        </Box>
+      ),
+    },
+    {
+      field: "price",
+      headerName: "Price",
+      flex: 0.8,
+      renderCell: (params) => (
+        <Typography variant="body2" sx={{ fontWeight: 700, color: "#1e293b" }}>
+          ${params.value.toFixed(2)}
+        </Typography>
+      ),
+    },
+    {
+      field: "stockQuantity",
+      headerName: "Inventory",
+      flex: 1,
+      renderCell: (params) => {
+        const isLow = params.value < 10;
+        return (
+          <Chip
+            label={`${params.value} in stock`}
+            size="small"
+            sx={{
+              bgcolor: isLow ? "#fff1f2" : "#f0fdf4",
+              color: isLow ? "#e11d48" : "#00A86B",
+              fontWeight: 600,
+              borderRadius: "6px",
+            }}
+          />
+        );
+      },
+    },
+    {
+      field: "actions",
+      headerName: "Actions",
+      flex: 0.8,
+      sortable: false,
+      renderCell: (params) => (
+        <Box sx={{ display: "flex", gap: 1 }}>
+          <IconButton
+            size="small"
+            className="action-icon-btn"
+            onClick={() => {
+              setEditProduct(params.row);
+              setIsModalOpen(true);
+            }}
+          >
+            <Edit size={18} />
+          </IconButton>
+          <IconButton size="small" className="action-icon-btn delete">
+            <Trash2 size={18} />
+          </IconButton>
+        </Box>
+      ),
+    },
+  ];
 
   const showToast = React.useCallback((message, severity = "success") => {
     setSnackbar({ open: true, message, severity });

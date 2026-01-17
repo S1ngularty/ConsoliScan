@@ -25,4 +25,30 @@ const getById = async (request = {}) => {
   return product;
 };
 
-module.exports = { create, getAll, getById };
+const update = async (request = {}) => {
+  const { productId } = request.params;
+  if (!request.body) throw new Error("unefined request body");
+  let newImages = [];
+  if (request.files && request.files.length > 0) {
+    let temp = await uploadImage(request.files, "products");
+    newImages = Array.isArray(temp) ? temp : [temp];
+  }
+  const updateQuery = {
+    ...request.body,
+  };
+  if (newImages.length > 0) {
+    updateQuery.$push = {
+      images: { $each: newImages },
+    };
+  }
+  const product = await Product.findByIdAndUpdate(productId, updateQuery, {
+    new: true,
+    upsert: true,
+    runValidators: true,
+  });
+
+  if (!product) throw new Error("failed to update the product");
+  return product;
+};
+
+module.exports = { create, getAll, getById, update };

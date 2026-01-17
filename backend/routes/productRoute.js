@@ -4,12 +4,20 @@ const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage() });
 
 const productController = require("../controllers/productController");
+const authMiddleware = require("../middlewares/authMiddleware");
 
 router
   .route("/product")
   .post(upload.array("images", 5), productController.createProduct)
   .get(productController.getAllProduct);
 
-router.route("/product/:productId").get(productController.getProductById);
+router
+  .route("/product/:productId")
+  .get(productController.getProductById)
+  .put(
+    authMiddleware.verifyToken,
+    upload.array("images", 5),
+    productController.updateProduct
+  );
 
 module.exports = router;

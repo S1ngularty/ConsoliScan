@@ -11,7 +11,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import "../../styles/admin/ProductModalStyle.css";
-import { createProduct } from "../../services/productService";
+import { handleProductRequest } from "../../services/productService";
 
 function ProductModal({ isOpen, data, onClose, onSave }) {
   const [productInfo, setProductInfo] = React.useState(
@@ -318,7 +318,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
     }
     
     try {
-      const isSave = await createProduct(productInfo, fileToUpload, (data? "put" : "post"));
+      const isSave = await handleProductRequest(productInfo, fileToUpload, (data? "put" : "post"));
       if (isSave) {
         onSave();
       }
