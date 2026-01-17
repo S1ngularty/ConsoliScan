@@ -1,6 +1,6 @@
 import React from "react";
 import { X, Save, User, MapPin, Phone, Mail, ShieldCheck } from "lucide-react";
-import "../../styles/admin/UserModalStyle.css";
+import "../../styles/admin/user/UserModalStyle.css";
 import { createUser, editUser, updateAvatar } from "../../services/userService";
 
 function UserModalComponent({ isOpen, data, mode, Onclose }) {

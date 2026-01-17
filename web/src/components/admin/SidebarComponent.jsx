@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -8,60 +8,289 @@ import {
   ChevronRight,
   LogOut,
   Settings,
+  ChevronDown,
+  Home,
+  Database,
+  Shield,
+  FileText,
+  BarChart3,
+  ShoppingBag,
+  Tag,
+  Package,
+  ShoppingCart,
 } from "lucide-react";
-import "../../styles/admin/SidebarStyle.css";
-import { useNavigate } from "react-router-dom";
+import "../../styles/components/SidebarStyle.css";
+import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import ConfirmModalComponent from "../common/ConfirmModalComponent";
 
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [activeItem, setActiveItem] = useState("Dashboard");
-  const [showConfirmModal, setshowConfirmModal] = useState(false);
+  const [activeItem, setActiveItem] = useState("");
+  const [openDropdowns, setOpenDropdowns] = useState([]);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Initialize active item based on current route
+  useEffect(() => {
+    const path = location.pathname;
+    
+    // Find which item corresponds to the current path
+    const allItems = [
+      ...menuItems.flatMap(section => section.items),
+      ...managementItems.flatMap(section => section.items.flatMap(item => 
+        item.dropdown ? item.dropdown : []
+      )),
+      ...otherItems.flatMap(section => section.items)
+    ];
+    
+    const currentItem = allItems.find(item => item.navigate === path);
+    if (currentItem) {
+      setActiveItem(currentItem.name);
+      
+      // Open parent dropdown if it exists
+      if (currentItem.parent) {
+        setOpenDropdowns(prev => [...new Set([...prev, currentItem.parent])]);
+      }
+    }
+  }, [location.pathname]);
 
   async function logout() {
     try {
       const isLogout = await axios.post(
         `${import.meta.env.VITE_APP_API}api/v1/logout`,
         {},
-        {
-          withCredentials: true,
-        },
+        { withCredentials: true }
       );
-      console.log(isLogout);
       if (isLogout.data.success) navigate("/");
     } catch (error) {
       console.log(error);
     }
   }
 
+  const toggleDropdown = (dropdownName) => {
+    setOpenDropdowns(prev => 
+      prev.includes(dropdownName)
+        ? prev.filter(name => name !== dropdownName)
+        : [...prev, dropdownName]
+    );
+  };
+
+  const handleNavigation = (item) => {
+    setActiveItem(item.name);
+    if (item.navigate) {
+      navigate(item.navigate);
+    }
+  };
+
+  // Grouped menu items
   const menuItems = [
     {
-      name: "Dashboard",
-      icon: <LayoutDashboard size={22} />,
-      navigate: "/admin/dashboard",
-    },
-    { name: "Manage User", icon: <Users size={22} />, navigate: "/admin/user" },
-    {
-      name: "Manage Product",
-      icon: <Box size={22} />,
-      navigate: "/admin/product",
-    },
-    { name: "Category", icon: <Layers size={22} />, navigate: "/admin/category" },
-    { name: "Settings", icon: <Settings size={22} />, navigate: "/admin" },
+      section: "Main",
+      items: [
+        {
+          name: "Dashboard",
+          icon: <LayoutDashboard size={22} />,
+          navigate: "/admin/dashboard",
+        },
+      ]
+    }
   ];
+
+  const managementItems = [
+    {
+      section: "Management",
+      items: [
+        {
+          name: "User Management",
+          icon: <Users size={22} />,
+          hasDropdown: true,
+          dropdown: [
+            {
+              name: "All Users",
+              icon: <Users size={18} />,
+              navigate: "/admin/users",
+            },
+            {
+              name: "Roles & Permissions",
+              icon: <Shield size={18} />,
+              navigate: "/admin/users/roles",
+            },
+            {
+              name: "Activity Logs",
+              icon: <FileText size={18} />,
+              navigate: "/admin/users/activity",
+            },
+          ]
+        },
+        {
+          name: "Product Management",
+          icon: <Package size={22} />,
+          hasDropdown: true,
+          dropdown: [
+            {
+              name: "All Products",
+              icon: <ShoppingBag size={18} />,
+              navigate: "/admin/products",
+            },
+            {
+              name: "Inventory",
+              icon: <Database size={18} />,
+              navigate: "/admin/products/inventory",
+            },
+            {
+              name: "Reviews",
+              icon: <BarChart3 size={18} />,
+              navigate: "/admin/products/reviews",
+            },
+          ]
+        },
+        {
+          name: "Category Management",
+          icon: <Layers size={22} />,
+          hasDropdown: true,
+          dropdown: [
+            {
+              name: "All Categories",
+              icon: <Tag size={18} />,
+              navigate: "/admin/categories",
+            },
+            {
+              name: "Subcategories",
+              icon: <Layers size={18} />,
+              navigate: "/admin/categories/sub",
+            },
+          ]
+        },
+        {
+          name: "Order Management",
+          icon: <ShoppingCart size={22} />,
+          hasDropdown: true,
+          dropdown: [
+            {
+              name: "All Orders",
+              icon: <ShoppingBag size={18} />,
+              navigate: "/admin/orders",
+            },
+            {
+              name: "Pending Orders",
+              icon: <BarChart3 size={18} />,
+              navigate: "/admin/orders/pending",
+            },
+            {
+              name: "Returns",
+              icon: <Box size={18} />,
+              navigate: "/admin/orders/returns",
+            },
+          ]
+        },
+      ]
+    }
+  ];
+
+  const otherItems = [
+    {
+      section: "Other",
+      items: [
+        {
+          name: "Settings",
+          icon: <Settings size={22} />,
+          navigate: "/admin/settings",
+        },
+        {
+          name: "Analytics",
+          icon: <BarChart3 size={22} />,
+          navigate: "/admin/analytics",
+        },
+        {
+          name: "Reports",
+          icon: <FileText size={22} />,
+          navigate: "/admin/reports",
+        },
+      ]
+    }
+  ];
+
+  const renderSection = (sectionData, index) => (
+    <div key={index} className="sidebar-section">
+      {!isCollapsed && (
+        <div className="section-header">
+          <span className="section-label">{sectionData.section}</span>
+        </div>
+      )}
+      {sectionData.items.map((item) => {
+        if (item.hasDropdown) {
+          const isOpen = openDropdowns.includes(item.name);
+          
+          return (
+            <div 
+              key={item.name} 
+              className={`nav-item has-dropdown ${isOpen ? 'dropdown-open' : ''}`}
+              data-tooltip={item.name}
+            >
+              <div 
+                className="dropdown-header"
+                onClick={() => toggleDropdown(item.name)}
+              >
+                <div className="nav-icon">{item.icon}</div>
+                {!isCollapsed && (
+                  <>
+                    <span className="nav-label">{item.name}</span>
+                    <ChevronDown 
+                      size={16} 
+                      className="chevron-icon"
+                    />
+                  </>
+                )}
+                {isCollapsed && <div className="collapsed-badge">{item.dropdown.length}</div>}
+              </div>
+              
+              <div className="dropdown-menu">
+                {item.dropdown.map((subItem, subIndex) => (
+                  <div
+                    key={subIndex}
+                    className={`dropdown-item ${activeItem === subItem.name ? 'active' : ''}`}
+                    onClick={() => handleNavigation(subItem)}
+                    data-tooltip={subItem.name}
+                  >
+                    <div className="nav-icon">{subItem.icon}</div>
+                    {!isCollapsed && (
+                      <span className="nav-label">{subItem.name}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        }
+        
+        return (
+          <div
+            key={item.name}
+            className={`nav-item ${activeItem === item.name ? 'active' : ''}`}
+            onClick={() => handleNavigation(item)}
+            data-tooltip={item.name}
+          >
+            <div className="nav-icon">{item.icon}</div>
+            {!isCollapsed && <span className="nav-label">{item.name}</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
 
   return (
     <div className={`sidebar ${isCollapsed ? "collapsed" : ""}`}>
       {showConfirmModal && (
         <ConfirmModalComponent
           isOpen={showConfirmModal}
-          title={"Do you want to Logout?"}
+          title="Do you want to Logout?"
           onConfirm={logout}
-          onCancel={() => setshowConfirmModal(false)}
-        ></ConfirmModalComponent>
+          onCancel={() => setShowConfirmModal(false)}
+        />
       )}
+      
       {/* Sidebar Header */}
       <div className="sidebar-header">
         <div className="logo-container">
@@ -88,6 +317,7 @@ const Sidebar = () => {
         <button
           className="toggle-btn"
           onClick={() => setIsCollapsed(!isCollapsed)}
+          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
@@ -95,26 +325,25 @@ const Sidebar = () => {
 
       {/* Navigation Links */}
       <nav className="sidebar-nav">
-        {menuItems.map((item) => (
-          <div
-            key={item.name}
-            className={`nav-item ${activeItem === item.name ? "active" : ""}`}
-            onClick={() => {
-              setActiveItem(item.name);
-              navigate(item.navigate);
-            }}
-          >
-            <div className="nav-icon">{item.icon}</div>
-            {!isCollapsed && <span className="nav-label">{item.name}</span>}
-          </div>
-        ))}
+        {/* Main Section */}
+        {menuItems.map(renderSection)}
+        
+        {/* Management Section */}
+        {managementItems.map(renderSection)}
+        
+        {/* Other Section */}
+        {otherItems.map(renderSection)}
       </nav>
 
       {/* Sidebar Footer */}
       <div className="sidebar-footer">
-        <div className="nav-item logout">
+        <div 
+          className="nav-item logout"
+          onClick={() => setShowConfirmModal(true)}
+          data-tooltip="Logout"
+        >
           <div className="nav-icon">
-            <LogOut size={22} onClick={() => setshowConfirmModal(true)} />
+            <LogOut size={22} />
           </div>
           {!isCollapsed && <span className="nav-label">Logout</span>}
         </div>
