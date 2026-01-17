@@ -7,3 +7,4 @@ exports.getProductById = controllerWrapper(productService.getById);
 exports.updateProduct = controllerWrapper(productService.update);
 exports.deleteImg = controllerWrapper(productService.removeImg);
 exports.temporaryDelete = controllerWrapper(productService.softDelete)
+exports.permanentDelete = controllerWrapper(productService.hardDelete)

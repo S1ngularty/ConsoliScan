@@ -14,7 +14,7 @@ const create = async (request) => {
 };
 
 const getAll = async (request) => {
-  const products = await Product.find({deletedAt:null});
+  const products = await Product.find({ deletedAt: null });
   return products;
 };
 
@@ -82,4 +82,14 @@ const softDelete = async (request) => {
   return isUpdated;
 };
 
-module.exports = { create, getAll, getById, update, removeImg,softDelete };
+const hardDelete = async (request) => {
+  const { productId } = request.params;
+  const deletedProduct = await Product.findByIdAndDelete(productId);
+  if(!deletedProduct) throw new Error("failed to delete the product")
+  if(deletedProduct.images){
+    const publicIds = deletedProduct.map((image)=>image.public_id)
+    const imageDeleted = deleteAssets(publicIds)
+  }
+  };
+
+module.exports = { create, getAll, getById, update, removeImg, softDelete,hardDelete };
