@@ -88,9 +88,12 @@ function CategoryPage() {
       sortable: false,
       headerAlign: "right",
       align: "right",
-      renderCell: () => (
+      renderCell: (params) => (
         <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-          <IconButton size="small" className="action-icon-btn">
+          <IconButton size="small" className="action-icon-btn"
+          onClick={()=>{setEditCategory(params.row)
+            setIsModalOpen(true)
+          }}>
             <Edit size={18} />
           </IconButton>
           <IconButton size="small" className="action-icon-btn delete">

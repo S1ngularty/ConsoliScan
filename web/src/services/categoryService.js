@@ -17,3 +17,11 @@ export const createCategory = async (categories) => {
   if (!result) throw new Error("something went wrong!");
   return result.data.result;
 };
+
+export const updateCategory = async (categoryName, categoryId) => {
+  if (!categoryId && !categoryName)
+    throw new Error("missing identifier or a field");
+  const isSave = await axios.put(`api/v1/category/${categoryId}`, { categoryName });
+  if (!isSave) throw new Error("failed to save the changes.");
+  return true;
+};

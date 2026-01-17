@@ -11,17 +11,18 @@ import {
   Calendar,
 } from "lucide-react";
 import "../../styles/admin/CategoryModalStyle.css";
-import { createCategory } from "../../services/categoryService";
+import { createCategory, updateCategory } from "../../services/categoryService";
 
 function CategoryModal({ isOpen, onClose, onSave, data }) {
   // data prop determines mode:
   // - undefined/null: Bulk create mode
   // - object with id and name: Single edit mode
-
   const isEditMode =
-    data && typeof data === "object" && data.name !== undefined;
+    data && typeof data === "object" && data.categoryName !== undefined;
 
-  const [categories, setCategories] = useState([{ name: "", id: Date.now() }]);
+  const [categories, setCategories] = useState([
+    { categoryName: "", id: Date.now() },
+  ]);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -40,14 +41,14 @@ function CategoryModal({ isOpen, onClose, onSave, data }) {
         setCategories([
           {
             id: data._id || data.id,
-            name: data.name || "",
+            categoryName: data.categoryName || "",
             createdAt: data.createdAt || null,
             updatedAt: data.updatedAt || null,
           },
         ]);
       } else {
         // Bulk create mode
-        setCategories([{ name: "", id: Date.now() }]);
+        setCategories([{ categoryName: "", id: Date.now() }]);
       }
     }
   }, [isOpen, data, isEditMode]);
@@ -70,7 +71,8 @@ function CategoryModal({ isOpen, onClose, onSave, data }) {
     if (!isEditMode) {
       const isDuplicate = categories.some(
         (cat, i) =>
-          i !== index && cat.name.toLowerCase() === name.toLowerCase().trim(),
+          i !== index &&
+          cat.categoryName.toLowerCase() === name.toLowerCase().trim(),
       );
       if (isDuplicate) {
         return "Category name already exists in this list";
@@ -81,7 +83,7 @@ function CategoryModal({ isOpen, onClose, onSave, data }) {
   };
 
   const handleAddRow = () => {
-    const newCategory = { name: "", id: Date.now() };
+    const newCategory = { categoryName: "", id: Date.now() };
     setCategories([...categories, newCategory]);
 
     setTimeout(() => {
@@ -107,7 +109,7 @@ function CategoryModal({ isOpen, onClose, onSave, data }) {
 
   const handleInputChange = (index, value) => {
     const updated = [...categories];
-    updated[index].name = value;
+    updated[index].categoryName = value;
     setCategories(updated);
 
     // Validate on change if touched
@@ -128,7 +130,7 @@ function CategoryModal({ isOpen, onClose, onSave, data }) {
   const handleInputBlur = (index) => {
     setTouched((prev) => ({ ...prev, [index]: true }));
 
-    const error = validateCategoryName(categories[index].name, index);
+    const error = validateCategoryName(categories[index].categoryName, index);
     if (error) {
       setErrors((prev) => ({ ...prev, [index]: error }));
     } else {
@@ -165,7 +167,7 @@ function CategoryModal({ isOpen, onClose, onSave, data }) {
     // Validate all categories
     const validationErrors = {};
     categories.forEach((category, index) => {
-      const error = validateCategoryName(category.name, index);
+      const error = validateCategoryName(category.categoryName, index);
       if (error) {
         validationErrors[index] = error;
       }
@@ -196,16 +198,16 @@ function CategoryModal({ isOpen, onClose, onSave, data }) {
       // For edit mode: send object with id and name
       dataToSave = {
         id: categories[0].id,
-        name: categories[0].name.trim(),
+        categoryName: categories[0].categoryName.trim(),
       };
     } else {
       // For create mode: send array of names
       dataToSave = categories
-        .filter((cat) => cat.name.trim())
-        .map((cat) => ({ categoryName: cat.name.trim() }));
+        .filter((cat) => cat.categoryName.trim())
+        .map((cat) => ({ categoryName: cat.categoryName.trim() }));
     }
 
-    if (dataToSave.length === 0 || (isEditMode && !dataToSave.name)) {
+    if (dataToSave.length === 0 || (isEditMode && !dataToSave.categoryName)) {
       setErrors({ 0: "Please enter a category name" });
       return;
     }
@@ -213,7 +215,10 @@ function CategoryModal({ isOpen, onClose, onSave, data }) {
     setIsSubmitting(true);
 
     try {
-      const response = await createCategory(dataToSave);
+      console.log(dataToSave)
+      const response = await (isEditMode
+        ? updateCategory(dataToSave.categoryName,dataToSave.id)
+        : createCategory(dataToSave));
       if (onSave) {
         await onSave(dataToSave, isEditMode ? "edit" : "create");
       }
@@ -244,8 +249,8 @@ function CategoryModal({ isOpen, onClose, onSave, data }) {
   // Calculate valid categories count
   const validCount = categories.filter(
     (cat) =>
-      cat.name.trim() &&
-      !validateCategoryName(cat.name, categories.indexOf(cat)),
+      cat.categoryName.trim() &&
+      !validateCategoryName(cat.categoryName, categories.indexOf(cat)),
   ).length;
 
   const getTitle = () => {
@@ -356,7 +361,7 @@ function CategoryModal({ isOpen, onClose, onSave, data }) {
               <div className="single-input-group">
                 <input
                   type="text"
-                  value={categories[0]?.name || ""}
+                  value={categories[0]?.categoryName || ""}
                   onChange={(e) => handleInputChange(0, e.target.value)}
                   onBlur={() => handleInputBlur(0)}
                   placeholder="Enter category name..."
@@ -384,7 +389,7 @@ function CategoryModal({ isOpen, onClose, onSave, data }) {
                     <div className="input-group">
                       <input
                         type="text"
-                        value={category.name}
+                        value={category.categoryName}
                         onChange={(e) =>
                           handleInputChange(index, e.target.value)
                         }
