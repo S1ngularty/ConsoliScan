@@ -17,8 +17,9 @@ router
   .put(
     authMiddleware.verifyToken,
     upload.array("images", 5),
-    productController.updateProduct
-  );
+    productController.updateProduct,
+  )
+  .post(authMiddleware.verifyToken, productController.temporaryDelete);
 
 router
   .route("/product/removeImg/:productId")

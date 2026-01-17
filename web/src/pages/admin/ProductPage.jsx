@@ -22,8 +22,9 @@ import ProductModal from "../../components/admin/ProductModalComponent";
 import "../../styles/admin/ProductPageStyle.css";
 import Toast from "../../components/common/SnackbarComponent";
 import Loader from "../../components/common/LoaderComponent";
+import ConfirmModalComponent from "../../components/common/ConfirmModalComponent";
 
-import { fetchProducts } from "../../services/productService";
+import { fetchProducts, temporaryDelete } from "../../services/productService";
 
 function ProductPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -32,6 +33,7 @@ function ProductPage() {
   const [editProduct, setEditProduct] = useState(null);
   const [deleteProductId, setDeleteProductId] = useState("");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -151,7 +153,14 @@ function ProductPage() {
           >
             <Edit size={18} />
           </IconButton>
-          <IconButton size="small" className="action-icon-btn delete">
+          <IconButton
+            size="small"
+            className="action-icon-btn delete"
+            onClick={() => {
+              setDeleteProductId(params.row._id);
+              setShowConfirmModal(true);
+            }}
+          >
             <Trash2 size={18} />
           </IconButton>
         </Box>
@@ -175,6 +184,23 @@ function ProductPage() {
     const result = await fetchProducts();
     setProducts(result);
     return;
+  };
+
+  const handleDelete = async () => {
+    try {
+      if (!deleteProductId) throw new Error("missing ProductId");
+      setShowConfirmModal(false)
+      setIsLoading(true);
+      const result = await temporaryDelete(deleteProductId);
+      if (!result) throw new Error("failed to delete the product");
+      showToast("Successfully deleted the product!", "success");
+      fetchData();
+    } catch (error) {
+      showToast("Something went wrong! Please try again.", "error");
+      console.log(error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Filtering logic
@@ -203,6 +229,18 @@ function ProductPage() {
             fetchData();
           }}
         ></ProductModal>
+      )}
+
+      {showConfirmModal && (
+        <ConfirmModalComponent
+          isOpen={showConfirmModal}
+          title={"Do you really want to delete this product?"}
+          onConfirm={handleDelete}
+          onCancel={() => {
+            setShowConfirmModal(false);
+            setDeleteProductId("");
+          }}
+        ></ConfirmModalComponent>
       )}
 
       <Toast
@@ -248,7 +286,7 @@ function ProductPage() {
       </Box>
 
       {/* 3. DATA GRID */}
-      {!filteredRows ? (
+      {!filteredRows || isLoading ? (
         <Loader></Loader>
       ) : (
         <Box className="table-card">
