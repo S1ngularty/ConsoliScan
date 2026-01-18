@@ -107,7 +107,7 @@ function ProductInventory() {
   const handleRefresh = () => {
     setLoading(true);
     setTimeout(() => {
-      setInventory(generateMockInventory(50));
+      fetchData()
       setLoading(false);
       showToast("Inventory refreshed", "info");
     }, 1000);
