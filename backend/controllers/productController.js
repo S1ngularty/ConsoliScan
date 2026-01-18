@@ -9,3 +9,4 @@ exports.deleteImg = controllerWrapper(productService.removeImg);
 exports.temporaryDelete = controllerWrapper(productService.softDelete)
 exports.permanentDelete = controllerWrapper(productService.hardDelete)
 exports.restoreProduct = controllerWrapper(productService.restore)
+exports.updateProductStock = controllerWrapper(productService.updateStock)

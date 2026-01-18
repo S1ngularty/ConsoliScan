@@ -54,43 +54,8 @@ import {
 
 import "../../../styles/admin/product/ProductInventory.css";
 import Toast from "../../../components/common/SnackbarComponent";
+import StockUpdateModal from "../../../components/admin/StockUpdateModal";
 import { fetchProducts } from "../../../services/productService";
-
-// // Mock data based on your schema
-// const generateMockInventory = (count = 50) => {
-//   const products = [];
-//   const barcodeTypes = ["UPC", "EAN_13", "EAN_8", "ISBN_10", "ISBN_13", "CODE_128", "QR"];
-
-//   for (let i = 0; i < count; i++) {
-//     const name = `Product ${i + 1}`;
-//     const slug = `product-${i + 1}`.toLowerCase();
-//     const sku = `SKU${(i + 1000).toString().padStart(4, '0')}`;
-//     const barcode = Math.floor(Math.random() * 1000000000000).toString();
-//     const barcodeType = barcodeTypes[Math.floor(Math.random() * barcodeTypes.length)];
-//     const price = Math.floor(Math.random() * 1000) + 19.99;
-//     const stockQuantity = Math.floor(Math.random() * 500);
-//     const categoryId = `category-${Math.floor(Math.random() * 5) + 1}`;
-
-//     products.push({
-//       _id: `product_${i + 1}`,
-//       name,
-//       slug,
-//       sku,
-//       description: `Description for ${name}`,
-//       barcode,
-//       barcodeType,
-//       categoryId,
-//       price,
-//       stockQuantity,
-//       images: [],
-//       createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
-//       updatedAt: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
-//       deletedAt: null
-//     });
-//   }
-
-//   return products;
-// };
 
 function ProductInventory() {
   const [inventory, setInventory] = useState([]);
@@ -101,6 +66,7 @@ function ProductInventory() {
   });
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [stockModalOpen, setStockModalOpen] = useState(false);
 
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -108,15 +74,15 @@ function ProductInventory() {
     severity: "success",
   });
 
-  const fetchData = async()=>{
-    const data = await fetchProducts()
-    console.log(data)
-    setInventory(data)
-  }
+  const fetchData = async () => {
+    const data = await fetchProducts();
+    // console.log(data)
+    setInventory(data);
+  };
 
-  useEffect(()=>{
-    fetchData()
-  },[])
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const showToast = useCallback((message, severity = "success") => {
     setSnackbar({ open: true, message, severity });
@@ -129,7 +95,7 @@ function ProductInventory() {
   useEffect(() => {
     setLoading(true);
     setTimeout(() => {
-     fetchData()
+      fetchData();
       setLoading(false);
     }, 1000);
   }, []);
@@ -392,8 +358,8 @@ function ProductInventory() {
               size="small"
               className="action-btn edit"
               onClick={() => {
-                // Handle edit - would navigate to product edit page
-                console.log("Edit product:", row._id);
+                setSelectedProduct(row)
+                setStockModalOpen(true)
               }}
             >
               <Edit size={18} />
@@ -430,6 +396,19 @@ function ProductInventory() {
   return (
     <Box className="product-inventory-container">
       {/* Product Detail Dialog */}
+
+      <StockUpdateModal
+        open={stockModalOpen}
+        data={selectedProduct}
+        onClose={() => setStockModalOpen(false)}
+        onSave={() => {
+          showToast(`${selectedProduct.name}'s stock updated successfully!`);
+          setSelectedProduct(null);
+          setIsDetailDialogOpen(false);
+          setStockModalOpen(false);
+          fetchData();
+        }}
+      ></StockUpdateModal>
       <Dialog
         open={isDetailDialogOpen}
         onClose={() => setIsDetailDialogOpen(false)}

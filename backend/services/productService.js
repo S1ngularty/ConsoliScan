@@ -221,6 +221,15 @@ const hardDelete = async (request) => {
   return deletedProduct;
 };
 
+const updateStock = async (request) => {
+  if (!request.body) throw new Error("undefined request body");
+  const { productId } = request.params;
+  const isUpdated = await Product.findByIdAndUpdate(productId, request.body, {
+    new: true,
+  });
+  return isUpdated;
+};
+
 module.exports = {
   create,
   getAll,
@@ -230,4 +239,5 @@ module.exports = {
   softDelete,
   hardDelete,
   restore,
+  updateStock
 };

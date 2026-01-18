@@ -66,6 +66,11 @@ export const temporaryDelete = async (productId) => {
   return true;
 };
 
+export const updateStock = async(stockQuantity,productId)=>{
+  const result = await axios.put(`api/v1/product/stocks/${productId}`,{stockQuantity})
+  return result.data.result
+}
+
 export const getCategories = async () => {
   const result = await axios.get("/api/v1/category");
   const categories = result.data.result;
