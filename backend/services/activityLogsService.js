@@ -27,6 +27,8 @@ exports.allLogs = async (request) => {
         "user.status": 0,
         "user.__v": 0,
         __v: 0,
+        "user.createdAt": 0,
+        "user.updatedAt":0,
       },
     },
     {

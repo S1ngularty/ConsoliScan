@@ -46,130 +46,6 @@ import {
 } from "lucide-react";
 import { fetchLogs } from "../../../services/userService";
 
-// // Minimal mock data - 10 records
-// const mockLogs = [
-//   {
-//     id: 1,
-//     userId: 1,
-//     userName: "Admin User",
-//     userEmail: "admin@example.com",
-//     userRole: "admin",
-//     action: "LOGIN",
-//     description: "User logged into system",
-//     status: "SUCCESS",
-//     timestamp: "2024-01-15T10:30:00Z",
-//     ipAddress: "192.168.1.100"
-//   },
-//   {
-//     id: 2,
-//     userId: 2,
-//     userName: "John Doe",
-//     userEmail: "john@example.com",
-//     userRole: "user",
-//     action: "UPDATE_PROFILE",
-//     description: "Updated contact information",
-//     status: "SUCCESS",
-//     timestamp: "2024-01-15T09:15:00Z",
-//     ipAddress: "192.168.1.101"
-//   },
-//   {
-//     id: 3,
-//     userId: 3,
-//     userName: "Jane Smith",
-//     userEmail: "jane@example.com",
-//     userRole: "checker",
-//     action: "CREATE_USER",
-//     description: "Created new user account",
-//     status: "SUCCESS",
-//     timestamp: "2024-01-14T14:20:00Z",
-//     ipAddress: "192.168.1.102"
-//   },
-//   {
-//     id: 4,
-//     userId: 1,
-//     userName: "Admin User",
-//     userEmail: "admin@example.com",
-//     userRole: "admin",
-//     action: "CHANGE_ROLE",
-//     description: "Changed user role from user to checker",
-//     status: "SUCCESS",
-//     timestamp: "2024-01-14T11:45:00Z",
-//     ipAddress: "192.168.1.100"
-//   },
-//   {
-//     id: 5,
-//     userId: 2,
-//     userName: "John Doe",
-//     userEmail: "john@example.com",
-//     userRole: "user",
-//     action: "LOGIN",
-//     description: "Failed login attempt",
-//     status: "FAILED",
-//     timestamp: "2024-01-13T16:10:00Z",
-//     ipAddress: "192.168.1.103"
-//   },
-//   {
-//     id: 6,
-//     userId: 3,
-//     userName: "Jane Smith",
-//     userEmail: "jane@example.com",
-//     userRole: "checker",
-//     action: "UPDATE_USER",
-//     description: "Updated user profile",
-//     status: "SUCCESS",
-//     timestamp: "2024-01-13T13:30:00Z",
-//     ipAddress: "192.168.1.102"
-//   },
-//   {
-//     id: 7,
-//     userId: 1,
-//     userName: "Admin User",
-//     userEmail: "admin@example.com",
-//     userRole: "admin",
-//     action: "DELETE_USER",
-//     description: "Deleted inactive user account",
-//     status: "SUCCESS",
-//     timestamp: "2024-01-12T15:45:00Z",
-//     ipAddress: "192.168.1.100"
-//   },
-//   {
-//     id: 8,
-//     userId: 2,
-//     userName: "John Doe",
-//     userEmail: "john@example.com",
-//     userRole: "user",
-//     action: "CHANGE_STATUS",
-//     description: "Changed user status to inactive",
-//     status: "WARNING",
-//     timestamp: "2024-01-12T10:20:00Z",
-//     ipAddress: "192.168.1.101"
-//   },
-//   {
-//     id: 9,
-//     userId: 3,
-//     userName: "Jane Smith",
-//     userEmail: "jane@example.com",
-//     userRole: "checker",
-//     action: "LOGOUT",
-//     description: "User logged out from system",
-//     status: "SUCCESS",
-//     timestamp: "2024-01-11T17:00:00Z",
-//     ipAddress: "192.168.1.102"
-//   },
-//   {
-//     id: 10,
-//     userId: 1,
-//     userName: "Admin User",
-//     userEmail: "admin@example.com",
-//     userRole: "admin",
-//     action: "CREATE_USER",
-//     description: "Created new admin account",
-//     status: "SUCCESS",
-//     timestamp: "2024-01-11T09:00:00Z",
-//     ipAddress: "192.168.1.100"
-//   }
-// ];
-
 function ActivityLogs() {
   const [logs, setLogs] = useState([]);
   const [filters, setFilters] = useState({
@@ -567,7 +443,9 @@ function ActivityLogs() {
                       >
                         <Calendar size={14} />
                         <Typography variant="caption" fontWeight={500}>
-                          {new Date(log.timestamp).toLocaleString("en-US", {
+                          {new Date(log.createdAt).toLocaleString(undefined, {
+                            timeZone: "Asia/Shanghai",
+                            year: "numeric",
                             month: "short",
                             day: "numeric",
                             hour: "2-digit",
