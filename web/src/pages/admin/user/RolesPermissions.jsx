@@ -52,44 +52,6 @@ import "../../../styles/admin/user/RolesPermission.css";
 import Toast from "../../../components/common/SnackbarComponent";
 import { getAllUser, updatePermission } from "../../../services/userService";
 
-// // Mock data based on your schema
-// const generateMockUsers = (count = 50) => {
-//   const roles = ["user", "admin", "checker"];
-//   const statuses = ["active", "inactive"];
-//   const names = ["John Doe", "Jane Smith", "Robert Johnson", "Emily Davis", "Michael Wilson", "Sarah Brown"];
-//   const cities = ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix", "Philadelphia"];
-
-//   const users = [];
-
-//   for (let i = 0; i < count; i++) {
-//     const name = names[Math.floor(Math.random() * names.length)] + ` ${i + 1}`;
-//     const role = roles[Math.floor(Math.random() * roles.length)];
-//     const status = statuses[Math.floor(Math.random() * statuses.length)];
-//     const email = `user${i + 1}@example.com`;
-//     const createdAt = new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000);
-//     const lastLogin = new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000);
-
-//     users.push({
-//       _id: `user_${i + 1}`,
-//       name,
-//       email,
-//       contactNumber: `+1 (555) ${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
-//       city: cities[Math.floor(Math.random() * cities.length)],
-//       state: "CA",
-//       country: "United States",
-//       role,
-//       status,
-//       createdAt: createdAt.toISOString(),
-//       lastLogin: lastLogin.toISOString(),
-//       avatar: {
-//         url: `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70)}`
-//       }
-//     });
-//   }
-
-//   return users.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-// };
-
 function RolePermissions() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -141,13 +103,11 @@ function RolePermissions() {
     setFilters((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleRefresh = () => {
+  const handleRefresh =async () => {
     setLoading(true);
-    setTimeout(() => {
-      setUsers(fetchData(50));
+      await fetchData()
       setLoading(false);
       showToast("Data refreshed", "info");
-    }, 1000);
   };
 
   const handleClearFilters = () => {
@@ -170,7 +130,7 @@ function RolePermissions() {
   const handleSaveEdit = async () => {
     if (!selectedUser) return;
     try {
-      const result = await updatePermission(selectedUser._id,editData);
+      const result = await updatePermission(selectedUser._id, editData);
 
       setUsers((prev) =>
         prev.map((user) =>
