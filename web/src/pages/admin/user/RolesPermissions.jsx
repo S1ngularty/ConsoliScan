@@ -4,7 +4,7 @@ import {
   GridToolbarContainer,
   GridToolbarExport,
   GridToolbarFilterButton,
-  GridToolbarQuickFilter
+  GridToolbarQuickFilter,
 } from "@mui/x-data-grid";
 import {
   Box,
@@ -27,7 +27,7 @@ import {
   MenuItem,
   Card,
   CardContent,
-  Alert
+  Alert,
 } from "@mui/material";
 import {
   Shield,
@@ -45,49 +45,50 @@ import {
   Mail,
   Phone,
   MapPin,
-  Calendar
+  Calendar,
 } from "lucide-react";
 
 import "../../../styles/admin/user/RolesPermission.css";
 import Toast from "../../../components/common/SnackbarComponent";
+import { getAllUser } from "../../../services/userService";
 
-// Mock data based on your schema
-const generateMockUsers = (count = 50) => {
-  const roles = ["user", "admin", "checker"];
-  const statuses = ["active", "inactive"];
-  const names = ["John Doe", "Jane Smith", "Robert Johnson", "Emily Davis", "Michael Wilson", "Sarah Brown"];
-  const cities = ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix", "Philadelphia"];
-  
-  const users = [];
-  
-  for (let i = 0; i < count; i++) {
-    const name = names[Math.floor(Math.random() * names.length)] + ` ${i + 1}`;
-    const role = roles[Math.floor(Math.random() * roles.length)];
-    const status = statuses[Math.floor(Math.random() * statuses.length)];
-    const email = `user${i + 1}@example.com`;
-    const createdAt = new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000);
-    const lastLogin = new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000);
-    
-    users.push({
-      _id: `user_${i + 1}`,
-      name,
-      email,
-      contactNumber: `+1 (555) ${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
-      city: cities[Math.floor(Math.random() * cities.length)],
-      state: "CA",
-      country: "United States",
-      role,
-      status,
-      createdAt: createdAt.toISOString(),
-      lastLogin: lastLogin.toISOString(),
-      avatar: {
-        url: `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70)}`
-      }
-    });
-  }
-  
-  return users.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-};
+// // Mock data based on your schema
+// const generateMockUsers = (count = 50) => {
+//   const roles = ["user", "admin", "checker"];
+//   const statuses = ["active", "inactive"];
+//   const names = ["John Doe", "Jane Smith", "Robert Johnson", "Emily Davis", "Michael Wilson", "Sarah Brown"];
+//   const cities = ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix", "Philadelphia"];
+
+//   const users = [];
+
+//   for (let i = 0; i < count; i++) {
+//     const name = names[Math.floor(Math.random() * names.length)] + ` ${i + 1}`;
+//     const role = roles[Math.floor(Math.random() * roles.length)];
+//     const status = statuses[Math.floor(Math.random() * statuses.length)];
+//     const email = `user${i + 1}@example.com`;
+//     const createdAt = new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000);
+//     const lastLogin = new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000);
+
+//     users.push({
+//       _id: `user_${i + 1}`,
+//       name,
+//       email,
+//       contactNumber: `+1 (555) ${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
+//       city: cities[Math.floor(Math.random() * cities.length)],
+//       state: "CA",
+//       country: "United States",
+//       role,
+//       status,
+//       createdAt: createdAt.toISOString(),
+//       lastLogin: lastLogin.toISOString(),
+//       avatar: {
+//         url: `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70)}`
+//       }
+//     });
+//   }
+
+//   return users.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+// };
 
 function RolePermissions() {
   const [users, setUsers] = useState([]);
@@ -95,13 +96,13 @@ function RolePermissions() {
   const [filters, setFilters] = useState({
     role: "",
     status: "",
-    search: ""
+    search: "",
   });
   const [selectedUser, setSelectedUser] = useState(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editData, setEditData] = useState({
     role: "",
-    status: ""
+    status: "",
   });
 
   const [snackbar, setSnackbar] = useState({
@@ -121,13 +122,23 @@ function RolePermissions() {
   useEffect(() => {
     setLoading(true);
     setTimeout(() => {
-      setUsers(generateMockUsers(50));
+      fetchData();
       setLoading(false);
     }, 1000);
   }, []);
 
+  const fetchData = async () => {
+    try {
+      const result = await getAllUser();
+      setUsers(result);
+    } catch (error) {
+      console.log(error);
+      showToast("failed to fetch the data", "error");
+    }
+  };
+
   const handleFilterChange = (field, value) => {
-    setFilters(prev => ({ ...prev, [field]: value }));
+    setFilters((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleRefresh = () => {
@@ -143,7 +154,7 @@ function RolePermissions() {
     setFilters({
       role: "",
       status: "",
-      search: ""
+      search: "",
     });
   };
 
@@ -151,67 +162,86 @@ function RolePermissions() {
     setSelectedUser(user);
     setEditData({
       role: user.role,
-      status: user.status
+      status: user.status,
     });
     setIsEditDialogOpen(true);
   };
 
   const handleSaveEdit = () => {
     if (!selectedUser) return;
-    
+
     // Update user role/status
-    setUsers(prev => prev.map(user => 
-      user._id === selectedUser._id 
-        ? { ...user, role: editData.role, status: editData.status }
-        : user
-    ));
-    
-    showToast(`User ${selectedUser.name}'s role updated to ${editData.role}`, "success");
+    setUsers((prev) =>
+      prev.map((user) =>
+        user._id === selectedUser._id
+          ? { ...user, role: editData.role, status: editData.status }
+          : user,
+      ),
+    );
+
+    showToast(
+      `User ${selectedUser.name}'s role updated to ${editData.role}`,
+      "success",
+    );
     setIsEditDialogOpen(false);
     setSelectedUser(null);
     setEditData({ role: "", status: "" });
   };
 
   const getRoleColor = (role) => {
-    switch(role) {
-      case 'admin': return '#00A86B';
-      case 'checker': return '#3b82f6';
-      case 'user': return '#6b7280';
-      default: return '#6b7280';
+    switch (role) {
+      case "admin":
+        return "#00A86B";
+      case "checker":
+        return "#3b82f6";
+      case "user":
+        return "#6b7280";
+      default:
+        return "#6b7280";
     }
   };
 
   const getRoleIcon = (role) => {
-    switch(role) {
-      case 'admin': return <Shield size={16} />;
-      case 'checker': return <CheckCircle size={16} />;
-      case 'user': return <User size={16} />;
-      default: return <User size={16} />;
+    switch (role) {
+      case "admin":
+        return <Shield size={16} />;
+      case "checker":
+        return <CheckCircle size={16} />;
+      case "user":
+        return <User size={16} />;
+      default:
+        return <User size={16} />;
     }
   };
 
   const getStatusColor = (status) => {
-    switch(status) {
-      case 'active': return '#00A86B';
-      case 'inactive': return '#ef4444';
-      default: return '#6b7280';
+    switch (status) {
+      case "active":
+        return "#00A86B";
+      case "inactive":
+        return "#ef4444";
+      default:
+        return "#6b7280";
     }
   };
 
   const getStatusIcon = (status) => {
-    switch(status) {
-      case 'active': return <CheckCircle size={16} />;
-      case 'inactive': return <XCircle size={16} />;
-      default: return <AlertCircle size={16} />;
+    switch (status) {
+      case "active":
+        return <CheckCircle size={16} />;
+      case "inactive":
+        return <XCircle size={16} />;
+      default:
+        return <AlertCircle size={16} />;
     }
   };
 
   const filteredUsers = useMemo(() => {
-    return users.filter(user => {
+    return users.filter((user) => {
       return (
         (!filters.role || user.role === filters.role) &&
         (!filters.status || user.status === filters.status) &&
-        (!filters.search || 
+        (!filters.search ||
           user.name.toLowerCase().includes(filters.search.toLowerCase()) ||
           user.email.toLowerCase().includes(filters.search.toLowerCase()) ||
           user.role.toLowerCase().includes(filters.search.toLowerCase()))
@@ -221,11 +251,11 @@ function RolePermissions() {
 
   const stats = useMemo(() => {
     const totalUsers = users.length;
-    const admins = users.filter(u => u.role === 'admin').length;
-    const checkers = users.filter(u => u.role === 'checker').length;
-    const regularUsers = users.filter(u => u.role === 'user').length;
-    const activeUsers = users.filter(u => u.status === 'active').length;
-    const inactiveUsers = users.filter(u => u.status === 'inactive').length;
+    const admins = users.filter((u) => u.role === "admin").length;
+    const checkers = users.filter((u) => u.role === "checker").length;
+    const regularUsers = users.filter((u) => u.role === "user").length;
+    const activeUsers = users.filter((u) => u.status === "active").length;
+    const inactiveUsers = users.filter((u) => u.status === "inactive").length;
 
     return {
       totalUsers,
@@ -234,7 +264,8 @@ function RolePermissions() {
       regularUsers,
       activeUsers,
       inactiveUsers,
-      adminPercentage: totalUsers > 0 ? ((admins / totalUsers) * 100).toFixed(1) : 0
+      adminPercentage:
+        totalUsers > 0 ? ((admins / totalUsers) * 100).toFixed(1) : 0,
     };
   }, [users]);
 
@@ -246,7 +277,10 @@ function RolePermissions() {
       minWidth: 250,
       renderCell: ({ row }) => (
         <Box display="flex" alignItems="center" gap={2}>
-          <Avatar src={row.avatar?.url} sx={{ bgcolor: '#f0fdf4', color: '#00A86B' }}>
+          <Avatar
+            src={row.avatar?.url}
+            sx={{ bgcolor: "#f0fdf4", color: "#00A86B" }}
+          >
             {!row.avatar?.url && row.name.charAt(0)}
           </Avatar>
           <Box>
@@ -276,10 +310,10 @@ function RolePermissions() {
             size="small"
             icon={getRoleIcon(value)}
             sx={{
-              bgcolor: color + '15',
+              bgcolor: color + "15",
               color: color,
               fontWeight: 600,
-              fontSize: '0.75rem'
+              fontSize: "0.75rem",
             }}
           />
         );
@@ -298,10 +332,10 @@ function RolePermissions() {
             size="small"
             icon={getStatusIcon(value)}
             sx={{
-              bgcolor: color + '15',
+              bgcolor: color + "15",
               color: color,
               fontWeight: 600,
-              fontSize: '0.75rem'
+              fontSize: "0.75rem",
             }}
           />
         );
@@ -313,9 +347,14 @@ function RolePermissions() {
       flex: 1,
       minWidth: 150,
       renderCell: ({ value }) => (
-        <Box display="flex" alignItems="center" gap={1}>
+        <Box
+          display="flex"
+          justifyContent={"center"}
+          alignItems="flex-ebd"
+          gap={1}
+        >
           <Phone size={14} color="#6b7280" />
-          <Typography variant="body2">{value}</Typography>
+          <Typography variant="body2">{value ? value : "N/A"}</Typography>
         </Box>
       ),
     },
@@ -324,11 +363,13 @@ function RolePermissions() {
       headerName: "Last Login",
       flex: 1,
       minWidth: 150,
-      valueGetter: (params) => {
-        return new Date(params.value).toLocaleDateString();
-      },
       renderCell: ({ value }) => (
-        <Box display="flex" alignItems="center" gap={1}>
+        <Box
+          display="flex"
+          justifyContent={"center"}
+          alignItems="flex-ebd"
+          gap={1}
+        >
           <Calendar size={14} color="#6b7280" />
           <Typography variant="body2">{value}</Typography>
         </Box>
@@ -341,7 +382,12 @@ function RolePermissions() {
       minWidth: 120,
       sortable: false,
       renderCell: ({ row }) => (
-        <Box display="flex" gap={1}>
+        <Box
+          display="flex"
+          justifyContent={"center"}
+          alignItems="flex-end"
+          gap={1}
+        >
           <Tooltip title="Edit Role">
             <IconButton
               size="small"
@@ -359,21 +405,21 @@ function RolePermissions() {
   const CustomToolbar = () => (
     <GridToolbarContainer sx={{ p: 2, gap: 1 }}>
       <GridToolbarFilterButton />
-      <GridToolbarExport 
-        csvOptions={{ 
-          fileName: `users-roles-${new Date().toISOString().split('T')[0]}`,
+      <GridToolbarExport
+        csvOptions={{
+          fileName: `users-roles-${new Date().toISOString().split("T")[0]}`,
         }}
       />
       <Box sx={{ flexGrow: 1 }} />
-      <GridToolbarQuickFilter 
-        placeholder="Search users..." 
+      <GridToolbarQuickFilter
+        placeholder="Search users..."
         value={filters.search}
-        onChange={(e) => handleFilterChange('search', e.target.value)}
-        sx={{ 
-          '& .MuiInputBase-root': {
-            height: '40px',
-            width: '250px'
-          }
+        onChange={(e) => handleFilterChange("search", e.target.value)}
+        sx={{
+          "& .MuiInputBase-root": {
+            height: "40px",
+            width: "250px",
+          },
         }}
       />
     </GridToolbarContainer>
@@ -382,8 +428,8 @@ function RolePermissions() {
   return (
     <Box className="role-permissions-container">
       {/* Edit Role Dialog */}
-      <Dialog 
-        open={isEditDialogOpen} 
+      <Dialog
+        open={isEditDialogOpen}
         onClose={() => setIsEditDialogOpen(false)}
         maxWidth="sm"
         fullWidth
@@ -403,26 +449,30 @@ function RolePermissions() {
                 Current Email: <strong>{selectedUser?.email}</strong>
               </Typography>
             </Box>
-            
+
             <FormControl fullWidth>
               <InputLabel>User Role</InputLabel>
               <Select
                 value={editData.role}
                 label="User Role"
-                onChange={(e) => setEditData(prev => ({ ...prev, role: e.target.value }))}
+                onChange={(e) =>
+                  setEditData((prev) => ({ ...prev, role: e.target.value }))
+                }
               >
                 <MenuItem value="user">User</MenuItem>
                 <MenuItem value="admin">Admin</MenuItem>
                 <MenuItem value="checker">Checker</MenuItem>
               </Select>
             </FormControl>
-            
+
             <FormControl fullWidth>
               <InputLabel>Account Status</InputLabel>
               <Select
                 value={editData.status}
                 label="Account Status"
-                onChange={(e) => setEditData(prev => ({ ...prev, status: e.target.value }))}
+                onChange={(e) =>
+                  setEditData((prev) => ({ ...prev, status: e.target.value }))
+                }
               >
                 <MenuItem value="active">Active</MenuItem>
                 <MenuItem value="inactive">Inactive</MenuItem>
@@ -430,19 +480,25 @@ function RolePermissions() {
             </FormControl>
 
             <Alert severity="info" icon={<Shield size={20} />}>
-              <Typography variant="body2">
+              <Typography variant="body2" component="div">
                 <strong>Role Descriptions:</strong>
                 <Box component="ul" sx={{ pl: 2, mt: 0.5, mb: 0 }}>
-                  <li><strong>Admin:</strong> Full system access</li>
-                  <li><strong>Checker:</strong> Can review and verify content</li>
-                  <li><strong>User:</strong> Basic access only</li>
+                  <li>
+                    <strong>Admin:</strong> Full system access
+                  </li>
+                  <li>
+                    <strong>Checker:</strong> Can review and verify content
+                  </li>
+                  <li>
+                    <strong>User:</strong> Basic access only
+                  </li>
                 </Box>
               </Typography>
             </Alert>
           </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 0 }}>
-          <Button 
+          <Button
             onClick={() => setIsEditDialogOpen(false)}
             startIcon={<X size={18} />}
           >
@@ -500,7 +556,11 @@ function RolePermissions() {
       <Box className="role-stats">
         <Card className="stat-card total">
           <CardContent>
-            <Box display="flex" alignItems="center" justifyContent="space-between">
+            <Box
+              display="flex"
+              alignItems="center"
+              justifyContent="space-between"
+            >
               <Box>
                 <Typography variant="h4" fontWeight={700} color="#111827">
                   {stats.totalUsers}
@@ -517,7 +577,7 @@ function RolePermissions() {
         <Card className="stat-card admin">
           <CardContent>
             <Box display="flex" alignItems="center" gap={2}>
-              <Avatar sx={{ bgcolor: '#ecfdf5', color: '#00A86B' }}>
+              <Avatar sx={{ bgcolor: "#ecfdf5", color: "#00A86B" }}>
                 <Shield size={20} />
               </Avatar>
               <Box>
@@ -529,7 +589,11 @@ function RolePermissions() {
                 </Typography>
               </Box>
             </Box>
-            <Typography variant="caption" color="#00A86B" sx={{ mt: 1, display: 'block' }}>
+            <Typography
+              variant="caption"
+              color="#00A86B"
+              sx={{ mt: 1, display: "block" }}
+            >
               {stats.adminPercentage}% of total
             </Typography>
           </CardContent>
@@ -538,7 +602,7 @@ function RolePermissions() {
         <Card className="stat-card checker">
           <CardContent>
             <Box display="flex" alignItems="center" gap={2}>
-              <Avatar sx={{ bgcolor: '#eff6ff', color: '#3b82f6' }}>
+              <Avatar sx={{ bgcolor: "#eff6ff", color: "#3b82f6" }}>
                 <CheckCircle size={20} />
               </Avatar>
               <Box>
@@ -556,7 +620,7 @@ function RolePermissions() {
         <Card className="stat-card user">
           <CardContent>
             <Box display="flex" alignItems="center" gap={2}>
-              <Avatar sx={{ bgcolor: '#f3f4f6', color: '#6b7280' }}>
+              <Avatar sx={{ bgcolor: "#f3f4f6", color: "#6b7280" }}>
                 <User size={20} />
               </Avatar>
               <Box>
@@ -579,13 +643,13 @@ function RolePermissions() {
             <Filter size={16} style={{ marginRight: 8 }} />
             Filters:
           </Typography>
-          
+
           <FormControl size="small" sx={{ minWidth: 120 }}>
             <InputLabel>Role</InputLabel>
             <Select
               value={filters.role}
               label="Role"
-              onChange={(e) => handleFilterChange('role', e.target.value)}
+              onChange={(e) => handleFilterChange("role", e.target.value)}
             >
               <MenuItem value="">All Roles</MenuItem>
               <MenuItem value="admin">Admin</MenuItem>
@@ -599,7 +663,7 @@ function RolePermissions() {
             <Select
               value={filters.status}
               label="Status"
-              onChange={(e) => handleFilterChange('status', e.target.value)}
+              onChange={(e) => handleFilterChange("status", e.target.value)}
             >
               <MenuItem value="">All Status</MenuItem>
               <MenuItem value="active">Active</MenuItem>
@@ -613,7 +677,7 @@ function RolePermissions() {
             size="small"
             startIcon={<X size={16} />}
             onClick={handleClearFilters}
-            disabled={!Object.values(filters).some(val => val)}
+            disabled={!Object.values(filters).some((val) => val)}
           >
             Clear Filters
           </Button>
@@ -622,11 +686,17 @@ function RolePermissions() {
 
       {/* Role Info Alert */}
       <Alert severity="info" icon={<Shield size={20} />}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" width="100%">
+        <Box
+          display="flex"
+          justifyContent="space-between"
+          alignItems="center"
+          width="100%"
+        >
           <Typography variant="body2">
-            <strong>Role Guidelines:</strong> 
+            <strong>Role Guidelines:</strong>
             <Box component="span" sx={{ ml: 1 }}>
-              Admins have full access, Checkers can review content, Users have basic access only.
+              Admins have full access, Checkers can review content, Users have
+              basic access only.
             </Box>
           </Typography>
           <Chip
@@ -650,7 +720,7 @@ function RolePermissions() {
           initialState={{
             pagination: { paginationModel: { pageSize: 20 } },
             sorting: {
-              sortModel: [{ field: 'createdAt', sort: 'desc' }],
+              sortModel: [{ field: "createdAt", sort: "desc" }],
             },
           }}
           pageSizeOptions={[10, 20, 50]}
@@ -658,24 +728,24 @@ function RolePermissions() {
           autoHeight
           sx={{
             border: "none",
-            '& .MuiDataGrid-virtualScroller': {
-              minHeight: '400px'
+            "& .MuiDataGrid-virtualScroller": {
+              minHeight: "400px",
             },
-            '& .MuiDataGrid-columnHeaders': {
+            "& .MuiDataGrid-columnHeaders": {
               backgroundColor: "#f9fafb",
-              borderBottom: '1px solid #e5e7eb',
+              borderBottom: "1px solid #e5e7eb",
               color: "#4b5563",
               fontWeight: 700,
             },
-            '& .MuiDataGrid-cell': {
-              borderBottom: '1px solid #f3f4f6',
-              '&:focus': { outline: "none" }
+            "& .MuiDataGrid-cell": {
+              borderBottom: "1px solid #f3f4f6",
+              "&:focus": { outline: "none" },
             },
-            '& .MuiDataGrid-row': {
-              '&:hover': {
-                backgroundColor: '#f9fafb'
-              }
-            }
+            "& .MuiDataGrid-row": {
+              "&:hover": {
+                backgroundColor: "#f9fafb",
+              },
+            },
           }}
         />
       </Box>
@@ -684,20 +754,20 @@ function RolePermissions() {
       <Box className="summary-footer">
         <Typography variant="body2" color="#6b7280">
           Showing {filteredUsers.length} of {users.length} users
-          {Object.values(filters).some(val => val) && ' (filtered)'}
+          {Object.values(filters).some((val) => val) && " (filtered)"}
         </Typography>
         <Box display="flex" alignItems="center" gap={2}>
           <Chip
             icon={<Shield size={14} />}
             label={`${stats.admins} admins`}
             size="small"
-            sx={{ bgcolor: '#ecfdf5', color: '#00A86B' }}
+            sx={{ bgcolor: "#ecfdf5", color: "#00A86B" }}
           />
           <Chip
             icon={<CheckCircle size={14} />}
             label={`${stats.checkers} checkers`}
             size="small"
-            sx={{ bgcolor: '#eff6ff', color: '#3b82f6' }}
+            sx={{ bgcolor: "#eff6ff", color: "#3b82f6" }}
           />
         </Box>
       </Box>
