@@ -1,0 +1,338 @@
+.activity-logs-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px;
+  animation: fadeIn 0.5s ease;
+}
+
+.activity-logs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.export-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  padding: 10px 24px !important;
+  border-radius: 10px !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  font-size: 0.95rem !important;
+}
+
+.export-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3) !important;
+}
+
+.export-btn:active {
+  transform: translateY(0) !important;
+}
+
+/* Stats Container */
+.activity-stats-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #eef0f2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+}
+
+.stat-card.success::before {
+  background: #00A86B;
+}
+
+.stat-card.total::before {
+  background: #3b82f6;
+}
+
+.stat-card.failed::before {
+  background: #ef4444;
+}
+
+.stat-card.users::before {
+  background: #8b5cf6;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+}
+
+.stat-card h4 {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Filter Bar */
+.filter-bar {
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #eef0f2;
+}
+
+/* Table Card */
+.table-card {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #eef0f2;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+/* Action Buttons */
+.action-btn {
+  min-width: 36px !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 8px !important;
+  padding: 0 !important;
+  border: 1px solid #e5e7eb !important;
+  background: white !important;
+  color: #6b7280 !important;
+  transition: all 0.2s ease !important;
+}
+
+.action-btn.view:hover {
+  background-color: #f0fdf4 !important;
+  border-color: #00A86B !important;
+  color: #00A86B !important;
+  transform: scale(1.05);
+}
+
+/* Status Indicators */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-success {
+  background: #ecfdf5;
+  color: #00A86B;
+}
+
+.status-failed {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+.status-warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* Customizing MUI DataGrid */
+.MuiDataGrid-columnHeaderTitle {
+  font-weight: 600 !important;
+  color: #374151;
+  font-size: 0.85rem;
+  letter-spacing: 0.3px;
+}
+
+.MuiDataGrid-columnHeader {
+  &:focus {
+    outline: none !important;
+  }
+}
+
+.MuiDataGrid-cell {
+  &:focus {
+    outline: none !important;
+  }
+}
+
+/* Dialog Styles */
+.MuiDialog-paper {
+  border-radius: 16px !important;
+}
+
+.MuiDialogTitle-root {
+  padding: 24px 24px 16px 24px !important;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.MuiDialogContent-root {
+  padding: 24px !important;
+}
+
+.MuiDialogActions-root {
+  padding: 24px !important;
+  border-top: 1px solid #e5e7eb;
+}
+
+/* Accordion Styles */
+.MuiAccordion-root {
+  box-shadow: none !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+}
+
+.MuiAccordionSummary-root {
+  background: #f8fafc !important;
+}
+
+.MuiAccordionDetails-root {
+  background: white;
+}
+
+/* Summary Footer */
+.summary-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from { 
+    opacity: 0; 
+    transform: translateY(10px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.pulse-animation {
+  animation: pulse 2s infinite;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .activity-logs-container {
+    padding: 16px;
+    gap: 16px;
+  }
+  
+  .activity-logs-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .activity-stats-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .filter-bar {
+    padding: 16px;
+  }
+  
+  .filter-bar .MuiFormControl-root {
+    width: 100%;
+  }
+  
+  .export-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .summary-footer {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+}
+
+/* Scrollbar Styling */
+.table-card::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.table-card::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.table-card::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.table-card::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Loading Animation */
+.loading-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Tooltip Customization */
+.MuiTooltip-tooltip {
+  font-size: 0.75rem !important;
+  background: #374151 !important;
+}
+
+/* Time Indicator */
+.time-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.time-indicator.recent {
+  color: #00A86B;
+  font-weight: 600;
+}
+
+.time-indicator.old {
+  color: #9ca3af;
+}

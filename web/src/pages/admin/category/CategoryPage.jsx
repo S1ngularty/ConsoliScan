@@ -17,16 +17,16 @@ import {
   Folder,
   BarChart2,
 } from "lucide-react";
-import "../../styles/admin/CategoryPageStyle.css";
-import Toast from "../../components/common/SnackbarComponent";
-import Loader from "../../components/common/LoaderComponent";
-import ConfirmModalComponent from "../../components/common/ConfirmModalComponent";
-import CategoryModal from "../../components/admin/CategoryModalComponent";
+import "../../../styles/admin/category/CategoryPageStyle.css";
+import Toast from "../../../components/common/SnackbarComponent";
+import Loader from "../../../components/common/LoaderComponent";
+import ConfirmModalComponent from "../../../components/common/ConfirmModalComponent";
+import CategoryModal from "../../../components/admin/CategoryModalComponent";
 
 import {
   fetchCategories,
   deleteCategory,
-} from "../../services/categoryService";
+} from "../../../services/categoryService";
 
 function CategoryPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -165,6 +165,7 @@ function CategoryPage() {
           data={editCategory}
           onClose={() => {
             setIsModalOpen(false);
+            setEditCategory("")
           }}
           onSave={() => {
             setIsModalOpen(false);

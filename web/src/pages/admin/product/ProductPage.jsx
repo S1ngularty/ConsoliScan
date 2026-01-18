@@ -18,13 +18,13 @@ import {
   Search,
   Filter,
 } from "lucide-react";
-import ProductModal from "../../components/admin/ProductModalComponent";
-import "../../styles/admin/ProductPageStyle.css";
-import Toast from "../../components/common/SnackbarComponent";
-import Loader from "../../components/common/LoaderComponent";
-import ConfirmModalComponent from "../../components/common/ConfirmModalComponent";
+import ProductModal from "../../../components/admin/ProductModalComponent";
+import "../../../styles/admin/product/ProductPageStyle.css";
+import Toast from "../../../components/common/SnackbarComponent";
+import Loader from "../../../components/common/LoaderComponent";
+import ConfirmModalComponent from "../../../components/common/ConfirmModalComponent";
 
-import { fetchProducts, temporaryDelete } from "../../services/productService";
+import { fetchProducts, temporaryDelete } from "../../../services/productService";
 
 function ProductPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -222,6 +222,7 @@ function ProductPage() {
           }}
           onSave={() => {
             setIsModalOpen(false);
+            setEditProduct("")
             showToast(
               `Successfully ${editProduct ? "edited" : "created"} the product!`,
               "success",

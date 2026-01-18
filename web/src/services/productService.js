@@ -17,10 +17,11 @@ export const fetchProducts = async () => {
 
 export const handleProductRequest = async (data, files, requestMethod) => {
   if (!data) throw new Error("data is undefined");
+  console.log(data)
   const formData = new FormData();
-  console.log(data, files);
   for (let pair of Object.entries(data)) {
-    if (pair[0] === "images") break;
+    if (pair[0] === "images") continue;
+    console.log(pair)
     formData.append(pair[0], pair[1]);
   }
   if (files) {
@@ -30,7 +31,7 @@ export const handleProductRequest = async (data, files, requestMethod) => {
   }
 
   const createdProduct = await axios[requestMethod](
-    `/api/v1/product${requestMethod === "put" && `/${data._id}`}`,
+    `/api/v1/product${requestMethod === "put" ? `/${data._id}` : ""}`,
     formData,
     {
       headers: {
@@ -63,4 +64,15 @@ export const temporaryDelete = async (productId) => {
   const isDeleted = await axios.post(`api/v1/product/${productId}`);
   if (!isDeleted) throw new Error("failed to delete the product");
   return true;
+};
+
+export const updateStock = async(stockQuantity,productId)=>{
+  const result = await axios.put(`api/v1/product/stocks/${productId}`,{stockQuantity})
+  return result.data.result
+}
+
+export const getCategories = async () => {
+  const result = await axios.get("/api/v1/category");
+  const categories = result.data.result;
+  return categories;
 };
