@@ -8,16 +8,28 @@ const authMiddleware = require("../middlewares/authMiddleware");
 
 router
   .route("/profile/user/:userId")
-  .put(authMiddleware.verifyToken,upload.single("avatar"), userController.updateProfile);
+  .put(
+    authMiddleware.verifyToken,
+    upload.single("avatar"),
+    userController.updateProfile,
+  );
 
 router
   .route("/user")
   .get(authMiddleware.verifyToken, userController.getAllUser)
-  .post(upload.single("avatar"),authMiddleware.verifyToken, userController.createUser);
+  .post(
+    upload.single("avatar"),
+    authMiddleware.verifyToken,
+    userController.createUser,
+  );
 
 router
   .route("/user/:userId")
   .get(authMiddleware.verifyToken, userController.getUserById)
-  .delete(authMiddleware.verifyToken, userController.deleteUser)
+  .delete(authMiddleware.verifyToken, userController.deleteUser);
+
+router
+  .route("/user/roles/:userId")
+  .put(authMiddleware.verifyToken, userController.updatePermission);
 
 module.exports = router;

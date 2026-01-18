@@ -9,8 +9,8 @@ exports.update = async (request) => {
   const user = await User.findByIdAndUpdate(userId, request.body, {
     runValidators: true,
   });
-  if (user?.avatar?.public_id) deleteAssets([user.avatar.public_id])
-    if (!user) throw new Error("failed to update the user");
+  if (user?.avatar?.public_id) deleteAssets([user.avatar.public_id]);
+  if (!user) throw new Error("failed to update the user");
   return user;
 };
 
@@ -39,6 +39,17 @@ exports.delete = async (request) => {
   const { userId } = request.params;
   const isDeleted = await User.findByIdAndDelete(userId);
   if (!isDeleted) throw new Error("failed to delete the user");
-  
+
   return;
+};
+
+exports.rolesAndPermission = async (request) => {
+  if (!request.body) throw new Error("undefined body");
+  const { userId } = request.params;
+  const user = await User.findByIdAndUpdate(userId, request.body, {
+    new: true,
+    runValidators: true,
+  });
+  if (!user) throw new error("failed to update the user permission");
+  return user;
 };

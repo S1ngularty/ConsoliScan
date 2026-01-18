@@ -7,10 +7,10 @@ axios.defaults.headers.post["Content-Type"] = "application/json";
 
 export async function getAllUser() {
   try {
-    const result = await axios.get(`api/v1/user`,{
-      headers:{
-        "Cache-Control":"no-cache"
-      }
+    const result = await axios.get(`api/v1/user`, {
+      headers: {
+        "Cache-Control": "no-cache",
+      },
     });
     if (!result) throw new Error("failed to access the resource");
     let data = result.data.result;
@@ -83,7 +83,7 @@ export async function editUser(userInfo, userId) {
   }
 }
 
-export async function updateAvatar(file,userId) {
+export async function updateAvatar(file, userId) {
   try {
     if (!file) throw new Error("Please upload a file first!");
     if (!String(file.type).startsWith("image/"))
@@ -93,11 +93,15 @@ export async function updateAvatar(file,userId) {
     const formData = new FormData();
     formData.append("avatar", file);
 
-    const isUpload = await axios.put(`api/v1/profile/user/${userId}`, formData,{
-      headers:{
-        "Content-Type":"multipart/form-data"
-      }
-    });
+    const isUpload = await axios.put(
+      `api/v1/profile/user/${userId}`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      },
+    );
     if (!isUpload) throw new Error("failed to update the avatar");
     // return isUpload;
   } catch (error) {
@@ -106,8 +110,17 @@ export async function updateAvatar(file,userId) {
   }
 }
 
-export async function deleteUser(id){
-  const result = await axios.delete(`api/v1/user/${String(id).trim()}`)
-  if(!result) throw new Error("failed to delete the user")
-  return true
+export async function deleteUser(id) {
+  const result = await axios.delete(`api/v1/user/${String(id).trim()}`);
+  if (!result) throw new Error("failed to delete the user");
+  return true;
+}
+
+export async function updatePermission(id, data) {
+  if (!id) throw new Error("missing id field");
+  if (!data) throw new Error("empty fields to update");
+  console.log(data)
+  const result = await axios.put(`/api/v1/user/roles/${id}`, data);
+  if (!result) throw new Error("something went wrong");
+  return result.data.result;
 }

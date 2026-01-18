@@ -50,7 +50,7 @@ import {
 
 import "../../../styles/admin/user/RolesPermission.css";
 import Toast from "../../../components/common/SnackbarComponent";
-import { getAllUser } from "../../../services/userService";
+import { getAllUser, updatePermission } from "../../../services/userService";
 
 // // Mock data based on your schema
 // const generateMockUsers = (count = 50) => {
@@ -144,7 +144,7 @@ function RolePermissions() {
   const handleRefresh = () => {
     setLoading(true);
     setTimeout(() => {
-      setUsers(generateMockUsers(50));
+      setUsers(fetchData(50));
       setLoading(false);
       showToast("Data refreshed", "info");
     }, 1000);
@@ -167,25 +167,30 @@ function RolePermissions() {
     setIsEditDialogOpen(true);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!selectedUser) return;
+    try {
+      const result = await updatePermission(selectedUser._id,editData);
 
-    // Update user role/status
-    setUsers((prev) =>
-      prev.map((user) =>
-        user._id === selectedUser._id
-          ? { ...user, role: editData.role, status: editData.status }
-          : user,
-      ),
-    );
+      setUsers((prev) =>
+        prev.map((user) =>
+          user._id === selectedUser._id
+            ? { ...user, role: editData.role, status: editData.status }
+            : user,
+        ),
+      );
 
-    showToast(
-      `User ${selectedUser.name}'s role updated to ${editData.role}`,
-      "success",
-    );
-    setIsEditDialogOpen(false);
-    setSelectedUser(null);
-    setEditData({ role: "", status: "" });
+      showToast(
+        `User ${selectedUser.name}'s role updated to ${editData.role}`,
+        "success",
+      );
+      setIsEditDialogOpen(false);
+      setSelectedUser(null);
+      setEditData({ role: "", status: "" });
+    } catch (error) {
+      console.log(error);
+      showToast(`Something went wrong! Please try again.`, "error");
+    }
   };
 
   const getRoleColor = (role) => {
