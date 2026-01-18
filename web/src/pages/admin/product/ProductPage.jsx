@@ -222,6 +222,7 @@ function ProductPage() {
           }}
           onSave={() => {
             setIsModalOpen(false);
+            setEditProduct("")
             showToast(
               `Successfully ${editProduct ? "edited" : "created"} the product!`,
               "success",

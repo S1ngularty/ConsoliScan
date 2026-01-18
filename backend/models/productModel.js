@@ -31,10 +31,10 @@ const productSchema = new mongoose.Schema(
       enum: ["UPC", "EAN_13", "EAN_8", "ISBN_10", "ISBN_13", "CODE_128", "QR"],
       default: "UPC",
     },
-    categoryId: {
+    category: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "category",
-      // required: true,
+      ref: "Category",
+      required: true,
     },
     price: {
       type: Number,

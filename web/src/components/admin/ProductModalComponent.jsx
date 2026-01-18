@@ -14,6 +14,7 @@ import "../../styles/admin/product/ProductModalStyle.css";
 import {
   handleProductRequest,
   removeImageRequest,
+  getCategories,
 } from "../../services/productService";
 import Loader from "../common/LoaderComponent";
 
@@ -28,17 +29,18 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
           barcode: "",
           barcodeType: "UPC",
           stockQuantity: "",
+          category: "",
           description: "",
           images: [],
         },
   );
-
   const [uploading, setUploading] = React.useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = React.useState(0);
   const [fileToUpload, setFileToUpload] = React.useState([]);
   const [errors, setErrors] = React.useState({});
   const [touched, setTouched] = React.useState({});
   const [isLoading, setIsLoading] = React.useState(false);
+  const [categories, setCategories] = React.useState([]);
 
   const fileInputRef = React.useRef(null);
 
@@ -70,6 +72,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
         barcode: "",
         barcodeType: "UPC",
         stockQuantity: "",
+        category: "",
         description: "",
         images: [],
       });
@@ -92,6 +95,16 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
+
+  const fetchCategories = async () => {
+    const data = await getCategories();
+    setCategories(data);
+    return;
+  };
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
 
   // Barcode Types from your Schema Enum
   const barcodeTypes = [
@@ -176,6 +189,9 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
     return newErrors;
   };
 
+  useEffect(() => {
+    console.log(productInfo.category);
+  }, [productInfo]);
   const handleInput = (field, value) => {
     setProductInfo((prev) => ({ ...prev, [field]: value }));
 
@@ -317,7 +333,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
   const handleSave = async () => {
     // Mark all fields as touched
     setIsLoading(true);
-    const allFields = ["name", "sku", "price", "stockQuantity", "barcode"];
+    const allFields = ["name", "sku", "price", "stockQuantity","category", "barcode"];
     const newTouched = {};
     allFields.forEach((field) => {
       newTouched[field] = true;
@@ -370,7 +386,6 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
   };
 
   const removeImg = async (publicId, index) => {
-    console.log(publicId);
     if (!publicId) return;
     const result = removeImageRequest(data._id, publicId);
     if (result) removeImage(index);
@@ -432,6 +447,27 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
                     </div>
                   )}
                 </div>
+                <br />
+
+                <div className="input-group" data-field="category">
+                  <div className="input-group">
+                    <label>Category *</label>
+                    <select
+                      value={productInfo.category|| ""}
+                      onChange={(e) => handleInput("category", e.target.value)}
+                    >
+                      {categories.map((category) => (
+                        <option
+                          key={category._id}
+                          value={category._id}
+                        >
+                          {category.categoryName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <br />
 
                 <div className="input-grid">
                   <div className="input-group" data-field="sku">
@@ -515,7 +551,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
                   </div>
                 </div>
 
-                <div className="input-group full" data-field="stockQuantity">
+                <div className="input-group" data-field="stockQuantity">
                   <label>Stock Quantity *</label>
                   <div className="input-with-icon">
                     <Box size={14} className="input-icon" />

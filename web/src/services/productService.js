@@ -17,9 +17,11 @@ export const fetchProducts = async () => {
 
 export const handleProductRequest = async (data, files, requestMethod) => {
   if (!data) throw new Error("data is undefined");
+  console.log(data)
   const formData = new FormData();
   for (let pair of Object.entries(data)) {
-    if (pair[0] === "images") break;
+    if (pair[0] === "images") continue;
+    console.log(pair)
     formData.append(pair[0], pair[1]);
   }
   if (files) {
@@ -62,4 +64,10 @@ export const temporaryDelete = async (productId) => {
   const isDeleted = await axios.post(`api/v1/product/${productId}`);
   if (!isDeleted) throw new Error("failed to delete the product");
   return true;
+};
+
+export const getCategories = async () => {
+  const result = await axios.get("/api/v1/category");
+  const categories = result.data.result;
+  return categories;
 };
