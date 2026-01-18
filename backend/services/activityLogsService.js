@@ -24,9 +24,14 @@ exports.allLogs = async (request) => {
         "user.country": 0,
         "user.lastLogin": 0,
         "user.firebaseUid": 0,
-        "user.role": 0,
+        "user.status": 0,
         "user.__v": 0,
         __v: 0,
+      },
+    },
+    {
+      $addFields: {
+        activityLogId: "$_id",
       },
     },
     {

@@ -1,6 +1,7 @@
 import axios from "axios";
 import { timeAgo } from "../utils/parseDate";
 
+
 axios.defaults.withCredentials = true;
 axios.defaults.baseURL = import.meta.env.VITE_APP_API;
 axios.defaults.headers.post["Content-Type"] = "application/json";
@@ -123,4 +124,9 @@ export async function updatePermission(id, data) {
   const result = await axios.put(`/api/v1/user/roles/${id}`, data);
   if (!result) throw new Error("something went wrong");
   return result.data.result;
+}
+
+export async function fetchLogs(){
+  const logs = await axios.get(`/api/v1/logs`)
+  return logs.data.result
 }
