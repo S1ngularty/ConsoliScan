@@ -13,11 +13,27 @@ const activityLogsSchema = new mongoose.Schema(
       enum: [
         "UPDATE_PROFILE",
         "CREATE_USER",
-        "CHANGE_ROLE",
         "LOGIN",
         "UPDATE_USER",
         "DELETE_USER",
-        "CHANGE_STATUS",
+        "VALIDATE_USER_MEMBERSHIP_ID",
+        "CHANGE_PERMISSION",
+
+        "UPDATE_PRODUCT",
+        "DELETE_PRODUCT",
+        "CREATE_PRODUCT",
+        "TEMPORARY_DELETE",
+        "PERMANENT_DELETE",
+        "RESTORE_PRODUCT",
+
+        "UPDATE_CATEGORY",
+        "DELETE_CATEGORY",
+        "CREATE_CATEGORY",
+
+        "UPDATE_DISCOUNT",
+        "DELETE_DISCOUNT",
+        "CREATE_DISCOUNT",
+
         "LOGOUT",
       ],
     },
@@ -31,4 +47,4 @@ const activityLogsSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-module.exports = mongoose.model("ActivityLogs",activityLogsSchema)
+module.exports = mongoose.model("ActivityLogs", activityLogsSchema);

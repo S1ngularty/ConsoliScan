@@ -1,5 +1,6 @@
 const User = require("../models/userModel");
 const admin = require("../configs/firebase");
+const { createLog } = require("./activityLogsService");
 
 exports.googleAuth = async (request, response) => {
   const { token } = request.body;
@@ -30,6 +31,13 @@ exports.googleAuth = async (request, response) => {
     path: "/",
   });
 
+  createLog(
+    user._id,
+    "LOGIN",
+    "SUCCESS",
+    `${user.name} logged in to the system as ${user.role}`,
+  );
+
   return {
     token: jwtToken,
     role: user.role,
@@ -43,5 +51,12 @@ exports.logout = async (request, response) => {
     sameSite: "none",
     path: "/",
   });
+
+  createLog(
+    request.user.userId,
+    "LOGOUT",
+    "SUCCESS",
+    `${request.user.name} logged out to the system as ${request.user.role}`,
+  );
   return;
 };
