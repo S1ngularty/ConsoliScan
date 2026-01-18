@@ -165,6 +165,7 @@ function CategoryPage() {
           data={editCategory}
           onClose={() => {
             setIsModalOpen(false);
+            setEditCategory("")
           }}
           onSave={() => {
             setIsModalOpen(false);

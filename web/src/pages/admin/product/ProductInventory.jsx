@@ -562,16 +562,6 @@ function ProductInventory() {
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 0 }}>
           <Button onClick={() => setIsDetailDialogOpen(false)}>Close</Button>
-          <Button
-            variant="contained"
-            onClick={() => {
-              setIsDetailDialogOpen(false);
-              // Navigate to edit page
-            }}
-            className="edit-product-btn"
-          >
-            Edit Product
-          </Button>
         </DialogActions>
       </Dialog>
 

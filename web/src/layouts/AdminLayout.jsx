@@ -4,14 +4,15 @@ import Sidebar from "../components/admin/SidebarComponent";
 import "../styles/layouts/AdminLayoutStyle.css";
 
 function AdminLayout() {  
+  const [path, sethPath ] = React.useState('Admin / Dashboard')
   return (
     <div className="admin-layout-wrapper">
-      <Sidebar />
+      <Sidebar breadcrumb ={sethPath} />
 
       <div className="admin-main-container">
         {/* Optional Header to match ConsoliScan theme */}
         <header className="admin-top-nav">
-          <div className="breadcrumb">Admin / Dashboard</div>
+          <div className="breadcrumb">{path}</div>
           <div className="admin-profile">
             <span>Admin User</span>
             <div className="profile-badge">A</div>
