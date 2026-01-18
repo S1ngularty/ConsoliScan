@@ -1,5 +1,6 @@
 const User = require("../models/userModel");
 const { uploadImage, deleteAssets } = require("../utils/cloundinaryUtil");
+const { createLog } = require("../services/activityLogsService");
 
 exports.update = async (request) => {
   const { userId } = request.params;
@@ -9,8 +10,22 @@ exports.update = async (request) => {
   const user = await User.findByIdAndUpdate(userId, request.body, {
     runValidators: true,
   });
-  if (user?.avatar?.public_id) deleteAssets([user.avatar.public_id])
-    if (!user) throw new Error("failed to update the user");
+  if (user?.avatar?.public_id) deleteAssets([user.avatar.public_id]);
+  if (!user) {
+    createLog(
+      request.user.userId,
+      "UPDATE_USER",
+      "FAILED",
+      `Failed to update user with ID ${userId} `,
+    );
+    throw new Error("failed to update the user");
+  }
+  createLog(
+    request.user.userId,
+    "UPDATE_USER",
+    "SUCCESS",
+    `Successfully updated user with ID ${userId} `,
+  );
   return user;
 };
 
@@ -38,7 +53,46 @@ exports.create = async (request) => {
 exports.delete = async (request) => {
   const { userId } = request.params;
   const isDeleted = await User.findByIdAndDelete(userId);
-  if (!isDeleted) throw new Error("failed to delete the user");
-  
+  if (!isDeleted) {
+    createLog(
+      request.user.userId,
+      "DELETE_USER",
+      "FAILED",
+      `Failed to delete user with ID ${userId} `,
+    );
+    throw new Error("failed to delete the user");
+  }
+  deleteAssets([isDeleted.avatar.public_id]);
+  createLog(
+    request.user.userId,
+    "DELETE_USER",
+    "SUCCESS",
+    `Successfully delete user named ${isDeleted.name}`,
+  );
   return;
+};
+
+exports.rolesAndPermission = async (request) => {
+  if (!request.body) throw new Error("undefined body");
+  const { userId } = request.params;
+  const user = await User.findByIdAndUpdate(userId, request.body, {
+    new: true,
+    runValidators: true,
+  });
+  if (!user) {
+    createLog(
+      request.user.userId,
+      "CHANGE_PERMISSION",
+      "FAILED",
+      `Failed to update user's permission with ID ${userId} `,
+    );
+    throw new error("failed to update the user permission");
+  }
+  createLog(
+    request.user.userId,
+    "CHANGE_PERMISSION",
+    "SUCCESS",
+    `Successfully updated ${user.name} permission with ID ${userId} `,
+  );
+  return user;
 };

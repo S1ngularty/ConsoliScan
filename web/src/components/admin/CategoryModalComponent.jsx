@@ -10,7 +10,7 @@ import {
   Hash,
   Calendar,
 } from "lucide-react";
-import "../../styles/admin/CategoryModalStyle.css";
+import "../../styles/admin/category/CategoryModalStyle.css";
 import { createCategory, updateCategory } from "../../services/categoryService";
 
 function CategoryModal({ isOpen, onClose, onSave, data }) {

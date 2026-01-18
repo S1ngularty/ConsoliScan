@@ -1,0 +1,517 @@
+import React, { useState, useMemo } from "react";
+import {
+  Box, Typography, Button, Chip, Avatar, IconButton, Tooltip, Paper,
+  Stack, Select, MenuItem, FormControl, InputLabel, Dialog, DialogTitle,
+  DialogContent, DialogActions, Divider, Grid, Table, TableBody, 
+  TableCell, TableContainer, TableHead, TableRow, TablePagination,
+  TextField, InputAdornment
+} from "@mui/material";
+import {
+  RefreshCw, Eye, Download, CheckCircle, XCircle, AlertCircle,
+  Filter, X, Calendar, User, ShieldCheck, MapPin, Search
+} from "lucide-react";
+
+// Minimal mock data - 10 records
+const mockLogs = [
+  {
+    id: 1,
+    userId: 1,
+    userName: "Admin User",
+    userEmail: "admin@example.com",
+    userRole: "admin",
+    action: "LOGIN",
+    description: "User logged into system",
+    status: "SUCCESS",
+    timestamp: "2024-01-15T10:30:00Z",
+    ipAddress: "192.168.1.100"
+  },
+  {
+    id: 2,
+    userId: 2,
+    userName: "John Doe",
+    userEmail: "john@example.com",
+    userRole: "user",
+    action: "UPDATE_PROFILE",
+    description: "Updated contact information",
+    status: "SUCCESS",
+    timestamp: "2024-01-15T09:15:00Z",
+    ipAddress: "192.168.1.101"
+  },
+  {
+    id: 3,
+    userId: 3,
+    userName: "Jane Smith",
+    userEmail: "jane@example.com",
+    userRole: "checker",
+    action: "CREATE_USER",
+    description: "Created new user account",
+    status: "SUCCESS",
+    timestamp: "2024-01-14T14:20:00Z",
+    ipAddress: "192.168.1.102"
+  },
+  {
+    id: 4,
+    userId: 1,
+    userName: "Admin User",
+    userEmail: "admin@example.com",
+    userRole: "admin",
+    action: "CHANGE_ROLE",
+    description: "Changed user role from user to checker",
+    status: "SUCCESS",
+    timestamp: "2024-01-14T11:45:00Z",
+    ipAddress: "192.168.1.100"
+  },
+  {
+    id: 5,
+    userId: 2,
+    userName: "John Doe",
+    userEmail: "john@example.com",
+    userRole: "user",
+    action: "LOGIN",
+    description: "Failed login attempt",
+    status: "FAILED",
+    timestamp: "2024-01-13T16:10:00Z",
+    ipAddress: "192.168.1.103"
+  },
+  {
+    id: 6,
+    userId: 3,
+    userName: "Jane Smith",
+    userEmail: "jane@example.com",
+    userRole: "checker",
+    action: "UPDATE_USER",
+    description: "Updated user profile",
+    status: "SUCCESS",
+    timestamp: "2024-01-13T13:30:00Z",
+    ipAddress: "192.168.1.102"
+  },
+  {
+    id: 7,
+    userId: 1,
+    userName: "Admin User",
+    userEmail: "admin@example.com",
+    userRole: "admin",
+    action: "DELETE_USER",
+    description: "Deleted inactive user account",
+    status: "SUCCESS",
+    timestamp: "2024-01-12T15:45:00Z",
+    ipAddress: "192.168.1.100"
+  },
+  {
+    id: 8,
+    userId: 2,
+    userName: "John Doe",
+    userEmail: "john@example.com",
+    userRole: "user",
+    action: "CHANGE_STATUS",
+    description: "Changed user status to inactive",
+    status: "WARNING",
+    timestamp: "2024-01-12T10:20:00Z",
+    ipAddress: "192.168.1.101"
+  },
+  {
+    id: 9,
+    userId: 3,
+    userName: "Jane Smith",
+    userEmail: "jane@example.com",
+    userRole: "checker",
+    action: "LOGOUT",
+    description: "User logged out from system",
+    status: "SUCCESS",
+    timestamp: "2024-01-11T17:00:00Z",
+    ipAddress: "192.168.1.102"
+  },
+  {
+    id: 10,
+    userId: 1,
+    userName: "Admin User",
+    userEmail: "admin@example.com",
+    userRole: "admin",
+    action: "CREATE_USER",
+    description: "Created new admin account",
+    status: "SUCCESS",
+    timestamp: "2024-01-11T09:00:00Z",
+    ipAddress: "192.168.1.100"
+  }
+];
+
+function ActivityLogs() {
+  const [logs] = useState(mockLogs);
+  const [filters, setFilters] = useState({ role: "", action: "", status: "", search: "" });
+  const [selectedLog, setSelectedLog] = useState(null);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+
+  const handleFilterChange = (field, value) => setFilters(prev => ({ ...prev, [field]: value }));
+  const handleClearFilters = () => setFilters({ role: "", action: "", status: "", search: "" });
+
+  const filteredLogs = useMemo(() => {
+    return logs.filter(log => {
+      return (
+        (!filters.role || log.userRole === filters.role) &&
+        (!filters.action || log.action === filters.action) &&
+        (!filters.status || log.status === filters.status) &&
+        (!filters.search || 
+          log.description.toLowerCase().includes(filters.search.toLowerCase()) ||
+          log.userName.toLowerCase().includes(filters.search.toLowerCase()) ||
+          log.ipAddress.includes(filters.search))
+      );
+    });
+  }, [filters, logs]);
+
+  const getStatusStyles = (status) => {
+    switch(status) {
+      case 'SUCCESS': return { color: '#059669', bg: '#ecfdf5', icon: <CheckCircle size={14} /> };
+      case 'FAILED': return { color: '#dc2626', bg: '#fef2f2', icon: <XCircle size={14} /> };
+      case 'WARNING': return { color: '#d97706', bg: '#fffbeb', icon: <AlertCircle size={14} /> };
+      default: return { color: '#6b7280', bg: '#f3f4f6', icon: null };
+    }
+  };
+
+  const getRoleColor = (role) => {
+    const colors = { admin: '#ef4444', checker: '#f59e0b', user: '#3b82f6' };
+    return colors[role] || '#6b7280';
+  };
+
+  const handleChangePage = (event, newPage) => setPage(newPage);
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const paginatedLogs = useMemo(() => {
+    return filteredLogs.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  }, [filteredLogs, page, rowsPerPage]);
+
+  return (
+    <Box sx={{ p: { xs: 2, md: 4 }, bgcolor: '#f1f5f9', minHeight: '100vh' }}>
+      
+      {/* HEADER SECTION */}
+      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems="flex-start" spacing={2} sx={{ mb: 4 }}>
+        <Box>
+          <Typography variant="h4" fontWeight={800} sx={{ color: '#0f172a', letterSpacing: '-0.5px' }}>
+            System Audit
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={1.5}>
+          <Button 
+            variant="outlined" 
+            startIcon={<RefreshCw size={18} />} 
+            sx={{ bgcolor: 'white', color: '#64748b', border: '1px solid #e2e8f0' }}
+          >
+            Refresh
+          </Button>
+          <Button 
+            variant="contained" 
+            disableElevation 
+            startIcon={<Download size={18} />} 
+            sx={{ bgcolor: '#0f172a', '&:hover': { bgcolor: '#1e293b' } }}
+          >
+            Export Logs
+          </Button>
+        </Stack>
+      </Stack>     
+
+      {/* FILTERS SECTION */}
+      <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 3, border: '1px solid #e2e8f0' }}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center">
+          <TextField
+            size="small"
+            placeholder="Search logs, users, IP addresses..."
+            value={filters.search}
+            onChange={(e) => handleFilterChange('search', e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search size={18} />
+                </InputAdornment>
+              ),
+            }}
+            sx={{ flex: 1, '& .MuiOutlinedInput-root': { bgcolor: 'white', borderRadius: 2 } }}
+          />
+          <Stack direction="row" spacing={1} flexWrap="wrap">
+            <FormControl size="small" sx={{ minWidth: 120 }}>
+              <InputLabel>Status</InputLabel>
+              <Select 
+                value={filters.status} 
+                label="Status" 
+                onChange={(e) => handleFilterChange('status', e.target.value)}
+                sx={{ bgcolor: 'white' }}
+              >
+                <MenuItem value="">All Status</MenuItem>
+                <MenuItem value="SUCCESS">Success</MenuItem>
+                <MenuItem value="FAILED">Failed</MenuItem>
+                <MenuItem value="WARNING">Warning</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 120 }}>
+              <InputLabel>Role</InputLabel>
+              <Select 
+                value={filters.role} 
+                label="Role" 
+                onChange={(e) => handleFilterChange('role', e.target.value)}
+                sx={{ bgcolor: 'white' }}
+              >
+                <MenuItem value="">All Roles</MenuItem>
+                <MenuItem value="admin">Admin</MenuItem>
+                <MenuItem value="checker">Checker</MenuItem>
+                <MenuItem value="user">User</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>Action</InputLabel>
+              <Select 
+                value={filters.action} 
+                label="Action" 
+                onChange={(e) => handleFilterChange('action', e.target.value)}
+                sx={{ bgcolor: 'white' }}
+              >
+                <MenuItem value="">All Actions</MenuItem>
+                <MenuItem value="LOGIN">Login</MenuItem>
+                <MenuItem value="LOGOUT">Logout</MenuItem>
+                <MenuItem value="CREATE_USER">Create User</MenuItem>
+                <MenuItem value="UPDATE_USER">Update User</MenuItem>
+                <MenuItem value="DELETE_USER">Delete User</MenuItem>
+                <MenuItem value="CHANGE_ROLE">Change Role</MenuItem>
+                <MenuItem value="CHANGE_STATUS">Change Status</MenuItem>
+              </Select>
+            </FormControl>
+            {Object.values(filters).some(v => v) && (
+              <Button 
+                variant="outlined" 
+                size="small" 
+                startIcon={<X size={16} />} 
+                onClick={handleClearFilters}
+                sx={{ height: '40px' }}
+              >
+                Clear
+              </Button>
+            )}
+          </Stack>
+        </Stack>
+      </Paper>
+
+      {/* DATA TABLE SECTION */}
+      <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid #e2e8f0', overflow: 'hidden', mb: 2 }}>
+        <TableContainer>
+          <Table>
+            <TableHead sx={{ bgcolor: '#f8fafc' }}>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                  User Identity
+                </TableCell>
+                <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                  Activity
+                </TableCell>
+                <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                  Description
+                </TableCell>
+                <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                  Status
+                </TableCell>
+                <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                  Logged At
+                </TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                  Actions
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {paginatedLogs.map((log) => {
+                const statusStyle = getStatusStyles(log.status);
+                const roleColor = getRoleColor(log.userRole);
+                return (
+                  <TableRow 
+                    key={log.id} 
+                    hover 
+                    sx={{ 
+                      '&:hover': { bgcolor: '#f1f5f9' },
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => {
+                      setSelectedLog(log);
+                      setIsDetailDialogOpen(true);
+                    }}
+                  >
+                    <TableCell>
+                      <Stack direction="row" spacing={1.5} alignItems="center">
+                        <Avatar sx={{ 
+                          width: 36, 
+                          height: 36, 
+                          fontSize: 14, 
+                          fontWeight: 700,
+                          bgcolor: `${roleColor}20`,
+                          color: roleColor,
+                          border: `1px solid ${roleColor}40`
+                        }}>
+                          {log.userName.charAt(0)}
+                        </Avatar>
+                        <Box>
+                          <Typography variant="body2" fontWeight={600}>
+                            {log.userName}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {log.userEmail}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={log.action.replace('_', ' ')} 
+                        size="small" 
+                        variant="outlined"
+                        sx={{ 
+                          fontWeight: 600, 
+                          fontSize: '0.7rem', 
+                          textTransform: 'uppercase', 
+                          letterSpacing: '0.5px' 
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" color="text.primary" sx={{ opacity: 0.9 }}>
+                        {log.description}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        icon={statusStyle.icon}
+                        label={log.status}
+                        size="small"
+                        sx={{ 
+                          bgcolor: statusStyle.bg, 
+                          color: statusStyle.color, 
+                          fontWeight: 700, 
+                          borderRadius: '6px',
+                          '& .MuiChip-icon': { color: 'inherit' }
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Stack direction="row" spacing={1} alignItems="center" color="text.secondary">
+                        <Calendar size={14} />
+                        <Typography variant="caption" fontWeight={500}>
+                          {new Date(log.timestamp).toLocaleString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric', 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
+                        </Typography>
+                      </Stack>
+                    </TableCell>
+                    <TableCell align="right">
+                      <IconButton 
+                        size="small" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedLog(log);
+                          setIsDetailDialogOpen(true);
+                        }}
+                      >
+                        <Eye size={18} />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25]}
+          component="div"
+          count={filteredLogs.length}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+          sx={{ borderTop: '1px solid #e2e8f0' }}
+        />
+      </Paper>
+
+      {/* SUMMARY */}
+      <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', mt: 2 }}>
+        Showing {paginatedLogs.length} of {filteredLogs.length} logs 
+        {Object.values(filters).some(v => v) && ' (filtered)'}
+      </Typography>
+
+      {/* DETAIL DIALOG */}
+      <Dialog 
+        open={isDetailDialogOpen} 
+        onClose={() => setIsDetailDialogOpen(false)} 
+        maxWidth="sm" 
+        fullWidth 
+        PaperProps={{ sx: { borderRadius: 4, p: 1 } }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6" fontWeight={800}>Event Details</Typography>
+          <IconButton onClick={() => setIsDetailDialogOpen(false)}><X size={20}/></IconButton>
+        </DialogTitle>
+        <DialogContent>
+          {selectedLog && (
+            <Box>
+              <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3, p: 2, bgcolor: '#f8fafc', borderRadius: 3 }}>
+                <Avatar sx={{ 
+                  width: 56, 
+                  height: 56, 
+                  bgcolor: getRoleColor(selectedLog.userRole),
+                  fontSize: 20,
+                  fontWeight: 700
+                }}>
+                  {selectedLog.userName.charAt(0)}
+                </Avatar>
+                <Box>
+                  <Typography variant="h6" fontWeight={700}>{selectedLog.userName}</Typography>
+                  <Typography variant="body2" color="text.secondary">{selectedLog.userEmail}</Typography>
+                </Box>
+              </Stack>
+              
+              <Grid container spacing={2}>
+                <DetailItem icon={<ShieldCheck size={16}/>} label="Permission Role" value={selectedLog.userRole} capitalize />
+                <DetailItem icon={<MapPin size={16}/>} label="Origin IP" value={selectedLog.ipAddress} />
+                <DetailItem icon={<Calendar size={16}/>} label="Exact Timestamp" value={new Date(selectedLog.timestamp).toLocaleString()} />
+                <DetailItem icon={<RefreshCw size={16}/>} label="Trigger Action" value={selectedLog.action} />
+              </Grid>
+
+              <Box sx={{ mt: 3, p: 2, border: '1px dashed #e2e8f0', borderRadius: 3 }}>
+                <Typography variant="caption" fontWeight={700} color="text.secondary">FULL SYSTEM DESCRIPTION</Typography>
+                <Typography variant="body2" sx={{ mt: 1, lineHeight: 1.6 }}>{selectedLog.description}</Typography>
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button 
+            onClick={() => setIsDetailDialogOpen(false)} 
+            fullWidth 
+            variant="contained" 
+            sx={{ borderRadius: 2, bgcolor: '#0f172a', '&:hover': { bgcolor: '#1e293b' } }}
+          >
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+}
+
+// Helper component for Dialog
+const DetailItem = ({ icon, label, value, capitalize }) => (
+  <Grid item xs={6}>
+    <Stack spacing={0.5}>
+      <Stack direction="row" spacing={1} alignItems="center" color="text.secondary">
+        {icon}
+        <Typography variant="caption" fontWeight={700}>{label}</Typography>
+      </Stack>
+      <Typography variant="body2" fontWeight={600} sx={{ textTransform: capitalize ? 'capitalize' : 'none' }}>
+        {value}
+      </Typography>
+    </Stack>
+  </Grid>
+);
+
+export default ActivityLogs;

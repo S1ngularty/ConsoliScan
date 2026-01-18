@@ -1,1 +1,158 @@
 https://github.com/jerpelhan/DAVE
+
+
+src/
+├── App.jsx
+├── main.jsx
+├── index.css
+├── vite.config.js
+├── env.js
+│
+├── layouts/
+│   └── AdminLayout.jsx
+│
+├── routes/
+│   ├── adminRoutes.jsx
+│   └── index.jsx
+│
+├── pages/
+│   ├── admin/
+│   │   ├── Dashboard.jsx
+│   │   ├── user/
+│   │   │   ├── UserList.jsx
+│   │   │   ├── UserDetail.jsx
+│   │   │   ├── RolesPermissions.jsx
+│   │   │   └── ActivityLogs.jsx
+│   │   ├── product/
+│   │   │   ├── ProductList.jsx
+│   │   │   ├── ProductDetail.jsx
+│   │   │   ├── Inventory.jsx
+│   │   │   └── Reviews.jsx
+│   │   ├── category/
+│   │   │   ├── CategoryList.jsx
+│   │   │   ├── CategoryDetail.jsx
+│   │   │   └── Subcategories.jsx
+│   │   ├── order/
+│   │   │   ├── OrderList.jsx
+│   │   │   ├── PendingOrders.jsx
+│   │   │   └── Returns.jsx
+│   │   ├── analytics/
+│   │   │   └── Analytics.jsx
+│   │   ├── reports/
+│   │   │   └── Reports.jsx
+│   │   └── settings/
+│   │       └── Settings.jsx
+│   └── auth/
+│       ├── Login.jsx
+│       └── Register.jsx
+│
+├── components/
+│   ├── admin/
+│   │   ├── Sidebar.jsx
+│   │   ├── Header.jsx
+│   │   ├── modals/
+│   │   │   ├── ProductModal.jsx
+│   │   │   ├── CategoryModal.jsx
+│   │   │   ├── UserModal.jsx
+│   │   │   └── OrderModal.jsx
+│   │   └── tables/
+│   │       ├── DataTable.jsx
+│   │       ├── UserTable.jsx
+│   │       ├── ProductTable.jsx
+│   │       └── CategoryTable.jsx
+│   ├── common/
+│   │   ├── ConfirmModalComponent.jsx
+│   │   ├── LoadingSpinner.jsx
+│   │   ├── EmptyState.jsx
+│   │   ├── ErrorBoundary.jsx
+│   │   ├── SearchBar.jsx
+│   │   ├── Button.jsx
+│   │   ├── Card.jsx
+│   │   └── Badge.jsx
+│   └── ui/
+│       ├── charts/
+│       │   ├── LineChart.jsx
+│       │   ├── BarChart.jsx
+│       │   └── PieChart.jsx
+│       ├── forms/
+│       │   ├── InputField.jsx
+│       │   ├── SelectField.jsx
+│       │   ├── TextareaField.jsx
+│       │   └── FormWrapper.jsx
+│       └── notifications/
+│           ├── Toast.jsx
+│           └── Alert.jsx
+│
+├── styles/
+│   ├── admin/
+│   │   ├── SidebarStyle.css
+│   │   ├── AdminLayout.css
+│   │   ├── modals/
+│   │   │   ├── ProductModalStyle.css
+│   │   │   ├── CategoryModalStyle.css
+│   │   │   ├── UserModalStyle.css
+│   │   │   └── ModalBase.css
+│   │   └── tables/
+│   │       ├── DataTableStyle.css
+│   │       └── TableBase.css
+│   ├── common/
+│   │   ├── ConfirmModalStyle.css
+│   │   ├── LoadingSpinner.css
+│   │   └── ButtonStyles.css
+│   └── globals.css
+│
+├── services/
+│   ├── api/
+│   │   ├── axiosConfig.js
+│   │   ├── authService.js
+│   │   └── apiEndpoints.js
+│   ├── productService.js
+│   ├── userService.js
+│   ├── categoryService.js
+│   ├── orderService.js
+│   └── analyticsService.js
+│
+├── utils/
+│   ├── helpers.js
+│   ├── validators.js
+│   ├── formatters.js
+│   ├── constants.js
+│   └── dateUtils.js
+│
+├── hooks/
+│   ├── useAuth.js
+│   ├── useModal.js
+│   ├── useFetch.js
+│   ├── useForm.js
+│   └── useDebounce.js
+│
+├── contexts/
+│   ├── AuthContext.jsx
+│   ├── ThemeContext.jsx
+│   └── NotificationContext.jsx
+│
+├── store/
+│   ├── slices/
+│   │   ├── authSlice.js
+│   │   ├── productSlice.js
+│   │   └── uiSlice.js
+│   └── store.js
+│
+├── assets/
+│   ├── images/
+│   │   ├── logos/
+│   │   ├── icons/
+│   │   └── illustrations/
+│   └── fonts/
+│
+└── tests/
+    ├── components/
+    │   ├── admin/
+    │   │   └── Sidebar.test.jsx
+    │   └── common/
+    │       └── Button.test.jsx
+    ├── pages/
+    │   └── admin/
+    │       └── Dashboard.test.jsx
+    └── utils/
+        └── helpers.test.js

@@ -3,11 +3,11 @@ import { DataGrid } from "@mui/x-data-grid";
 import { Box, Typography, Button, Chip, Avatar } from "@mui/material";
 import { UserPlus, ShieldCheck, Trash2, Edit } from "lucide-react";
 
-import "../../styles/admin/UserPageStyle.css";
-import { getAllUser, deleteUser } from "../../services/userService";
-import UserModalComponent from "../../components/admin/UserModalComponent";
-import ConfirmModalComponent from "../../components/common/ConfirmModalComponent";
-import Toast from "../../components/common/SnackbarComponent";
+import "../../../styles/admin/user/UserPageStyle.css";
+import { getAllUser, deleteUser } from "../../../services/userService";
+import UserModalComponent from "../../../components/admin/UserModalComponent";
+import ConfirmModalComponent from "../../../components/common/ConfirmModalComponent";
+import Toast from "../../../components/common/SnackbarComponent";
 
 function UserPage() {
   const [users, setUsers] = useState([]);
@@ -184,7 +184,7 @@ function UserPage() {
         severity={snackbar.severity}
       />
 
-      <Box className="user-page-header">
+      <Box className="user-page-header" display={"flex"} justifyContent={"space-between"}>
         <Box>
           <Typography variant="h5" fontWeight={700} color="#111827">
             User Management

@@ -18,7 +18,6 @@ export const fetchProducts = async () => {
 export const handleProductRequest = async (data, files, requestMethod) => {
   if (!data) throw new Error("data is undefined");
   const formData = new FormData();
-  console.log(data, files);
   for (let pair of Object.entries(data)) {
     if (pair[0] === "images") break;
     formData.append(pair[0], pair[1]);
@@ -30,7 +29,7 @@ export const handleProductRequest = async (data, files, requestMethod) => {
   }
 
   const createdProduct = await axios[requestMethod](
-    `/api/v1/product${requestMethod === "put" && `/${data._id}`}`,
+    `/api/v1/product${requestMethod === "put" ? `/${data._id}` : ""}`,
     formData,
     {
       headers: {

@@ -1,6 +1,6 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import LoginPage from "./pages/LoginPage";
+import LoginPage from "./pages/auth/LoginPage";
 import adminRoute from "./routes/adminRoute.jsx";
 import AdminLayout from "./layouts/AdminLayout.jsx";
 function App() {

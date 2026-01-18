@@ -8,7 +8,7 @@ const authMiddleware = require("../middlewares/authMiddleware");
 
 router
   .route("/product")
-  .post(upload.array("images", 5), productController.createProduct)
+  .post(authMiddleware.verifyToken, upload.array("images", 5), productController.createProduct)
   .get(productController.getAllProduct);
 
 router

@@ -10,7 +10,7 @@ import {
   Tag,
   AlertCircle,
 } from "lucide-react";
-import "../../styles/admin/ProductModalStyle.css";
+import "../../styles/admin/product/ProductModalStyle.css";
 import {
   handleProductRequest,
   removeImageRequest,
