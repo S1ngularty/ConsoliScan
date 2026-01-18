@@ -4,7 +4,7 @@ import {
   GridToolbarContainer,
   GridToolbarExport,
   GridToolbarFilterButton,
-  GridToolbarQuickFilter
+  GridToolbarQuickFilter,
 } from "@mui/x-data-grid";
 import {
   Box,
@@ -28,7 +28,7 @@ import {
   FormControl,
   InputAdornment,
   Card,
-  CardContent
+  CardContent,
 } from "@mui/material";
 import {
   Package,
@@ -49,54 +49,55 @@ import {
   Image,
   TrendingUp,
   TrendingDown,
-  Download
+  Download,
 } from "lucide-react";
 
 import "../../../styles/admin/product/ProductInventory.css";
 import Toast from "../../../components/common/SnackbarComponent";
+import { fetchProducts } from "../../../services/productService";
 
-// Mock data based on your schema
-const generateMockInventory = (count = 50) => {
-  const products = [];
-  const barcodeTypes = ["UPC", "EAN_13", "EAN_8", "ISBN_10", "ISBN_13", "CODE_128", "QR"];
-  
-  for (let i = 0; i < count; i++) {
-    const name = `Product ${i + 1}`;
-    const slug = `product-${i + 1}`.toLowerCase();
-    const sku = `SKU${(i + 1000).toString().padStart(4, '0')}`;
-    const barcode = Math.floor(Math.random() * 1000000000000).toString();
-    const barcodeType = barcodeTypes[Math.floor(Math.random() * barcodeTypes.length)];
-    const price = Math.floor(Math.random() * 1000) + 19.99;
-    const stockQuantity = Math.floor(Math.random() * 500);
-    const categoryId = `category-${Math.floor(Math.random() * 5) + 1}`;
-    
-    products.push({
-      _id: `product_${i + 1}`,
-      name,
-      slug,
-      sku,
-      description: `Description for ${name}`,
-      barcode,
-      barcodeType,
-      categoryId,
-      price,
-      stockQuantity,
-      images: [],
-      createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
-      updatedAt: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
-      deletedAt: null
-    });
-  }
-  
-  return products;
-};
+// // Mock data based on your schema
+// const generateMockInventory = (count = 50) => {
+//   const products = [];
+//   const barcodeTypes = ["UPC", "EAN_13", "EAN_8", "ISBN_10", "ISBN_13", "CODE_128", "QR"];
+
+//   for (let i = 0; i < count; i++) {
+//     const name = `Product ${i + 1}`;
+//     const slug = `product-${i + 1}`.toLowerCase();
+//     const sku = `SKU${(i + 1000).toString().padStart(4, '0')}`;
+//     const barcode = Math.floor(Math.random() * 1000000000000).toString();
+//     const barcodeType = barcodeTypes[Math.floor(Math.random() * barcodeTypes.length)];
+//     const price = Math.floor(Math.random() * 1000) + 19.99;
+//     const stockQuantity = Math.floor(Math.random() * 500);
+//     const categoryId = `category-${Math.floor(Math.random() * 5) + 1}`;
+
+//     products.push({
+//       _id: `product_${i + 1}`,
+//       name,
+//       slug,
+//       sku,
+//       description: `Description for ${name}`,
+//       barcode,
+//       barcodeType,
+//       categoryId,
+//       price,
+//       stockQuantity,
+//       images: [],
+//       createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+//       updatedAt: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
+//       deletedAt: null
+//     });
+//   }
+
+//   return products;
+// };
 
 function ProductInventory() {
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({
     search: "",
-    stockFilter: "all"
+    stockFilter: "all",
   });
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
@@ -106,6 +107,16 @@ function ProductInventory() {
     message: "",
     severity: "success",
   });
+
+  const fetchData = async()=>{
+    const data = await fetchProducts()
+    console.log(data)
+    setInventory(data)
+  }
+
+  useEffect(()=>{
+    fetchData()
+  },[])
 
   const showToast = useCallback((message, severity = "success") => {
     setSnackbar({ open: true, message, severity });
@@ -118,13 +129,13 @@ function ProductInventory() {
   useEffect(() => {
     setLoading(true);
     setTimeout(() => {
-      setInventory(generateMockInventory(50));
+     fetchData()
       setLoading(false);
     }, 1000);
   }, []);
 
   const handleFilterChange = (field, value) => {
-    setFilters(prev => ({ ...prev, [field]: value }));
+    setFilters((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleRefresh = () => {
@@ -139,7 +150,7 @@ function ProductInventory() {
   const handleClearFilters = () => {
     setFilters({
       search: "",
-      stockFilter: "all"
+      stockFilter: "all",
     });
   };
 
@@ -152,33 +163,44 @@ function ProductInventory() {
 
   const getStockColor = (quantity) => {
     const status = getStockStatus(quantity);
-    switch(status) {
-      case 'In Stock': return '#00A86B';
-      case 'Low Stock': return '#f59e0b';
-      case 'Out of Stock': return '#ef4444';
-      case 'High Stock': return '#3b82f6';
-      default: return '#6b7280';
+    switch (status) {
+      case "In Stock":
+        return "#00A86B";
+      case "Low Stock":
+        return "#f59e0b";
+      case "Out of Stock":
+        return "#ef4444";
+      case "High Stock":
+        return "#3b82f6";
+      default:
+        return "#6b7280";
     }
   };
 
   const getStockIcon = (quantity) => {
     const status = getStockStatus(quantity);
-    switch(status) {
-      case 'In Stock': return <CheckCircle size={16} />;
-      case 'Low Stock': return <AlertTriangle size={16} />;
-      case 'Out of Stock': return <XCircle size={16} />;
-      case 'High Stock': return <TrendingUp size={16} />;
-      default: return <Package size={16} />;
+    switch (status) {
+      case "In Stock":
+        return <CheckCircle size={16} />;
+      case "Low Stock":
+        return <AlertTriangle size={16} />;
+      case "Out of Stock":
+        return <XCircle size={16} />;
+      case "High Stock":
+        return <TrendingUp size={16} />;
+      default:
+        return <Package size={16} />;
     }
   };
 
   const filteredInventory = useMemo(() => {
-    return inventory.filter(item => {
-      const matchesSearch = !filters.search || 
+    return inventory.filter((item) => {
+      const matchesSearch =
+        !filters.search ||
         item.name.toLowerCase().includes(filters.search.toLowerCase()) ||
         item.sku.toLowerCase().includes(filters.search.toLowerCase()) ||
         item.barcode.includes(filters.search);
-      
+
       let matchesStock = true;
       if (filters.stockFilter === "low") {
         matchesStock = item.stockQuantity <= 10;
@@ -187,29 +209,40 @@ function ProductInventory() {
       } else if (filters.stockFilter === "high") {
         matchesStock = item.stockQuantity > 100;
       }
-      
+
       return matchesSearch && matchesStock;
     });
   }, [inventory, filters]);
 
   const stats = useMemo(() => {
-    const totalValue = inventory.reduce((sum, item) => sum + (item.price * item.stockQuantity), 0);
-    const totalStock = inventory.reduce((sum, item) => sum + item.stockQuantity, 0);
-    const outOfStock = inventory.filter(item => item.stockQuantity === 0).length;
-    const lowStock = inventory.filter(item => item.stockQuantity > 0 && item.stockQuantity <= 10).length;
+    const totalValue = inventory.reduce(
+      (sum, item) => sum + item.price * item.stockQuantity,
+      0,
+    );
+    const totalStock = inventory.reduce(
+      (sum, item) => sum + item.stockQuantity,
+      0,
+    );
+    const outOfStock = inventory.filter(
+      (item) => item.stockQuantity === 0,
+    ).length;
+    const lowStock = inventory.filter(
+      (item) => item.stockQuantity > 0 && item.stockQuantity <= 10,
+    ).length;
     const totalProducts = inventory.length;
 
     return {
-      totalValue: totalValue.toLocaleString('en-US', { 
-        style: 'currency', 
-        currency: 'USD',
-        minimumFractionDigits: 2 
+      totalValue: totalValue.toLocaleString("en-US", {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 2,
       }),
       totalStock,
       outOfStock,
       lowStock,
       totalProducts,
-      averageStock: totalProducts > 0 ? Math.round(totalStock / totalProducts) : 0
+      averageStock:
+        totalProducts > 0 ? Math.round(totalStock / totalProducts) : 0,
     };
   }, [inventory]);
 
@@ -221,11 +254,13 @@ function ProductInventory() {
       minWidth: 250,
       renderCell: ({ row }) => (
         <Box display="flex" alignItems="center" gap={2}>
-          <Avatar sx={{ 
-            bgcolor: getStockColor(row.stockQuantity) + '20',
-            color: getStockColor(row.stockQuantity),
-            fontSize: 14 
-          }}>
+          <Avatar
+            sx={{
+              bgcolor: getStockColor(row.stockQuantity) + "20",
+              color: getStockColor(row.stockQuantity),
+              fontSize: 14,
+            }}
+          >
             <Package size={20} />
           </Avatar>
           <Box>
@@ -278,10 +313,15 @@ function ProductInventory() {
       renderCell: ({ row }) => {
         const status = getStockStatus(row.stockQuantity);
         const color = getStockColor(row.stockQuantity);
-        
+
         return (
           <Box width="100%">
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+            <Box
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+              mb={0.5}
+            >
               <Typography variant="body2" fontWeight={600}>
                 {row.stockQuantity}
               </Typography>
@@ -292,17 +332,17 @@ function ProductInventory() {
                 </Typography>
               </Box>
             </Box>
-            <LinearProgress 
-              variant="determinate" 
+            <LinearProgress
+              variant="determinate"
               value={Math.min((row.stockQuantity / 500) * 100, 100)}
               sx={{
                 height: 6,
                 borderRadius: 3,
-                bgcolor: '#f3f4f6',
-                '& .MuiLinearProgress-bar': {
+                bgcolor: "#f3f4f6",
+                "& .MuiLinearProgress-bar": {
                   bgcolor: color,
-                  borderRadius: 3
-                }
+                  borderRadius: 3,
+                },
               }}
             />
           </Box>
@@ -319,10 +359,10 @@ function ProductInventory() {
           label={value}
           size="small"
           sx={{
-            bgcolor: '#f3f4f6',
-            color: '#4b5563',
+            bgcolor: "#f3f4f6",
+            color: "#4b5563",
             fontWeight: 500,
-            fontSize: '0.75rem'
+            fontSize: "0.75rem",
           }}
         />
       ),
@@ -353,7 +393,7 @@ function ProductInventory() {
               className="action-btn edit"
               onClick={() => {
                 // Handle edit - would navigate to product edit page
-                console.log('Edit product:', row._id);
+                console.log("Edit product:", row._id);
               }}
             >
               <Edit size={18} />
@@ -367,21 +407,21 @@ function ProductInventory() {
   const CustomToolbar = () => (
     <GridToolbarContainer sx={{ p: 2, gap: 1 }}>
       <GridToolbarFilterButton />
-      <GridToolbarExport 
-        csvOptions={{ 
-          fileName: `inventory-${new Date().toISOString().split('T')[0]}`,
+      <GridToolbarExport
+        csvOptions={{
+          fileName: `inventory-${new Date().toISOString().split("T")[0]}`,
         }}
       />
       <Box sx={{ flexGrow: 1 }} />
-      <GridToolbarQuickFilter 
-        placeholder="Search products..." 
+      <GridToolbarQuickFilter
+        placeholder="Search products..."
         value={filters.search}
-        onChange={(e) => handleFilterChange('search', e.target.value)}
-        sx={{ 
-          '& .MuiInputBase-root': {
-            height: '40px',
-            width: '250px'
-          }
+        onChange={(e) => handleFilterChange("search", e.target.value)}
+        sx={{
+          "& .MuiInputBase-root": {
+            height: "40px",
+            width: "250px",
+          },
         }}
       />
     </GridToolbarContainer>
@@ -390,8 +430,8 @@ function ProductInventory() {
   return (
     <Box className="product-inventory-container">
       {/* Product Detail Dialog */}
-      <Dialog 
-        open={isDetailDialogOpen} 
+      <Dialog
+        open={isDetailDialogOpen}
         onClose={() => setIsDetailDialogOpen(false)}
         maxWidth="md"
         fullWidth
@@ -399,9 +439,7 @@ function ProductInventory() {
         <DialogTitle>
           <Box display="flex" alignItems="center" gap={2}>
             <Package size={24} color="#00A86B" />
-            <Typography variant="h6">
-              {selectedProduct?.name}
-            </Typography>
+            <Typography variant="h6">{selectedProduct?.name}</Typography>
           </Box>
         </DialogTitle>
         <DialogContent>
@@ -413,24 +451,46 @@ function ProductInventory() {
                   Product Information
                 </Typography>
                 <Stack spacing={2}>
-                  <Box display="grid" gridTemplateColumns="repeat(2, 1fr)" gap={2}>
+                  <Box
+                    display="grid"
+                    gridTemplateColumns="repeat(2, 1fr)"
+                    gap={2}
+                  >
                     <Box>
-                      <Typography variant="body2" color="textSecondary">SKU:</Typography>
-                      <Typography variant="body2" fontWeight={600}>{selectedProduct.sku}</Typography>
+                      <Typography variant="body2" color="textSecondary">
+                        SKU:
+                      </Typography>
+                      <Typography variant="body2" fontWeight={600}>
+                        {selectedProduct.sku}
+                      </Typography>
                     </Box>
                     <Box>
-                      <Typography variant="body2" color="textSecondary">Barcode:</Typography>
-                      <Typography variant="body2" fontWeight={600} fontFamily="monospace">
+                      <Typography variant="body2" color="textSecondary">
+                        Barcode:
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        fontWeight={600}
+                        fontFamily="monospace"
+                      >
                         {selectedProduct.barcode}
                       </Typography>
                     </Box>
                     <Box>
-                      <Typography variant="body2" color="textSecondary">Barcode Type:</Typography>
-                      <Typography variant="body2" fontWeight={600}>{selectedProduct.barcodeType}</Typography>
+                      <Typography variant="body2" color="textSecondary">
+                        Barcode Type:
+                      </Typography>
+                      <Typography variant="body2" fontWeight={600}>
+                        {selectedProduct.barcodeType}
+                      </Typography>
                     </Box>
                     <Box>
-                      <Typography variant="body2" color="textSecondary">Slug:</Typography>
-                      <Typography variant="body2" fontWeight={600}>{selectedProduct.slug}</Typography>
+                      <Typography variant="body2" color="textSecondary">
+                        Slug:
+                      </Typography>
+                      <Typography variant="body2" fontWeight={600}>
+                        {selectedProduct.slug}
+                      </Typography>
                     </Box>
                   </Box>
                 </Stack>
@@ -441,10 +501,20 @@ function ProductInventory() {
                 <Typography variant="subtitle1" fontWeight={600} gutterBottom>
                   Stock & Pricing
                 </Typography>
-                <Box display="grid" gridTemplateColumns="repeat(2, 1fr)" gap={3}>
+                <Box
+                  display="grid"
+                  gridTemplateColumns="repeat(2, 1fr)"
+                  gap={3}
+                >
                   <Box>
-                    <Typography variant="body2" color="textSecondary">Stock Quantity:</Typography>
-                    <Typography variant="h5" fontWeight={700} color={getStockColor(selectedProduct.stockQuantity)}>
+                    <Typography variant="body2" color="textSecondary">
+                      Stock Quantity:
+                    </Typography>
+                    <Typography
+                      variant="h5"
+                      fontWeight={700}
+                      color={getStockColor(selectedProduct.stockQuantity)}
+                    >
                       {selectedProduct.stockQuantity}
                     </Typography>
                     <Typography variant="caption" color="textSecondary">
@@ -452,12 +522,17 @@ function ProductInventory() {
                     </Typography>
                   </Box>
                   <Box>
-                    <Typography variant="body2" color="textSecondary">Price:</Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      Price:
+                    </Typography>
                     <Typography variant="h5" fontWeight={700} color="#00A86B">
                       ${selectedProduct.price.toFixed(2)}
                     </Typography>
                     <Typography variant="caption" color="textSecondary">
-                      Total Value: ${(selectedProduct.price * selectedProduct.stockQuantity).toFixed(2)}
+                      Total Value: $
+                      {(
+                        selectedProduct.price * selectedProduct.stockQuantity
+                      ).toFixed(2)}
                     </Typography>
                   </Box>
                 </Box>
@@ -480,15 +555,23 @@ function ProductInventory() {
                 <Typography variant="subtitle1" fontWeight={600} gutterBottom>
                   Timestamps
                 </Typography>
-                <Box display="grid" gridTemplateColumns="repeat(2, 1fr)" gap={2}>
+                <Box
+                  display="grid"
+                  gridTemplateColumns="repeat(2, 1fr)"
+                  gap={2}
+                >
                   <Box>
-                    <Typography variant="body2" color="textSecondary">Created:</Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      Created:
+                    </Typography>
                     <Typography variant="body2" fontWeight={600}>
                       {new Date(selectedProduct.createdAt).toLocaleDateString()}
                     </Typography>
                   </Box>
                   <Box>
-                    <Typography variant="body2" color="textSecondary">Last Updated:</Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      Last Updated:
+                    </Typography>
                     <Typography variant="body2" fontWeight={600}>
                       {new Date(selectedProduct.updatedAt).toLocaleDateString()}
                     </Typography>
@@ -499,9 +582,7 @@ function ProductInventory() {
           )}
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 0 }}>
-          <Button onClick={() => setIsDetailDialogOpen(false)}>
-            Close
-          </Button>
+          <Button onClick={() => setIsDetailDialogOpen(false)}>Close</Button>
           <Button
             variant="contained"
             onClick={() => {
@@ -557,7 +638,7 @@ function ProductInventory() {
         <Card className="stat-card">
           <CardContent>
             <Box display="flex" alignItems="center" gap={2}>
-              <Avatar sx={{ bgcolor: '#f0fdf4', color: '#00A86B' }}>
+              <Avatar sx={{ bgcolor: "#f0fdf4", color: "#00A86B" }}>
                 <Package size={20} />
               </Avatar>
               <Box>
@@ -575,7 +656,7 @@ function ProductInventory() {
         <Card className="stat-card">
           <CardContent>
             <Box display="flex" alignItems="center" gap={2}>
-              <Avatar sx={{ bgcolor: '#f0fdf4', color: '#00A86B' }}>
+              <Avatar sx={{ bgcolor: "#f0fdf4", color: "#00A86B" }}>
                 <BoxIcon size={20} />
               </Avatar>
               <Box>
@@ -593,7 +674,7 @@ function ProductInventory() {
         <Card className="stat-card">
           <CardContent>
             <Box display="flex" alignItems="center" gap={2}>
-              <Avatar sx={{ bgcolor: '#fef3c7', color: '#92400e' }}>
+              <Avatar sx={{ bgcolor: "#fef3c7", color: "#92400e" }}>
                 <AlertTriangle size={20} />
               </Avatar>
               <Box>
@@ -611,7 +692,7 @@ function ProductInventory() {
         <Card className="stat-card">
           <CardContent>
             <Box display="flex" alignItems="center" gap={2}>
-              <Avatar sx={{ bgcolor: '#fef2f2', color: '#dc2626' }}>
+              <Avatar sx={{ bgcolor: "#fef2f2", color: "#dc2626" }}>
                 <XCircle size={20} />
               </Avatar>
               <Box>
@@ -634,13 +715,15 @@ function ProductInventory() {
             <Filter size={16} style={{ marginRight: 8 }} />
             Filters:
           </Typography>
-          
+
           <FormControl size="small" sx={{ minWidth: 120 }}>
             <InputLabel>Stock Status</InputLabel>
             <Select
               value={filters.stockFilter}
               label="Stock Status"
-              onChange={(e) => handleFilterChange('stockFilter', e.target.value)}
+              onChange={(e) =>
+                handleFilterChange("stockFilter", e.target.value)
+              }
             >
               <MenuItem value="all">All</MenuItem>
               <MenuItem value="low">Low Stock (≤ 10)</MenuItem>
@@ -675,7 +758,7 @@ function ProductInventory() {
           initialState={{
             pagination: { paginationModel: { pageSize: 20 } },
             sorting: {
-              sortModel: [{ field: 'stockQuantity', sort: 'desc' }],
+              sortModel: [{ field: "stockQuantity", sort: "desc" }],
             },
           }}
           pageSizeOptions={[10, 20, 50]}
@@ -683,24 +766,24 @@ function ProductInventory() {
           autoHeight
           sx={{
             border: "none",
-            '& .MuiDataGrid-virtualScroller': {
-              minHeight: '400px'
+            "& .MuiDataGrid-virtualScroller": {
+              minHeight: "400px",
             },
-            '& .MuiDataGrid-columnHeaders': {
+            "& .MuiDataGrid-columnHeaders": {
               backgroundColor: "#f9fafb",
-              borderBottom: '1px solid #e5e7eb',
+              borderBottom: "1px solid #e5e7eb",
               color: "#4b5563",
               fontWeight: 700,
             },
-            '& .MuiDataGrid-cell': {
-              borderBottom: '1px solid #f3f4f6',
-              '&:focus': { outline: "none" }
+            "& .MuiDataGrid-cell": {
+              borderBottom: "1px solid #f3f4f6",
+              "&:focus": { outline: "none" },
             },
-            '& .MuiDataGrid-row': {
-              '&:hover': {
-                backgroundColor: '#f9fafb'
-              }
-            }
+            "& .MuiDataGrid-row": {
+              "&:hover": {
+                backgroundColor: "#f9fafb",
+              },
+            },
           }}
         />
       </Box>
@@ -709,7 +792,7 @@ function ProductInventory() {
       <Box className="summary-footer">
         <Typography variant="body2" color="#6b7280">
           Showing {filteredInventory.length} of {inventory.length} products
-          {(filters.search || filters.stockFilter !== "all") && ' (filtered)'}
+          {(filters.search || filters.stockFilter !== "all") && " (filtered)"}
         </Typography>
         <Typography variant="body2" color="#00A86B" fontWeight={600}>
           Total Value: {stats.totalValue}

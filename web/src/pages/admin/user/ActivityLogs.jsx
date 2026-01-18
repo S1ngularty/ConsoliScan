@@ -65,7 +65,6 @@ function ActivityLogs() {
 
   const fetchData = async () => {
     const logs = await fetchLogs();
-    console.log(logs);
     setLogs(logs);
     return;
   };
