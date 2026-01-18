@@ -6,6 +6,6 @@ const authMiddleware = require("../middlewares/authMiddleware");
 
 router
   .route("/logs")
-  .get(authMiddleware.verifyToken, activityLogsController.getLogs);
+  .get( activityLogsController.getLogs);
 
 module.exports = router;

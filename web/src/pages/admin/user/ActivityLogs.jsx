@@ -350,10 +350,10 @@ function ActivityLogs() {
                         </Avatar>
                         <Box>
                           <Typography variant="body2" fontWeight={600}>
-                            {log.userName}
+                            {log.name}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
-                            {log.userEmail}
+                            {log.email}
                           </Typography>
                         </Box>
                       </Stack>
