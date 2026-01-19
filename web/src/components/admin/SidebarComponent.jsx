@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   LayoutDashboard,
+  Accessibility,
   Users,
   Box,
   Layers,
@@ -119,6 +120,12 @@ const Sidebar = ({ breadcrumb }) => {
               icon: <Shield size={18} />,
               navigate: "/admin/users/roles",
               location: "Admin / Users / Roles",
+            },
+             {
+              name: "Beneficiary Membership",
+              icon: <Accessibility size={18} />,
+              navigate: "/admin/users/beneficiary",
+              location: "Admin / Users / Beneficiary",
             },
             {
               name: "Activity Logs",

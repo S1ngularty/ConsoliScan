@@ -1,7 +1,6 @@
 import axios from "axios";
 import { timeAgo } from "../utils/parseDate";
 
-
 axios.defaults.withCredentials = true;
 axios.defaults.baseURL = import.meta.env.VITE_APP_API;
 axios.defaults.headers.post["Content-Type"] = "application/json";
@@ -120,13 +119,25 @@ export async function deleteUser(id) {
 export async function updatePermission(id, data) {
   if (!id) throw new Error("missing id field");
   if (!data) throw new Error("empty fields to update");
-  console.log(data)
+  console.log(data);
   const result = await axios.put(`/api/v1/user/roles/${id}`, data);
   if (!result) throw new Error("something went wrong");
   return result.data.result;
 }
 
-export async function fetchLogs(){
-  const logs = await axios.get(`/api/v1/logs`)
-  return logs.data.result
+export async function fetchLogs() {
+  const logs = await axios.get(`/api/v1/logs`);
+  return logs.data.result;
+}
+
+export async function fetchBeneficiaries() {
+  const beneficiaries = await axios.get("/api/v1/beneficiary");
+  return beneficiaries.data.result;
+}
+
+export async function verificationRequest(userId, data) {
+  if (!data) throw new Error("undefined data");
+  if (!userId) throw new Error("undefined user Id");
+  const isSuccess = await axios.put(`/api/v1/beneficiary/${userId}`, data);
+  return isSuccess.data;
 }

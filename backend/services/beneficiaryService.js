@@ -22,7 +22,7 @@ exports.create = async (request) => {
 
   request.body.idImage = {
     front: uploadedIdFront,
-    back: uploadedIdFront,
+    back: uploadedIdBack,
   };
   request.body.userPhoto = uploadedUserPhoto;
 

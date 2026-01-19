@@ -6,6 +6,7 @@ import ActivityLogs from "../pages/admin/user/ActivityLogs";
 import ProductInventory from "../pages/admin/product/ProductInventory";
 import ProductPage from "../pages/admin/product/ProductPage"
 import CategoryPage from "../pages/admin/category/CategoryPage"
+import BeneficiaryManagement from "../pages/admin/user/UserBeneficiaryPage";
 
 function adminRoute() {
   return [
@@ -22,6 +23,11 @@ function adminRoute() {
     {
       component: <RolePermissions></RolePermissions>,
       path: "/admin/users/roles",
+      index: false,
+    },
+    {
+      component: <BeneficiaryManagement></BeneficiaryManagement>,
+      path: "/admin/users/beneficiary",
       index: false,
     },
     {
