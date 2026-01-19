@@ -78,4 +78,4 @@ const beneficiarySchema = new mongoose.Schema(
 
 beneficiarySchema.index({ user: 1, idNumber: 1 });
 
-module.exports = mongoose.Schema("Beneficiary", beneficiarySchema);
+module.exports = mongoose.model("Beneficiary", beneficiarySchema);
