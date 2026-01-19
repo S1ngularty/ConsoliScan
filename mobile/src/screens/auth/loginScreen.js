@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-const LoginScreen = () => {
+const LoginScreen = ({navigation}) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -94,7 +94,7 @@ const LoginScreen = () => {
         <View style={styles.footer}>
           <Text style={styles.footerText}>
             Don't have an account?{' '}
-            <Text style={styles.link}>Sign up</Text>
+            <Text style={styles.link} onPress={()=>navigation.navigate("Register")}>Sign up</Text>
           </Text>
         </View>
       </KeyboardAvoidingView>
