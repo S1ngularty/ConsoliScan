@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -21,8 +21,8 @@ import {
   InputLabel,
   Button,
   CircularProgress,
-  Alert
-} from '@mui/material';
+  Alert,
+} from "@mui/material";
 import {
   Search,
   FilterAlt,
@@ -33,26 +33,40 @@ import {
   Person,
   Badge,
   CalendarToday,
-  Warning
-} from '@mui/icons-material';
-import * as beneficiaryService from "../../../services/userService"
+  Warning,
+} from "@mui/icons-material";
+import * as beneficiaryService from "../../../services/userService";
 import BeneficiaryDetailModal from "../../../components/admin/BeneficiaryDetailModal";
 import VerificationModal from "../../../components/admin/VerificationModalComponent";
+import Toast from "../../../components/common/SnackbarComponent";
 
 const BeneficiaryManagement = () => {
   const [beneficiaries, setBeneficiaries] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [disabilityFilter, setDisabilityFilter] = useState('all');
-  
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [disabilityFilter, setDisabilityFilter] = useState("all");
+
   // Modal states
   const [selectedBeneficiary, setSelectedBeneficiary] = useState(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [verificationModalOpen, setVerificationModalOpen] = useState(false);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
+
+  const showToast = useCallback((message, severity = "success") => {
+    setSnackbar({ open: true, message, severity });
+  }, []);
+
+  const closeToast = () => {
+    setSnackbar((prev) => ({ ...prev, open: false }));
+  };
 
   useEffect(() => {
     fetchBeneficiaries();
@@ -63,9 +77,9 @@ const BeneficiaryManagement = () => {
       setLoading(true);
       const data = await beneficiaryService.fetchBeneficiaries();
       setBeneficiaries(data);
-      setError('');
+      setError("");
     } catch (err) {
-      setError('Failed to fetch beneficiaries');
+      setError("Failed to fetch beneficiaries");
       console.error(err);
     } finally {
       setLoading(false);
@@ -84,42 +98,52 @@ const BeneficiaryManagement = () => {
 
   const handleVerificationUpdate = async (id, isVerified) => {
     try {
-      await beneficiaryService.updateVerification(id, { isVerified });
-      setBeneficiaries(prev => prev.map(b => 
-        b._id === id ? { ...b, isVerified, verifiedAt: isVerified ? new Date() : null } : b
-      ));
+      console.log(id, isVerified);
+      await beneficiaryService.verificationRequest(id, { isVerified });
+      setBeneficiaries((prev) =>
+        prev.map((b) =>
+          b._id === id
+            ? { ...b, isVerified, verifiedAt: isVerified ? new Date() : null }
+            : b,
+        ),
+      );
       setVerificationModalOpen(false);
+      showToast(`Successfully ${!isVerified ?? "un"}verified`, "success");
     } catch (err) {
-      console.error('Failed to update verification:', err);
+      console.error("Failed to update verification:", err);
+      showToast("Something went Wrong, please try again.", "error");
     }
   };
 
-  const filteredBeneficiaries = beneficiaries.filter(beneficiary => {
-    const matchesSearch = search === '' || 
+  const filteredBeneficiaries = beneficiaries.filter((beneficiary) => {
+    const matchesSearch =
+      search === "" ||
       beneficiary.name?.toLowerCase().includes(search.toLowerCase()) ||
       beneficiary.idNumber?.toLowerCase().includes(search.toLowerCase()) ||
       beneficiary.email?.toLowerCase().includes(search.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || 
-      (statusFilter === 'verified' && beneficiary.isVerified) ||
-      (statusFilter === 'unverified' && !beneficiary.isVerified);
-    
-    const matchesDisability = disabilityFilter === 'all' || 
+
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "verified" && beneficiary.isVerified) ||
+      (statusFilter === "unverified" && !beneficiary.isVerified);
+
+    const matchesDisability =
+      disabilityFilter === "all" ||
       beneficiary.typeOfDisability === disabilityFilter;
-    
+
     return matchesSearch && matchesStatus && matchesDisability;
   });
 
   const paginatedData = filteredBeneficiaries.slice(
     page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
+    page * rowsPerPage + rowsPerPage,
   );
 
   const getStatusChip = (isVerified) => (
     <Chip
       icon={isVerified ? <CheckCircle /> : <Cancel />}
-      label={isVerified ? 'Verified' : 'Unverified'}
-      color={isVerified ? 'success' : 'warning'}
+      label={isVerified ? "Verified" : "Unverified"}
+      color={isVerified ? "success" : "warning"}
       size="small"
       variant="outlined"
     />
@@ -127,17 +151,17 @@ const BeneficiaryManagement = () => {
 
   const getDisabilityChip = (type) => {
     const colors = {
-      visual: 'info',
-      hearing: 'primary',
-      physical: 'secondary',
-      mental: 'warning',
-      multiple: 'error'
+      visual: "info",
+      hearing: "primary",
+      physical: "secondary",
+      mental: "warning",
+      multiple: "error",
     };
-    
+
     return (
       <Chip
         label={type.charAt(0).toUpperCase() + type.slice(1)}
-        color={colors[type] || 'default'}
+        color={colors[type] || "default"}
         size="small"
       />
     );
@@ -145,7 +169,12 @@ const BeneficiaryManagement = () => {
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        minHeight="60vh"
+      >
         <CircularProgress />
       </Box>
     );
@@ -153,6 +182,13 @@ const BeneficiaryManagement = () => {
 
   return (
     <Box sx={{ p: 3 }}>
+      <Toast
+        open={snackbar.open}
+        handleClose={closeToast}
+        message={snackbar.message}
+        severity={snackbar.severity}
+      />
+
       {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" fontWeight={700} gutterBottom>
@@ -171,7 +207,11 @@ const BeneficiaryManagement = () => {
 
       {/* Filters */}
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={2}
+          alignItems="center"
+        >
           <TextField
             size="small"
             placeholder="Search by name, ID number, or email..."
@@ -186,7 +226,7 @@ const BeneficiaryManagement = () => {
             }}
             sx={{ flex: 1 }}
           />
-          
+
           <FormControl size="small" sx={{ minWidth: 140 }}>
             <InputLabel>Verification Status</InputLabel>
             <Select
@@ -220,9 +260,9 @@ const BeneficiaryManagement = () => {
             variant="outlined"
             startIcon={<FilterAlt />}
             onClick={() => {
-              setSearch('');
-              setStatusFilter('all');
-              setDisabilityFilter('all');
+              setSearch("");
+              setStatusFilter("all");
+              setDisabilityFilter("all");
             }}
           >
             Clear Filters
@@ -232,21 +272,27 @@ const BeneficiaryManagement = () => {
 
       {/* Stats Summary */}
       <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
-        <Paper sx={{ p: 2, flex: 1, textAlign: 'center' }}>
+        <Paper sx={{ p: 2, flex: 1, textAlign: "center" }}>
           <Typography variant="h6">{beneficiaries.length}</Typography>
-          <Typography variant="body2" color="text.secondary">Total Beneficiaries</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Total Beneficiaries
+          </Typography>
         </Paper>
-        <Paper sx={{ p: 2, flex: 1, textAlign: 'center' }}>
+        <Paper sx={{ p: 2, flex: 1, textAlign: "center" }}>
           <Typography variant="h6" color="success.main">
-            {beneficiaries.filter(b => b.isVerified).length}
+            {beneficiaries.filter((b) => b.isVerified).length}
           </Typography>
-          <Typography variant="body2" color="text.secondary">Verified</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Verified
+          </Typography>
         </Paper>
-        <Paper sx={{ p: 2, flex: 1, textAlign: 'center' }}>
+        <Paper sx={{ p: 2, flex: 1, textAlign: "center" }}>
           <Typography variant="h6" color="warning.main">
-            {beneficiaries.filter(b => !b.isVerified).length}
+            {beneficiaries.filter((b) => !b.isVerified).length}
           </Typography>
-          <Typography variant="body2" color="text.secondary">Pending Verification</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Pending Verification
+          </Typography>
         </Paper>
       </Stack>
 
@@ -255,7 +301,7 @@ const BeneficiaryManagement = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Beneficiary</TableCell>
+              <TableCell>Member</TableCell>
               <TableCell>ID Details</TableCell>
               <TableCell>Disability Type</TableCell>
               <TableCell>Verification Status</TableCell>
@@ -278,18 +324,22 @@ const BeneficiaryManagement = () => {
                     <Stack direction="row" spacing={2} alignItems="center">
                       <Box
                         component="img"
-                        src={beneficiary.userPhoto?.url || beneficiary.avatar?.url}
+                        src={
+                          beneficiary.userPhoto?.url || beneficiary.avatar?.url
+                        }
                         sx={{
                           width: 40,
                           height: 40,
-                          borderRadius: '50%',
-                          objectFit: 'cover',
-                          border: '2px solid #e0e0e0'
+                          borderRadius: "50%",
+                          objectFit: "cover",
+                          border: "2px solid #e0e0e0",
                         }}
                         alt={beneficiary.name}
                       />
                       <Box>
-                        <Typography fontWeight={600}>{beneficiary.name}</Typography>
+                        <Typography fontWeight={600}>
+                          {beneficiary.name}
+                        </Typography>
                         <Typography variant="body2" color="text.secondary">
                           {beneficiary.email}
                         </Typography>
@@ -304,7 +354,8 @@ const BeneficiaryManagement = () => {
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         <CalendarToday fontSize="inherit" sx={{ mr: 0.5 }} />
-                        Expires: {new Date(beneficiary.expiryDate).toLocaleDateString()}
+                        Expires:{" "}
+                        {new Date(beneficiary.expiryDate).toLocaleDateString()}
                       </Typography>
                     </Stack>
                   </TableCell>
@@ -314,7 +365,11 @@ const BeneficiaryManagement = () => {
                   <TableCell>
                     {getStatusChip(beneficiary.isVerified)}
                     {beneficiary.verifiedAt && (
-                      <Typography variant="caption" display="block" color="text.secondary">
+                      <Typography
+                        variant="caption"
+                        display="block"
+                        color="text.secondary"
+                      >
                         {new Date(beneficiary.verifiedAt).toLocaleDateString()}
                       </Typography>
                     )}

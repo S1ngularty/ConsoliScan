@@ -50,24 +50,34 @@ exports.getAll = async (request) => {
         __v: 0,
         "user.createdAt": 0,
         "user.updatedAt": 0,
-        "user._id":0
+        "user._id": 0,
       },
     },
     {
-      $replaceRoot:{
-        newRoot:{
-          $mergeObjects:["$$ROOT","$user"]
-        }
-      }
+      $replaceRoot: {
+        newRoot: {
+          $mergeObjects: ["$$ROOT", "$user"],
+        },
+      },
     },
     {
-      $unset:"user"
+      $unset: "user",
     },
     {
-      $sort:{
-        createdAt:-1
-      }
-    }
+      $sort: {
+        createdAt: -1,
+      },
+    },
   ]);
-  return data
+  return data;
+};
+
+exports.updateVerification = async (request) => {
+  const { memberId } = request.params;
+  if (!request.body) throw new Error("undefined body");
+  request.body.verifiedAt =new Date()
+  const isUpdate = await Beneficiary.findByIdAndUpdate(memberId, request.body, {
+    new: true,
+  });
+  return isUpdate;
 };

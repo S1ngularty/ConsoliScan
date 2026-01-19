@@ -61,7 +61,7 @@ const VerificationModal = ({ open, onClose, beneficiary, onUpdate }) => {
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <DialogTitle>
-        <Typography variant="h6" fontWeight={700}>
+        <Typography fontSize={20} fontWeight={700}>
           Update Verification Status
         </Typography>
       </DialogTitle>
