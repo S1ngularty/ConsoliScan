@@ -10,7 +10,7 @@ const uploadImage = async (images = [], path = "") => {
         (err, result) => {
           if (err instanceof Error) return reject(err);
           return resolve({ public_id: result.public_id, url: result.url });
-        }
+        },
       );
       stream.end(image.buffer);
     });
@@ -21,7 +21,6 @@ const uploadImage = async (images = [], path = "") => {
 };
 
 const deleteAssets = async (publicIds = []) => {
-  console.log(publicIds)
   if (!Array.isArray(publicIds) || publicIds.length === 0) {
     return {
       deleted: {},
@@ -29,7 +28,6 @@ const deleteAssets = async (publicIds = []) => {
   }
 
   const result = await cloudinary.api.delete_resources(publicIds);
-  console.log(result)
   return result;
 };
 
