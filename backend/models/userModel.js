@@ -20,6 +20,19 @@ const userSchema = new mongoose.Schema(
       required: true,
       validate: [validator.isEmail, "field must be in email format"],
     },
+    sex:{
+      type:String,
+      enum:["male","female"]
+    },
+    age:{
+      type:Number,
+      required:true,
+      default:null
+    },
+    birthDate:{
+      type:Date,
+      default:null,
+    },
     address: {
       type: String,
       trim:true

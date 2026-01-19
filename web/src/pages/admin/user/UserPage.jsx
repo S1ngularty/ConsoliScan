@@ -49,7 +49,7 @@ function UserPage() {
     } catch (error) {
       showToast(
         error instanceof Error ? error.message : "Something went wrong",
-        "error"
+        "error",
       );
     } finally {
       setDeleteUserId("");
@@ -72,7 +72,12 @@ function UserPage() {
             <Avatar sx={{ bgcolor: "#f0fdf4", color: "#00A86B", fontSize: 14 }}>
               {row.name?.charAt(0)}
             </Avatar>
-            <Box display={"flex"} flexDirection={"column"} alignItems={"start"} gap={1}>
+            <Box
+              display={"flex"}
+              flexDirection={"column"}
+              alignItems={"start"}
+              gap={1}
+            >
               <Typography variant="body2" fontWeight={600}>
                 {row.name}
               </Typography>
@@ -88,7 +93,13 @@ function UserPage() {
         headerName: "Role",
         flex: 1,
         renderCell: ({ value }) => (
-          <Box display="flex"  alignItems="center" justifyContent={"start"} gap={1} color="#6b7280">
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent={"start"}
+            gap={1}
+            color="#6b7280"
+          >
             <ShieldCheck size={16} />
             <Typography variant="body2">{value}</Typography>
           </Box>
@@ -150,7 +161,7 @@ function UserPage() {
         ),
       },
     ],
-    []
+    [],
   );
 
   return (
@@ -160,9 +171,18 @@ function UserPage() {
           isOpen
           data={editUser}
           mode={editUser?.name ? "edit" : "create"}
-          Onclose={() => {
+          onClose={() => {
             setIsModalOpen(false);
-            fetchUsers();
+            setEditUser(null)
+          }}
+          onSave={(success) => {
+            if (success) {
+              showToast("updated the user successfully!", "success");
+              fetchUsers();
+            } else {
+              showToast("failed to update the user!", "success");
+            }
+            setIsModalOpen(false);
           }}
         />
       )}
@@ -184,7 +204,11 @@ function UserPage() {
         severity={snackbar.severity}
       />
 
-      <Box className="user-page-header" display={"flex"} justifyContent={"space-between"}>
+      <Box
+        className="user-page-header"
+        display={"flex"}
+        justifyContent={"space-between"}
+      >
         <Box>
           <Typography variant="h5" fontWeight={700} color="#111827">
             User Management

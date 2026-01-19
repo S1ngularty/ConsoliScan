@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   LayoutDashboard,
+  BadgeCheck,
   Users,
   Box,
   Layers,
@@ -120,6 +121,12 @@ const Sidebar = ({ breadcrumb }) => {
               navigate: "/admin/users/roles",
               location: "Admin / Users / Roles",
             },
+             {
+              name: "Eligible Members",
+              icon: <BadgeCheck size={18} />,
+              navigate: "/admin/users/beneficiary",
+              location: "Admin / Users / Beneficiary",
+            },
             {
               name: "Activity Logs",
               icon: <FileText size={18} />,
@@ -158,11 +165,6 @@ const Sidebar = ({ breadcrumb }) => {
               navigate: "/admin/categories",
               location: "Admin / Categories ",
             },
-            {
-              name: "Subcategories",
-              icon: <Layers size={18} />,
-              navigate: "/admin/categories/sub",
-            },
           ],
         },
         {
@@ -179,11 +181,6 @@ const Sidebar = ({ breadcrumb }) => {
               name: "Pending Orders",
               icon: <BarChart3 size={18} />,
               navigate: "/admin/orders/pending",
-            },
-            {
-              name: "Returns",
-              icon: <Box size={18} />,
-              navigate: "/admin/orders/returns",
             },
           ],
         },

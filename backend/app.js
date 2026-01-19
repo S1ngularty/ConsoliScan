@@ -9,6 +9,7 @@ const {
   user,
   category,
   activityLogs,
+  eligible,
 } = require("./routes/index");
 const productModel = require("./models/productModel");
 
@@ -23,5 +24,6 @@ app.use("/api/v1", auth);
 app.use("/api/v1", user);
 app.use("/api/v1", category);
 app.use("/api/v1", activityLogs);
+app.use("/api/v1", eligible);
 
 module.exports = app;
