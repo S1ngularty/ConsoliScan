@@ -8,12 +8,12 @@ const upload = multer({
   },
 });
 
-const beneficiaryController = require("../controllers/beneficiaryController");
+const eligibleController = require("../controllers/eligibleController");
 const authMiddleware = require("../middlewares/authMiddleware");
 
-router.route("/beneficiary").get(beneficiaryController.getRequestMembership);
+router.route("/eligible").get(eligibleController.getRequestMembership);
 
-router.route("/beneficiary/:userId").post(
+router.route("/eligible/:userId").post(
   upload.fields([
     {
       name: "idFront",
@@ -28,11 +28,11 @@ router.route("/beneficiary/:userId").post(
       maxCount: 1,
     },
   ]),
-  beneficiaryController.requestForValidation,
+  eligibleController.requestForValidation,
 );
 
 router
-  .route("/beneficiary/:memberId")
-  .put(authMiddleware.verifyToken, beneficiaryController.verificationUpdate);
+  .route("/eligible/:memberId")
+  .put(authMiddleware.verifyToken, eligibleController.verificationUpdate);
 
 module.exports = router;

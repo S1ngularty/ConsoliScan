@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -17,8 +17,8 @@ import {
   Backdrop,
   Fade,
   IconButton,
-  Tooltip
-} from '@mui/material';
+  Tooltip,
+} from "@mui/material";
 import {
   Person,
   Email,
@@ -32,118 +32,312 @@ import {
   ZoomIn,
   ZoomOut,
   Close,
-  RotateRight
-} from '@mui/icons-material';
+  RotateRight,
+  Elderly,
+  AccessibilityNew,
+  ChevronLeft,
+  ChevronRight,
+  Fullscreen,
+  FullscreenExit,
+} from "@mui/icons-material";
 
 const BeneficiaryDetailModal = ({ open, onClose, beneficiary }) => {
+  if (!beneficiary) return null;
+
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewImage, setPreviewImage] = useState(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 });
+  const imageRef = useRef(null);
+  const containerRef = useRef(null);
 
-  if (!beneficiary) return null;
-  console.log(beneficiary.idImage)
-  const handleImagePreview = (imageUrl) => {
-    setPreviewImage(imageUrl);
+  // All images that can be previewed
+  const images = [
+    { url: beneficiary.userPhoto?.url, label: "Profile Photo" },
+    { url: beneficiary.avatar?.url, label: "Avatar" },
+    { url: beneficiary.idImage?.front?.url, label: "ID Card Front" },
+    { url: beneficiary.idImage?.back?.url, label: "ID Card Back" },
+  ].filter((img) => img.url);
+
+  const handleImagePreview = (index) => {
+    setCurrentImageIndex(index);
     setPreviewOpen(true);
     setZoom(1);
     setRotation(0);
+    setImagePosition({ x: 0, y: 0 });
   };
 
   const handleClosePreview = () => {
     setPreviewOpen(false);
-    setPreviewImage(null);
     setZoom(1);
     setRotation(0);
+    setImagePosition({ x: 0, y: 0 });
   };
 
   const handleZoomIn = () => {
-    setZoom(prev => Math.min(prev + 0.25, 3));
+    setZoom((prev) => Math.min(prev + 0.25, 3));
   };
 
   const handleZoomOut = () => {
-    setZoom(prev => Math.max(prev - 0.25, 0.5));
+    setZoom((prev) => Math.max(prev - 0.25, 0.5));
   };
 
   const handleRotate = () => {
-    setRotation(prev => (prev + 90) % 360);
+    setRotation((prev) => (prev + 90) % 360);
   };
 
   const handleReset = () => {
     setZoom(1);
     setRotation(0);
+    setImagePosition({ x: 0, y: 0 });
   };
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, []);
+
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % images.length);
+    setZoom(1);
+    setRotation(0);
+    setImagePosition({ x: 0, y: 0 });
+  };
+
+  const prevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+    setZoom(1);
+    setRotation(0);
+    setImagePosition({ x: 0, y: 0 });
+  };
+
+  const handleMouseDown = (e) => {
+    if (zoom > 1) {
+      setIsDragging(true);
+      setDragStart({
+        x: e.clientX - imagePosition.x,
+        y: e.clientY - imagePosition.y,
+      });
+    }
+  };
+
+  const handleMouseMove = (e) => {
+    if (isDragging && zoom > 1) {
+      const newX = e.clientX - dragStart.x;
+      const newY = e.clientY - dragStart.y;
+
+      // Calculate bounds to prevent dragging beyond image edges
+      const containerWidth = containerRef.current?.clientWidth || 0;
+      const containerHeight = containerRef.current?.clientHeight || 0;
+      const imageWidth = imageRef.current?.clientWidth || 0;
+      const imageHeight = imageRef.current?.clientHeight || 0;
+
+      const maxX = Math.max(0, (imageWidth * zoom - containerWidth) / 2);
+      const maxY = Math.max(0, (imageHeight * zoom - containerHeight) / 2);
+
+      const boundedX = Math.max(-maxX, Math.min(maxX, newX));
+      const boundedY = Math.max(-maxY, Math.min(maxY, newY));
+
+      setImagePosition({ x: boundedX, y: boundedY });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleWheel = (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.25 : 0.25;
+      setZoom((prev) => Math.max(0.5, Math.min(3, prev + delta)));
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!previewOpen) return;
+
+      switch (e.key) {
+        case "ArrowLeft":
+          prevImage();
+          break;
+        case "ArrowRight":
+          nextImage();
+          break;
+        case "Escape":
+          handleClosePreview();
+          break;
+        case "+":
+        case "=":
+          handleZoomIn();
+          break;
+        case "-":
+          handleZoomOut();
+          break;
+        case "0":
+          handleReset();
+          break;
+        case "r":
+        case "R":
+          handleRotate();
+          break;
+        case "f":
+        case "F":
+          toggleFullscreen();
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [previewOpen]);
 
   const getStatusChip = (isVerified) => (
     <Chip
       icon={isVerified ? <CheckCircle /> : <Cancel />}
-      label={isVerified ? 'Verified' : 'Unverified'}
-      color={isVerified ? 'success' : 'warning'}
+      label={isVerified ? "Verified" : "Unverified"}
+      color={isVerified ? "success" : "warning"}
       sx={{ fontWeight: 600 }}
     />
   );
 
-  const getDisabilityChip = (type) => {
-    const colors = {
-      visual: 'info',
-      hearing: 'primary',
-      physical: 'secondary',
-      mental: 'warning',
-      multiple: 'error'
+  const getTypeChip = (type) => {
+    const config = {
+      pwd: {
+        label: "PWD",
+        color: "primary",
+        icon: <AccessibilityNew />,
+      },
+      senior: {
+        label: "Senior Citizen",
+        color: "secondary",
+        icon: <Elderly />,
+      },
     };
-    
+
+    const cfg = config[type] || { label: type, color: "default" };
+
     return (
       <Chip
-        label={type.charAt(0).toUpperCase() + type.slice(1)}
-        color={colors[type] || 'default'}
+        icon={cfg.icon}
+        label={cfg.label}
+        color={cfg.color}
+        sx={{ fontWeight: 600 }}
+      />
+    );
+  };
+
+  const getDisabilityChip = (type, idType) => {
+    if (idType === "senior") {
+      return (
+        <Chip
+          label="Senior Citizen"
+          color="secondary"
+          sx={{ fontWeight: 600 }}
+        />
+      );
+    }
+
+    const colors = {
+      visual: "info",
+      hearing: "primary",
+      physical: "secondary",
+      mental: "warning",
+      multiple: "error",
+    };
+
+    return (
+      <Chip
+        label={
+          type ? type.charAt(0).toUpperCase() + type.slice(1) : "Not Specified"
+        }
+        color={colors[type] || "default"}
         sx={{ fontWeight: 600 }}
       />
     );
   };
 
   const DetailItem = ({ icon, label, value }) => (
-    <Grid item xs={12} sm={6}>
+    <Grid  sm={6}>
       <Stack direction="row" spacing={2} alignItems="flex-start">
-        <Box sx={{ color: 'primary.main', mt: 0.5 }}>{icon}</Box>
+        <Box sx={{ color: "primary.main", mt: 0.5 }}>{icon}</Box>
         <Box>
           <Typography variant="caption" color="text.secondary" display="block">
             {label}
           </Typography>
           <Typography variant="body1" fontWeight={500}>
-            {value || 'N/A'}
+            {value || "N/A"}
           </Typography>
         </Box>
       </Stack>
     </Grid>
   );
 
-  // All images that can be previewed
-  const images = [
-    { url: beneficiary.userPhoto?.url, label: 'Profile Photo' },
-    { url: beneficiary.idImage?.front?.url, label: 'ID Card Front' },
-    { url: beneficiary.idImage?.back?.url, label: 'ID Card Back' }
-  ].filter(img => img.url);
-
   return (
     <>
       {/* Main Dialog */}
       <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
         <DialogTitle>
-          <Typography fontSize={20} fontWeight={750}>
+          <Typography fontSize={20} fontWeight={700}>
             Beneficiary Details
           </Typography>
         </DialogTitle>
-        
+
         <DialogContent>
           {/* Header Section */}
           <Stack direction="row" spacing={3} alignItems="center" sx={{ mb: 3 }}>
+            <Tooltip title="Click to preview">
+              <Avatar
+                src={beneficiary.userPhoto?.url || beneficiary.avatar?.url}
+                sx={{
+                  width: 80,
+                  height: 80,
+                  cursor: "pointer",
+                  "&:hover": {
+                    transform: "scale(1.05)",
+                    transition: "transform 0.2s",
+                  },
+                }}
+                onClick={() => handleImagePreview(0)}
+              />
+            </Tooltip>
             <Box flex={1}>
               <Typography variant="h5" fontWeight={700}>
                 {beneficiary.name}
               </Typography>
-              <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 1 }}>
+              <Stack
+                direction="row"
+                spacing={2}
+                alignItems="center"
+                sx={{ mt: 1 }}
+              >
                 {getStatusChip(beneficiary.isVerified)}
-                {getDisabilityChip(beneficiary.typeOfDisability)}
+                {getTypeChip(beneficiary.idType)}
+                {getDisabilityChip(
+                  beneficiary.typeOfDisability,
+                  beneficiary.idType,
+                )}
               </Stack>
             </Box>
           </Stack>
@@ -174,13 +368,18 @@ const BeneficiaryDetailModal = ({ open, onClose, beneficiary }) => {
               <DetailItem
                 icon={<LocationOn />}
                 label="Address"
-                value={`${beneficiary.street || ''}, ${beneficiary.city || ''}, ${beneficiary.state || ''}, ${beneficiary.country || ''}`.trim()}
+                value={`${beneficiary.street || ""}, ${beneficiary.city || ""}, ${
+                  beneficiary.state || ""
+                }, ${beneficiary.country || ""}`.trim()}
               />
               {beneficiary.sex && (
                 <DetailItem
                   icon={<Person />}
                   label="Gender"
-                  value={beneficiary.sex.charAt(0).toUpperCase() + beneficiary.sex.slice(1)}
+                  value={
+                    beneficiary.sex.charAt(0).toUpperCase() +
+                    beneficiary.sex.slice(1)
+                  }
                 />
               )}
               {beneficiary.age && (
@@ -216,14 +415,45 @@ const BeneficiaryDetailModal = ({ open, onClose, beneficiary }) => {
                 label="Date Issued"
                 value={new Date(beneficiary.dateIssued).toLocaleDateString()}
               />
-              <DetailItem
-                icon={<Warning />}
-                label="Expiry Date"
-                value={new Date(beneficiary.expiryDate).toLocaleDateString()}
-              />
-              <Grid item xs={12}>
-                <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
-                  ID Card Images
+              {beneficiary.expiryDate ? (
+                <DetailItem
+                  icon={<Warning />}
+                  label="Expiry Date"
+                  value={new Date(beneficiary.expiryDate).toLocaleDateString()}
+                />
+              ) : (
+                <Grid sm={6}>
+                  <Stack direction="row" spacing={2} alignItems="flex-start">
+                    <Box sx={{ color: "secondary.main", mt: 0.5 }}>
+                      <Elderly />
+                    </Box>
+                    <Box>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        display="block"
+                      >
+                        Expiry Date
+                      </Typography>
+                      <Typography
+                        variant="body1"
+                        fontWeight={500}
+                        color="secondary"
+                      >
+                        No expiry (Senior Citizen ID)
+                      </Typography>
+                    </Box>
+                  </Stack>
+                </Grid>
+              )}
+              <Grid >
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  display="block"
+                  gutterBottom
+                >
+                  ID Card Images (Click to preview)
                 </Typography>
                 <Stack direction="row" spacing={2}>
                   {beneficiary.idImage?.front?.url && (
@@ -234,18 +464,18 @@ const BeneficiaryDetailModal = ({ open, onClose, beneficiary }) => {
                         sx={{
                           width: 150,
                           height: 100,
-                          objectFit: 'cover',
-                          border: '1px solid #e0e0e0',
+                          objectFit: "cover",
+                          border: "1px solid #e0e0e0",
                           borderRadius: 1,
-                          cursor: 'pointer',
-                          transition: 'transform 0.2s',
-                          '&:hover': {
-                            transform: 'scale(1.05)',
-                            borderColor: 'primary.main'
-                          }
+                          cursor: "pointer",
+                          transition: "transform 0.2s",
+                          "&:hover": {
+                            transform: "scale(1.05)",
+                            borderColor: "primary.main",
+                          },
                         }}
                         alt="ID Front"
-                        onClick={() => handleImagePreview(beneficiary.idImage.front.url)}
+                        onClick={() => handleImagePreview(2)}
                       />
                     </Tooltip>
                   )}
@@ -257,18 +487,18 @@ const BeneficiaryDetailModal = ({ open, onClose, beneficiary }) => {
                         sx={{
                           width: 150,
                           height: 100,
-                          objectFit: 'cover',
-                          border: '1px solid #e0e0e0',
+                          objectFit: "cover",
+                          border: "1px solid #e0e0e0",
                           borderRadius: 1,
-                          cursor: 'pointer',
-                          transition: 'transform 0.2s',
-                          '&:hover': {
-                            transform: 'scale(1.05)',
-                            borderColor: 'primary.main'
-                          }
+                          cursor: "pointer",
+                          transition: "transform 0.2s",
+                          "&:hover": {
+                            transform: "scale(1.05)",
+                            borderColor: "primary.main",
+                          },
                         }}
                         alt="ID Back"
-                        onClick={() => handleImagePreview(beneficiary.idImage.back.url)}
+                        onClick={() => handleImagePreview(3)}
                       />
                     </Tooltip>
                   )}
@@ -281,49 +511,49 @@ const BeneficiaryDetailModal = ({ open, onClose, beneficiary }) => {
           {images.length > 0 && (
             <Paper sx={{ p: 2, mb: 3 }}>
               <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-                All Images ({images.length})
+                Image Gallery ({images.length})
               </Typography>
               <Grid container spacing={2}>
                 {images.map((img, index) => (
-                  <Grid item xs={6} sm={3} key={index}>
+                  <Grid sm={3} key={index}>
                     <Tooltip title={`Click to preview ${img.label}`}>
                       <Box
                         sx={{
-                          position: 'relative',
-                          cursor: 'pointer',
+                          position: "relative",
+                          cursor: "pointer",
                           borderRadius: 1,
-                          overflow: 'hidden',
-                          border: '1px solid #e0e0e0',
-                          transition: 'all 0.2s',
-                          '&:hover': {
-                            transform: 'translateY(-2px)',
+                          overflow: "hidden",
+                          border: "1px solid #e0e0e0",
+                          transition: "all 0.2s",
+                          "&:hover": {
+                            transform: "translateY(-2px)",
                             boxShadow: 2,
-                            borderColor: 'primary.main'
-                          }
+                            borderColor: "primary.main",
+                          },
                         }}
-                        onClick={() => handleImagePreview(img.url)}
+                        onClick={() => handleImagePreview(index)}
                       >
                         <Box
                           component="img"
                           src={img.url}
                           sx={{
-                            width: '100%',
+                            width: "100%",
                             height: 120,
-                            objectFit: 'cover',
-                            display: 'block'
+                            objectFit: "cover",
+                            display: "block",
                           }}
                           alt={img.label}
                         />
                         <Box
                           sx={{
-                            position: 'absolute',
+                            position: "absolute",
                             bottom: 0,
                             left: 0,
                             right: 0,
-                            bgcolor: 'rgba(0,0,0,0.7)',
-                            color: 'white',
+                            bgcolor: "rgba(0,0,0,0.7)",
+                            color: "white",
                             p: 0.5,
-                            fontSize: '0.75rem'
+                            fontSize: "0.75rem",
                           }}
                         >
                           {img.label}
@@ -338,18 +568,19 @@ const BeneficiaryDetailModal = ({ open, onClose, beneficiary }) => {
 
           {/* Verification Info */}
           {beneficiary.isVerified && beneficiary.verifiedAt && (
-            <Paper sx={{ p: 2, bgcolor: 'success.light' }}>
+            <Paper sx={{ p: 2, bgcolor: "success.light" }}>
               <Typography variant="subtitle1" fontWeight={600} gutterBottom>
                 Verification Information
               </Typography>
               <Typography variant="body2">
-                Verified on: {new Date(beneficiary.verifiedAt).toLocaleDateString()} at{' '}
+                Verified on:{" "}
+                {new Date(beneficiary.verifiedAt).toLocaleDateString()} at{" "}
                 {new Date(beneficiary.verifiedAt).toLocaleTimeString()}
               </Typography>
             </Paper>
           )}
         </DialogContent>
-        
+
         <DialogActions sx={{ p: 2 }}>
           <Button onClick={onClose} variant="contained">
             Close
@@ -357,7 +588,7 @@ const BeneficiaryDetailModal = ({ open, onClose, beneficiary }) => {
         </DialogActions>
       </Dialog>
 
-      {/* Image Preview Modal */}
+      {/* Enhanced Image Preview Modal */}
       <Modal
         open={previewOpen}
         onClose={handleClosePreview}
@@ -366,100 +597,191 @@ const BeneficiaryDetailModal = ({ open, onClose, beneficiary }) => {
         BackdropProps={{
           timeout: 500,
         }}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
       >
         <Fade in={previewOpen}>
           <Box
+            ref={containerRef}
             sx={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: '90%',
-              maxWidth: '800px',
-              bgcolor: 'background.paper',
-              borderRadius: 2,
-              boxShadow: 24,
-              p: 1,
-              outline: 'none'
+              position: "relative",
+              width: "90vw",
+              height: "90vh",
+              bgcolor: "rgba(0, 0, 0, 0.9)",
+              borderRadius: 1,
+              overflow: "hidden",
+              outline: "none",
+              cursor: zoom > 1 ? "grab" : "default",
+              "&:active": {
+                cursor: zoom > 1 ? "grabbing" : "default",
+              },
             }}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onWheel={handleWheel}
           >
-            {/* Controls */}
-            <Box sx={{ 
-              display: 'flex', 
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              mb: 2,
-              p: 1,
-              bgcolor: 'rgba(0,0,0,0.8)',
-              borderRadius: 1
-            }}>
-              <Typography variant="body2" color="white">
-                Zoom: {Math.round(zoom * 100)}% | Rotation: {rotation}°
+            {/* Navigation Arrows */}
+            {images.length > 1 && (
+              <>
+                <IconButton
+                  onClick={prevImage}
+                  sx={{
+                    position: "absolute",
+                    left: 16,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "white",
+                    bgcolor: "rgba(0, 0, 0, 0.5)",
+                    "&:hover": { bgcolor: "rgba(0, 0, 0, 0.7)" },
+                  }}
+                >
+                  <ChevronLeft fontSize="large" />
+                </IconButton>
+                <IconButton
+                  onClick={nextImage}
+                  sx={{
+                    position: "absolute",
+                    right: 16,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "white",
+                    bgcolor: "rgba(0, 0, 0, 0.5)",
+                    "&:hover": { bgcolor: "rgba(0, 0, 0, 0.7)" },
+                  }}
+                >
+                  <ChevronRight fontSize="large" />
+                </IconButton>
+              </>
+            )}
+
+            {/* Image Display */}
+            <Box
+              sx={{
+                width: "100%",
+                height: "100%",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                overflow: "hidden",
+                p: 2,
+              }}
+            >
+              {images[currentImageIndex] && (
+                <Box
+                  ref={imageRef}
+                  component="img"
+                  src={images[currentImageIndex].url}
+                  alt={images[currentImageIndex].label}
+                  sx={{
+                    maxWidth: "100%",
+                    maxHeight: "100%",
+                    transform: `scale(${zoom}) rotate(${rotation}deg) translate(${imagePosition.x}px, ${imagePosition.y}px)`,
+                    transition: isDragging ? "none" : "transform 0.3s",
+                    objectFit: "contain",
+                    userSelect: "none",
+                    WebkitUserDrag: "none",
+                  }}
+                />
+              )}
+            </Box>
+
+            {/* Controls Overlay */}
+            <Box
+              sx={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bgcolor: "rgba(0, 0, 0, 0.7)",
+                p: 1,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Typography variant="body2" color="white" sx={{ ml: 2 }}>
+                {images[currentImageIndex]?.label} ({currentImageIndex + 1}/
+                {images.length}) | Zoom: {Math.round(zoom * 100)}% | Rotation:{" "}
+                {rotation}°{zoom > 1 && " | Click and drag to pan"}
               </Typography>
+
               <Stack direction="row" spacing={1}>
-                <Tooltip title="Zoom In">
-                  <IconButton onClick={handleZoomIn} sx={{ color: 'white' }}>
+                <Tooltip title="Previous (←)" arrow>
+                  <IconButton
+                    onClick={prevImage}
+                    sx={{ color: "white" }}
+                    disabled={images.length <= 1}
+                  >
+                    <ChevronLeft />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Next (→)" arrow>
+                  <IconButton
+                    onClick={nextImage}
+                    sx={{ color: "white" }}
+                    disabled={images.length <= 1}
+                  >
+                    <ChevronRight />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Zoom In (+)" arrow>
+                  <IconButton onClick={handleZoomIn} sx={{ color: "white" }}>
                     <ZoomIn />
                   </IconButton>
                 </Tooltip>
-                <Tooltip title="Zoom Out">
-                  <IconButton onClick={handleZoomOut} sx={{ color: 'white' }}>
+                <Tooltip title="Zoom Out (-)" arrow>
+                  <IconButton onClick={handleZoomOut} sx={{ color: "white" }}>
                     <ZoomOut />
                   </IconButton>
                 </Tooltip>
-                <Tooltip title="Rotate 90°">
-                  <IconButton onClick={handleRotate} sx={{ color: 'white' }}>
+                <Tooltip title="Rotate (R)" arrow>
+                  <IconButton onClick={handleRotate} sx={{ color: "white" }}>
                     <RotateRight />
                   </IconButton>
                 </Tooltip>
-                <Tooltip title="Reset">
-                  <IconButton onClick={handleReset} sx={{ color: 'white' }}>
+                <Tooltip title="Fullscreen (F)" arrow>
+                  <IconButton
+                    onClick={toggleFullscreen}
+                    sx={{ color: "white" }}
+                  >
+                    {isFullscreen ? <FullscreenExit /> : <Fullscreen />}
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Reset (0)" arrow>
+                  <IconButton onClick={handleReset} sx={{ color: "white" }}>
                     <Close />
                   </IconButton>
                 </Tooltip>
-                <Tooltip title="Close">
-                  <IconButton onClick={handleClosePreview} sx={{ color: 'white' }}>
+                <Tooltip title="Close (ESC)" arrow>
+                  <IconButton
+                    onClick={handleClosePreview}
+                    sx={{ color: "white" }}
+                  >
                     <Close />
                   </IconButton>
                 </Tooltip>
               </Stack>
             </Box>
 
-            {/* Image Display */}
-            <Box
-              sx={{
-                width: '100%',
-                height: '70vh',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                overflow: 'hidden',
-                p: 2
-              }}
-            >
-              {previewImage && (
-                <Box
-                  component="img"
-                  src={previewImage}
-                  alt="Preview"
-                  sx={{
-                    maxWidth: '100%',
-                    maxHeight: '100%',
-                    transform: `scale(${zoom}) rotate(${rotation}deg)`,
-                    transition: 'transform 0.3s',
-                    objectFit: 'contain'
-                  }}
-                />
-              )}
-            </Box>
-
-            {/* Image Navigation */}
+            {/* Image Thumbnails */}
             {images.length > 1 && (
-              <Box sx={{ mt: 2, p: 1 }}>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Other Images:
-                </Typography>
-                <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', py: 1 }}>
+              <Box
+                sx={{
+                  position: "absolute",
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  bgcolor: "rgba(0, 0, 0, 0.7)",
+                  p: 1,
+                  overflowX: "auto",
+                }}
+              >
+                <Stack direction="row" spacing={1} justifyContent="center">
                   {images.map((img, index) => (
                     <Tooltip title={img.label} key={index}>
                       <Box
@@ -467,28 +789,36 @@ const BeneficiaryDetailModal = ({ open, onClose, beneficiary }) => {
                           width: 60,
                           height: 60,
                           borderRadius: 1,
-                          overflow: 'hidden',
-                          border: previewImage === img.url ? '2px solid' : '1px solid',
-                          borderColor: previewImage === img.url ? 'primary.main' : '#e0e0e0',
-                          cursor: 'pointer',
-                          opacity: previewImage === img.url ? 1 : 0.7,
-                          '&:hover': {
-                            opacity: 1
-                          }
+                          overflow: "hidden",
+                          border:
+                            currentImageIndex === index
+                              ? "2px solid"
+                              : "1px solid",
+                          borderColor:
+                            currentImageIndex === index
+                              ? "primary.main"
+                              : "rgba(255,255,255,0.3)",
+                          cursor: "pointer",
+                          opacity: currentImageIndex === index ? 1 : 0.7,
+                          flexShrink: 0,
+                          "&:hover": {
+                            opacity: 1,
+                          },
                         }}
                         onClick={() => {
-                          setPreviewImage(img.url);
+                          setCurrentImageIndex(index);
                           setZoom(1);
                           setRotation(0);
+                          setImagePosition({ x: 0, y: 0 });
                         }}
                       >
                         <Box
                           component="img"
                           src={img.url}
                           sx={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover'
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
                           }}
                           alt={img.label}
                         />
@@ -498,6 +828,26 @@ const BeneficiaryDetailModal = ({ open, onClose, beneficiary }) => {
                 </Stack>
               </Box>
             )}
+
+            {/* Instruction Hint */}
+            <Box
+              sx={{
+                position: "absolute",
+                bottom: images.length > 1 ? 70 : 10,
+                left: "50%",
+                transform: "translateX(-50%)",
+                bgcolor: "rgba(0, 0, 0, 0.5)",
+                color: "white",
+                px: 2,
+                py: 0.5,
+                borderRadius: 1,
+                fontSize: "0.75rem",
+                textAlign: "center",
+              }}
+            >
+              Use mouse wheel to zoom • Click and drag to pan • Arrow keys to
+              navigate
+            </Box>
           </Box>
         </Fade>
       </Modal>

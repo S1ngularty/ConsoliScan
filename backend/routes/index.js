@@ -3,7 +3,7 @@ const auth = require("./authRoute");
 const user = require("./userRoute");
 const category = require("./categoryRoute")
 const activityLogs = require("./activityLogsRoute")
-const beneficiary = require("./beneficiaryRoute")
+const eligible = require("./eligibleRoute")
 
 module.exports = {
   product,
@@ -11,5 +11,5 @@ module.exports = {
   user,
   category,
   activityLogs,
-  beneficiary
+  eligible
 };

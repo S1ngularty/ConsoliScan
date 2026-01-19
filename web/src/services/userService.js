@@ -130,14 +130,14 @@ export async function fetchLogs() {
   return logs.data.result;
 }
 
-export async function fetchBeneficiaries() {
-  const beneficiaries = await axios.get("/api/v1/beneficiary");
+export async function fetchEligibles() {
+  const beneficiaries = await axios.get("/api/v1/eligible");
   return beneficiaries.data.result;
 }
 
 export async function verificationRequest(userId, data) {
   if (!data) throw new Error("undefined data");
   if (!userId) throw new Error("undefined user Id");
-  const isSuccess = await axios.put(`/api/v1/beneficiary/${userId}`, data);
+  const isSuccess = await axios.put(`/api/v1/eligible/${userId}`, data);
   return isSuccess.data;
 }

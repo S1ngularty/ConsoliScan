@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const beneficiarySchema = new mongoose.Schema(
+const eligibleSchema = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
@@ -13,15 +13,21 @@ const beneficiarySchema = new mongoose.Schema(
       index: true,
       unique: true,
     },
+    idType: {
+      type: String,
+      enum: ["pwd", "senior"],
+      default: "pwd",
+      required: true,
+    },
     dateIssued: {
       type: Date,
       required: true,
     },
     expiryDate: {
       type: Date,
-      required: true,
       validate: {
         validator: function (value) {
+          if (this.idType === "senior" && !value) return true;
           return value > this.dateIssued;
         },
         message: "expiry date must be after the date Issued",
@@ -52,7 +58,16 @@ const beneficiarySchema = new mongoose.Schema(
     typeOfDisability: {
       type: String,
       enum: ["visual", "hearing", "physical", "mental", "multiple"],
-      required: true,
+      validate: {
+        validator: function (value) {
+          if (this.idType === "pwd") {
+            return value != null;
+          }
+          return value == null;
+        },
+        message: "if the id is pwd type then disability must not be null",
+      },
+      default: null,
     },
     userPhoto: {
       public_id: {
@@ -76,6 +91,6 @@ const beneficiarySchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-beneficiarySchema.index({ user: 1, idNumber: 1 });
+eligibleSchema.index({ user: 1, idNumber: 1 });
 
-module.exports = mongoose.model("Beneficiary", beneficiarySchema);
+module.exports = mongoose.model("Eligible", eligibleSchema);

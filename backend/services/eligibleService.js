@@ -1,7 +1,7 @@
 const User = require("../models/userModel");
-const Beneficiary = require("../models/beneficiaryMemberModel");
+const Eligible = require("../models/eligibleModel");
 const { uploadImage, deleteAssets } = require("../utils/cloundinaryUtil");
-const { createLog } = require("../services/activityLogsService");
+const { createLog } = require("./activityLogsService");
 
 exports.create = async (request) => {
   const { userId } = request.params;
@@ -13,7 +13,7 @@ exports.create = async (request) => {
   if (!idBack) throw new Error("back id image is required");
   if (!userPhoto) throw new Error("user photo id image is required");
 
-  let path = `beneficiaryIds/${userId}`;
+  let path = `EligibleIds/${userId}`;
   let uploadedIdFront = await uploadImage(idFront, path);
   let uploadedIdBack = await uploadImage(idBack, path);
   let uploadedUserPhoto = await uploadImage(userPhoto, path);
@@ -26,13 +26,13 @@ exports.create = async (request) => {
   };
   request.body.userPhoto = uploadedUserPhoto;
 
-  const created = await Beneficiary.create(request.body);
+  const created = await Eligible.create(request.body);
 
   return request.body;
 };
 
 exports.getAll = async (request) => {
-  const data = await Beneficiary.aggregate([
+  const data = await Eligible.aggregate([
     {
       $lookup: {
         from: "users",
@@ -76,7 +76,7 @@ exports.updateVerification = async (request) => {
   const { memberId } = request.params;
   if (!request.body) throw new Error("undefined body");
   request.body.verifiedAt =new Date()
-  const isUpdate = await Beneficiary.findByIdAndUpdate(memberId, request.body, {
+  const isUpdate = await Eligible.findByIdAndUpdate(memberId, request.body, {
     new: true,
   });
   return isUpdate;

@@ -34,6 +34,8 @@ import {
   Badge,
   CalendarToday,
   Warning,
+  Elderly,
+  AccessibilityNew,
 } from "@mui/icons-material";
 import * as beneficiaryService from "../../../services/userService";
 import BeneficiaryDetailModal from "../../../components/admin/BeneficiaryDetailModal";
@@ -48,6 +50,7 @@ const BeneficiaryManagement = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [disabilityFilter, setDisabilityFilter] = useState("all");
 
   // Modal states
@@ -75,7 +78,7 @@ const BeneficiaryManagement = () => {
   const fetchBeneficiaries = async () => {
     try {
       setLoading(true);
-      const data = await beneficiaryService.fetchBeneficiaries();
+      const data = await beneficiaryService.fetchEligibles();
       setBeneficiaries(data);
       setError("");
     } catch (err) {
@@ -98,20 +101,22 @@ const BeneficiaryManagement = () => {
 
   const handleVerificationUpdate = async (id, isVerified) => {
     try {
-      console.log(id, isVerified);
       await beneficiaryService.verificationRequest(id, { isVerified });
       setBeneficiaries((prev) =>
         prev.map((b) =>
           b._id === id
             ? { ...b, isVerified, verifiedAt: isVerified ? new Date() : null }
-            : b,
-        ),
+            : b
+        )
       );
       setVerificationModalOpen(false);
-      showToast(`Successfully ${!isVerified ?? "un"}verified`, "success");
+      showToast(
+        `Successfully ${isVerified ? "verified" : "unverified"}`,
+        "success"
+      );
     } catch (err) {
       console.error("Failed to update verification:", err);
-      showToast("Something went Wrong, please try again.", "error");
+      showToast("Something went wrong, please try again.", "error");
     }
   };
 
@@ -127,16 +132,20 @@ const BeneficiaryManagement = () => {
       (statusFilter === "verified" && beneficiary.isVerified) ||
       (statusFilter === "unverified" && !beneficiary.isVerified);
 
+    const matchesType =
+      typeFilter === "all" || beneficiary.idType === typeFilter;
+
     const matchesDisability =
       disabilityFilter === "all" ||
-      beneficiary.typeOfDisability === disabilityFilter;
+      beneficiary.typeOfDisability === disabilityFilter ||
+      (disabilityFilter === "senior" && beneficiary.idType === "senior");
 
-    return matchesSearch && matchesStatus && matchesDisability;
+    return matchesSearch && matchesStatus && matchesType && matchesDisability;
   });
 
   const paginatedData = filteredBeneficiaries.slice(
     page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage,
+    page * rowsPerPage + rowsPerPage
   );
 
   const getStatusChip = (isVerified) => (
@@ -149,7 +158,38 @@ const BeneficiaryManagement = () => {
     />
   );
 
-  const getDisabilityChip = (type) => {
+  const getTypeChip = (type) => {
+    const config = {
+      pwd: {
+        label: "PWD",
+        color: "primary",
+        icon: <AccessibilityNew fontSize="small" />,
+      },
+      senior: {
+        label: "Senior Citizen",
+        color: "secondary",
+        icon: <Elderly fontSize="small" />,
+      },
+    };
+
+    const cfg = config[type] || { label: type, color: "default" };
+
+    return (
+      <Chip
+        icon={cfg.icon}
+        label={cfg.label}
+        color={cfg.color}
+        size="small"
+        variant="outlined"
+      />
+    );
+  };
+
+  const getDisabilityChip = (type, idType) => {
+    if (idType === "senior") {
+      return <Chip label="Senior Citizen" color="secondary" size="small" />;
+    }
+
     const colors = {
       visual: "info",
       hearing: "primary",
@@ -160,7 +200,7 @@ const BeneficiaryManagement = () => {
 
     return (
       <Chip
-        label={type.charAt(0).toUpperCase() + type.slice(1)}
+        label={type ? type.charAt(0).toUpperCase() + type.slice(1) : "Not Specified"}
         color={colors[type] || "default"}
         size="small"
       />
@@ -195,7 +235,7 @@ const BeneficiaryManagement = () => {
           Beneficiary Management
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          Manage and verify disability identification cards
+          Manage and verify PWD and Senior Citizen identification cards
         </Typography>
       </Box>
 
@@ -204,6 +244,40 @@ const BeneficiaryManagement = () => {
           {error}
         </Alert>
       )}
+
+      {/* Stats Summary */}
+      <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
+        <Paper sx={{ p: 2, flex: 1, textAlign: "center" }}>
+          <Typography variant="h6">{beneficiaries.length}</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Total Beneficiaries
+          </Typography>
+        </Paper>
+        <Paper sx={{ p: 2, flex: 1, textAlign: "center" }}>
+          <Typography variant="h6" color="primary.main">
+            {beneficiaries.filter((b) => b.idType === "pwd").length}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            PWD Members
+          </Typography>
+        </Paper>
+        <Paper sx={{ p: 2, flex: 1, textAlign: "center" }}>
+          <Typography variant="h6" color="secondary.main">
+            {beneficiaries.filter((b) => b.idType === "senior").length}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Senior Citizens
+          </Typography>
+        </Paper>
+        <Paper sx={{ p: 2, flex: 1, textAlign: "center" }}>
+          <Typography variant="h6" color="success.main">
+            {beneficiaries.filter((b) => b.isVerified).length}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Verified
+          </Typography>
+        </Paper>
+      </Stack>
 
       {/* Filters */}
       <Paper sx={{ p: 2, mb: 3 }}>
@@ -226,6 +300,19 @@ const BeneficiaryManagement = () => {
             }}
             sx={{ flex: 1 }}
           />
+
+          <FormControl size="small" sx={{ minWidth: 140 }}>
+            <InputLabel>ID Type</InputLabel>
+            <Select
+              value={typeFilter}
+              label="ID Type"
+              onChange={(e) => setTypeFilter(e.target.value)}
+            >
+              <MenuItem value="all">All Types</MenuItem>
+              <MenuItem value="pwd">PWD</MenuItem>
+              <MenuItem value="senior">Senior Citizen</MenuItem>
+            </Select>
+          </FormControl>
 
           <FormControl size="small" sx={{ minWidth: 140 }}>
             <InputLabel>Verification Status</InputLabel>
@@ -253,6 +340,7 @@ const BeneficiaryManagement = () => {
               <MenuItem value="physical">Physical</MenuItem>
               <MenuItem value="mental">Mental</MenuItem>
               <MenuItem value="multiple">Multiple</MenuItem>
+              <MenuItem value="senior">Senior Citizen</MenuItem>
             </Select>
           </FormControl>
 
@@ -262,6 +350,7 @@ const BeneficiaryManagement = () => {
             onClick={() => {
               setSearch("");
               setStatusFilter("all");
+              setTypeFilter("all");
               setDisabilityFilter("all");
             }}
           >
@@ -270,32 +359,6 @@ const BeneficiaryManagement = () => {
         </Stack>
       </Paper>
 
-      {/* Stats Summary */}
-      <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
-        <Paper sx={{ p: 2, flex: 1, textAlign: "center" }}>
-          <Typography variant="h6">{beneficiaries.length}</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Total Beneficiaries
-          </Typography>
-        </Paper>
-        <Paper sx={{ p: 2, flex: 1, textAlign: "center" }}>
-          <Typography variant="h6" color="success.main">
-            {beneficiaries.filter((b) => b.isVerified).length}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Verified
-          </Typography>
-        </Paper>
-        <Paper sx={{ p: 2, flex: 1, textAlign: "center" }}>
-          <Typography variant="h6" color="warning.main">
-            {beneficiaries.filter((b) => !b.isVerified).length}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Pending Verification
-          </Typography>
-        </Paper>
-      </Stack>
-
       {/* Table */}
       <TableContainer component={Paper}>
         <Table>
@@ -303,15 +366,16 @@ const BeneficiaryManagement = () => {
             <TableRow>
               <TableCell>Member</TableCell>
               <TableCell>ID Details</TableCell>
-              <TableCell>Disability Type</TableCell>
-              <TableCell>Verification Status</TableCell>
+              <TableCell>ID Type</TableCell>
+              <TableCell>Category</TableCell>
+              <TableCell>Status</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {paginatedData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
                   <Typography color="text.secondary">
                     No beneficiaries found
                   </Typography>
@@ -354,13 +418,22 @@ const BeneficiaryManagement = () => {
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         <CalendarToday fontSize="inherit" sx={{ mr: 0.5 }} />
-                        Expires:{" "}
-                        {new Date(beneficiary.expiryDate).toLocaleDateString()}
+                        {beneficiary.expiryDate ? (
+                          <>
+                            Expires:{" "}
+                            {new Date(beneficiary.expiryDate).toLocaleDateString()}
+                          </>
+                        ) : (
+                          "No expiry (Senior)"
+                        )}
                       </Typography>
                     </Stack>
                   </TableCell>
                   <TableCell>
-                    {getDisabilityChip(beneficiary.typeOfDisability)}
+                    {getTypeChip(beneficiary.idType)}
+                  </TableCell>
+                  <TableCell>
+                    {getDisabilityChip(beneficiary.typeOfDisability, beneficiary.idType)}
                   </TableCell>
                   <TableCell>
                     {getStatusChip(beneficiary.isVerified)}
