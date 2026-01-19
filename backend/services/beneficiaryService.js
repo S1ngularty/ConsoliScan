@@ -13,22 +13,61 @@ exports.create = async (request) => {
   if (!idBack) throw new Error("back id image is required");
   if (!userPhoto) throw new Error("user photo id image is required");
 
-  let path = `beneficiaryIds/${userId}`
-  let uploadedIdFront = await uploadImage(idFront,path);
-  let uploadedIdBack = await uploadImage(idBack,path);
-  let uploadedUserPhoto = await uploadImage(userPhoto,path);
+  let path = `beneficiaryIds/${userId}`;
+  let uploadedIdFront = await uploadImage(idFront, path);
+  let uploadedIdBack = await uploadImage(idBack, path);
+  let uploadedUserPhoto = await uploadImage(userPhoto, path);
 
   console.log(uploadedIdFront, uploadedIdBack, uploadedUserPhoto);
 
-   request.body.idImage={
-    front:uploadedIdFront,
-    back:uploadedIdFront,
-  }
-  request.body.userPhoto= uploadedUserPhoto
+  request.body.idImage = {
+    front: uploadedIdFront,
+    back: uploadedIdFront,
+  };
+  request.body.userPhoto = uploadedUserPhoto;
 
+  const created = await Beneficiary.create(request.body);
 
+  return request.body;
+};
 
-    const created = await Beneficiary.create(request.body);
-
-    return request.body
+exports.getAll = async (request) => {
+  const data = await Beneficiary.aggregate([
+    {
+      $lookup: {
+        from: "users",
+        localField: "user",
+        foreignField: "_id",
+        as: "user",
+      },
+    },
+    {
+      $unwind: "$user",
+    },
+    {
+      $project: {
+        "user.__v": 0,
+        __v: 0,
+        "user.createdAt": 0,
+        "user.updatedAt": 0,
+        "user._id":0
+      },
+    },
+    {
+      $replaceRoot:{
+        newRoot:{
+          $mergeObjects:["$$ROOT","$user"]
+        }
+      }
+    },
+    {
+      $unset:"user"
+    },
+    {
+      $sort:{
+        createdAt:-1
+      }
+    }
+  ]);
+  return data
 };

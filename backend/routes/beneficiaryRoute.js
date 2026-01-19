@@ -11,6 +11,10 @@ const upload = multer({
 const beneficiaryController = require("../controllers/beneficiaryController");
 const authMiddleware = require("../middlewares/authMiddleware");
 
+router
+  .route("/beneficiary")
+  .get(beneficiaryController.getRequestMembership);
+
 router.route("/beneficiary/:userId").post(
   upload.fields([
     {
