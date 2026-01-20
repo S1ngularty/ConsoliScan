@@ -9,7 +9,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       // required: true,
       // unique:true,
-      index:true
+      index: true,
     },
     name: {
       type: String,
@@ -20,22 +20,26 @@ const userSchema = new mongoose.Schema(
       required: true,
       validate: [validator.isEmail, "field must be in email format"],
     },
-    sex:{
-      type:String,
-      enum:["male","female"]
+    password: {
+      type: String,
+      default: null,
     },
-    age:{
-      type:Number,
-      required:true,
-      default:null
+    sex: {
+      type: String,
+      enum: ["male", "female"],
     },
-    birthDate:{
-      type:Date,
-      default:null,
+    age: {
+      type: Number,
+      required: true,
+      default: null,
+    },
+    birthDate: {
+      type: Date,
+      default: null,
     },
     address: {
       type: String,
-      trim:true
+      trim: true,
     },
     street: {
       type: String,
@@ -87,7 +91,7 @@ const userSchema = new mongoose.Schema(
     resetPasswordToken: String,
     resetPasswordExpire: Date,
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 userSchema.methods.getToken = function () {
@@ -99,7 +103,7 @@ userSchema.methods.getToken = function () {
       email: this.email,
     },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXP }
+    { expiresIn: process.env.JWT_EXP },
   );
 };
 

@@ -1,6 +1,36 @@
 const User = require("../models/userModel");
 const admin = require("../configs/firebase");
 const { createLog } = require("./activityLogsService");
+const bcrypt = require("bcrypt");
+
+exports.register = async (request) => {
+  if (!request.body) throw new Error("undefined body");
+  const { name, email, age, sex, password, confirmPassword } = request.body;
+  if (!confirmPassword || !password) throw new Error("missing password fields");
+  if (String(confirmPassword).trim() === String(password).trim())
+    throw new Error("confirm password doenst match");
+  const hashPassword = await bcrypt.hash(password, 10);
+  const newUser = await User.create({
+    name,
+    email,
+    age,
+    sex,
+    hashPassword,
+  });
+  return newUser;
+};
+
+exports.login = async (request) => {
+  const { email, password } = request.body;
+  const user = await User.findOne({ email }).select(
+    "+password role email name status",
+  );
+  if (!user) throw new Error("account does not exist");
+  if (user.status === "inactive") throw new Error("user is inactive");
+  const isMatched = await bcrypt.compare(password, user.password);
+  if(!isMatched) throw new Error("password does not match")
+  return user
+};
 
 exports.googleAuth = async (request, response) => {
   const { token } = request.body;
