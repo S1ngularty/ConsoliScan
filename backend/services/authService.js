@@ -5,17 +5,15 @@ const bcrypt = require("bcrypt");
 
 exports.register = async (request) => {
   if (!request.body) throw new Error("undefined body");
-  const { name, email, age, sex, password, confirmPassword } = request.body;
-  if (!confirmPassword || !password) throw new Error("missing password fields");
-  if (String(confirmPassword).trim() === String(password).trim())
-    throw new Error("confirm password doenst match");
+  const { name, email, age, sex, password } = request.body;
+
   const hashPassword = await bcrypt.hash(password, 10);
   const newUser = await User.create({
     name,
     email,
     age,
     sex,
-    hashPassword,
+    password:hashPassword,
   });
   return newUser;
 };

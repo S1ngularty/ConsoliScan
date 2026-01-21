@@ -16,6 +16,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { API_URL } from "../../constants/config";
+import axios from "axios"
 
 const { width } = Dimensions.get("window");
 
@@ -84,16 +86,17 @@ const RegisterScreen = ({ navigation }) => {
 
     try {
       // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
+      const isSuccess = await axios.post(`${API_URL}api/v1/register`,userData)
+      if(!isSuccess) throw new Error("failed to create you account")
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(
         "Success!",
         "Account created successfully. You can now add more details in your dashboard.",
-        [{ text: "Continue", onPress: () => navigation.navigate("Login") }],
+        [{ text: "Continue", onPress: () => navigation.navigate("Scan") }],
       );
     } catch (error) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      console.log(error)
       Alert.alert("Error", "Registration failed. Please try again.");
     } finally {
       setIsLoading(false);

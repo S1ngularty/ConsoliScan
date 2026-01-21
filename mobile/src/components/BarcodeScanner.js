@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Butto } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import React from "react";
 import { CameraView, CameraType, useCameraPermissions } from "expo-camera";
 
