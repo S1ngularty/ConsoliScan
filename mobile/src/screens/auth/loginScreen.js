@@ -9,14 +9,28 @@ import {
   Platform,
   StatusBar,
 } from "react-native";
-import {SafeAreaView  } from "react-native-safe-area-context"
+import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import GoogleSignIn from "../../components/GoogleSignIn";
+import * as Haptics from "expo-haptics";
+import { login } from "../../api/auth.api";
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  const handleLogin = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    try {
+      await login(email, password);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      navigation.navigate("Scan")
+    } catch (error) {
+      console.log(error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -84,7 +98,7 @@ const LoginScreen = ({ navigation }) => {
             <Text style={styles.forgotText}>Forgot password?</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.loginButton}>
+          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
             <Text style={styles.loginText}>Sign in</Text>
           </TouchableOpacity>
         </View>

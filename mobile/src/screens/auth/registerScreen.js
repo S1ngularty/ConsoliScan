@@ -64,8 +64,8 @@ const RegisterScreen = ({ navigation }) => {
   };
 
   const handleRegister = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    
     if (!validateForm()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
