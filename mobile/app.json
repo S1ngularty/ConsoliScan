@@ -1,7 +1,8 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "consoliscan",
+    "slug": "consoliscan",
+    "scheme": "consoliscan",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,11 +17,13 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.tupt.ConsoliScan",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": ["android.permission.CAMERA"]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -33,7 +36,13 @@
           "microphonePermission": "Allow $(ConsoliScan) to access your microphone",
           "recordAudioAndroid": false
         }
-      ]
-    ]
+      ],
+      "expo-web-browser"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "04973f2e-c179-411e-bd1f-40e3685bf9cb"
+      }
+    }
   }
 }

@@ -2,7 +2,7 @@ import { View, Text } from 'react-native'
 import React from 'react'
 import BarcodeScanner from '../../components/BarcodeScanner'
 
-const scanningScreen = () => {
+const ScanningScreen = () => {
   return (
     <View style={{
         flex:1
@@ -17,4 +17,4 @@ const scanningScreen = () => {
   )
 }
 
-export default scanningScreen
+export default ScanningScreen
