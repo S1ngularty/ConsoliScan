@@ -11,7 +11,7 @@ router.route("/me").post(authMiddleware.verifyToken, (req, res) => {
 });
 
 router.route("/register").post(authController.registerUser);
-router.route("login").post(authController.LoginUser);
+router.route("/login").post(authController.LoginUser);
 
 router
   .route("/logout")

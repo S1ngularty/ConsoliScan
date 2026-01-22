@@ -25,7 +25,7 @@ const LoginScreen = ({ navigation }) => {
     try {
       await login(email, password);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      navigation.navigate("Scan")
+      navigation.navigate("Scan");
     } catch (error) {
       console.log(error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -111,7 +111,12 @@ const LoginScreen = ({ navigation }) => {
         </View>
 
         {/* Google Login */}
-        <GoogleSignIn style={styles.googleButton} />
+        <TouchableOpacity
+          style={styles.googleButton}
+        >
+          <MaterialCommunityIcons name="google" size={20} color="#DB4437" />
+          <Text>Continue with Google</Text>
+        </TouchableOpacity>
 
         {/* Footer */}
         <View style={styles.footer}>

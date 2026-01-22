@@ -9,8 +9,8 @@ const Stack = createNativeStackNavigator();
 
 export default function AuthNavigation() {
   return [
-    <Stack.Screen name="Login" component={LoginScreen} />,
     <Stack.Screen name="Scan" component={ScanningScreen} />,
+    <Stack.Screen name="Login" component={LoginScreen} />,
     <Stack.Screen name="Register" component={RegisterScreen} />,
   ];
 }

@@ -230,6 +230,18 @@ const updateStock = async (request) => {
   return isUpdated;
 };
 
+const getBarcode = async (request) => {
+  console.log(request.query)
+  return
+  const { type, data } = request.query;
+  const scannedProduct = await Product.findOne({
+    barcode: data,
+    barcodeType: type,
+  });
+  if (!scannedProduct) throw new Error("scanned Product not found");
+  return scannedProduct;
+};
+
 module.exports = {
   create,
   getAll,
@@ -239,5 +251,6 @@ module.exports = {
   softDelete,
   hardDelete,
   restore,
-  updateStock
+  updateStock,
+  getBarcode
 };

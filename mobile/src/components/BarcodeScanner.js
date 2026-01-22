@@ -1,49 +1,67 @@
 import { View, Text, StyleSheet, Button } from "react-native";
-import React from "react";
-import { CameraView, CameraType, useCameraPermissions } from "expo-camera";
+import React, { useRef, useState } from "react";
+import { CameraView, useCameraPermissions } from "expo-camera";
 
-const BarcodeScanner = ({onDetect}) => {
+const BarcodeScanner = ({ onDetect }) => {
   const [permission, requestPermission] = useCameraPermissions();
-  const facing = "back";
+  const [scanning, setScanning] = useState(false); // 👈 controls handler
+  const isProcessingRef = useRef(false);
 
-  if (!permission) {
-    return <View></View>;
-  }
+  if (!permission) return <View />;
   if (!permission.granted) {
     return (
       <View style={styles.container}>
         <Text style={styles.message}>
           We need your permission to show the camera
         </Text>
-        <Button onPress={requestPermission} title="grant permission" />
+        <Button onPress={requestPermission} title="Grant permission" />
       </View>
     );
   }
+
+  const handleScan = async ({ data, type }) => {
+    if (isProcessingRef.current) return;
+
+    isProcessingRef.current = true;
+    setScanning(true); // ❌ disable scanner
+
+    try {
+      await onDetect(data, type);
+    } catch (err) {
+      console.log(err);
+    } finally {
+      setTimeout(() => {
+        isProcessingRef.current = false;
+        setScanning(false); // ✅ re-enable scanner
+      }, 1500);
+    }
+  };
+
   return (
     <View style={styles.container}>
-  <CameraView
-    style={StyleSheet.absoluteFillObject}
-    facing="back"
-    barcodeScannerSettings={{
-      barcodeTypes: ["ean8", "ean13", "upc_a", "upc_e", "code128"],
-    }}
-    onBarcodeScanned={({ data, type }) => {
-      onDetect(data, type);
-    }}
-  />
+      <CameraView
+        style={StyleSheet.absoluteFillObject}
+        facing="back"
+        barcodeScannerSettings={{
+          barcodeTypes: ["ean8", "ean13", "upc_a", "upc_e", "code128"],
+        }}
+        onBarcodeScanned={scanning ? undefined : handleScan} // ⭐ THIS IS THE FIX
+      />
 
-  {/* Overlay */}
-  <View style={styles.overlay}>
-    <Text style={styles.instructionText}>Align barcode within frame</Text>
+      <View style={styles.overlay}>
+        <Text style={styles.instructionText}>
+          {scanning ? "Processing..." : "Align barcode within frame"}
+        </Text>
 
-    <View style={styles.scanArea}>
-      <View style={styles.scanFrame} />
+        <View style={styles.scanArea}>
+          <View style={styles.scanFrame} />
+        </View>
+      </View>
     </View>
-  </View>
-</View>
-
   );
 };
+
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -84,6 +102,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
-
 
 export default BarcodeScanner;

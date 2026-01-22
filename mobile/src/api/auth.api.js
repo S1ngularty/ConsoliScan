@@ -15,6 +15,5 @@ export async function login(email, password) {
       },
     },
   );
-
   return result.data.result;
 }

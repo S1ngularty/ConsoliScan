@@ -25,6 +25,7 @@ exports.login = async (request) => {
   );
   if (!user) throw new Error("account does not exist");
   if (user.status === "inactive") throw new Error("user is inactive");
+
   const isMatched = await bcrypt.compare(password, user.password);
   if(!isMatched) throw new Error("password does not match")
   return user
