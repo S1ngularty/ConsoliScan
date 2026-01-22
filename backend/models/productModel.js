@@ -60,6 +60,6 @@ const productSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// productSchema.index({ barcode: 1, barcodeType: 1 });
+productSchema.index({ barcode: 1, barcodeType: 1 });
 
 module.exports = mongoose.model("Product", productSchema);

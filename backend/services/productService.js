@@ -2,6 +2,7 @@ const Product = require("../models/productModel");
 const { uploadImage, deleteAssets } = require("../utils/cloundinaryUtil");
 const { createLog } = require("./activityLogsService");
 const slugify = require("slugify");
+const { parseBarcodeType } = require("../utils/barcodeParserUtil");
 
 const create = async (request) => {
   if (!request.body) throw new Error(`theres no payload`);
@@ -231,12 +232,12 @@ const updateStock = async (request) => {
 };
 
 const getBarcode = async (request) => {
-  console.log(request.query)
-  return
+  console.log(request.query);
   const { type, data } = request.query;
+  const parseType = parseBarcodeType(type);
   const scannedProduct = await Product.findOne({
     barcode: data,
-    barcodeType: type,
+    barcodeType: parseType,
   });
   if (!scannedProduct) throw new Error("scanned Product not found");
   return scannedProduct;
@@ -252,5 +253,5 @@ module.exports = {
   hardDelete,
   restore,
   updateStock,
-  getBarcode
+  getBarcode,
 };
