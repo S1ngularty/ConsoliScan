@@ -25,7 +25,7 @@ const LoginScreen = ({ navigation }) => {
     try {
       await login(email, password);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      navigation.navigate("Scan");
+      navigation.navigate("HomeTabs");
     } catch (error) {
       console.log(error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

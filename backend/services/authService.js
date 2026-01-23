@@ -13,7 +13,7 @@ exports.register = async (request) => {
     email,
     age,
     sex,
-    password:hashPassword,
+    password: hashPassword,
   });
   return newUser;
 };
@@ -27,8 +27,11 @@ exports.login = async (request) => {
   if (user.status === "inactive") throw new Error("user is inactive");
 
   const isMatched = await bcrypt.compare(password, user.password);
-  if(!isMatched) throw new Error("password does not match")
-  return user
+  if (!isMatched) throw new Error("password does not match");
+  const jwtToken = await user.getToken();
+  if (!jwtToken) throw new Error("failed to generate user token");
+  delete user.password
+  return { ...user, token: jwtToken };
 };
 
 exports.googleAuth = async (request, response) => {

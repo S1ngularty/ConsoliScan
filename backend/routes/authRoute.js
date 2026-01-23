@@ -7,7 +7,7 @@ const authMiddleware = require("../middlewares/authMiddleware");
 router.route("/signIn").post(authController.authenticate);
 
 router.route("/me").post(authMiddleware.verifyToken, (req, res) => {
-  res.status(200).json({ status: true, role: req.user.role });
+  res.status(200).json(req.user);
 });
 
 router.route("/register").post(authController.registerUser);
