@@ -36,8 +36,7 @@
           "microphonePermission": "Allow $(ConsoliScan) to access your microphone",
           "recordAudioAndroid": false
         }
-      ],
-      "expo-web-browser"
+      ]
     ],
     "extra": {
       "eas": {

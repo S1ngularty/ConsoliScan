@@ -23,6 +23,7 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       default: null,
+      select:false
     },
     sex: {
       type: String,

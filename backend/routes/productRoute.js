@@ -8,7 +8,11 @@ const authMiddleware = require("../middlewares/authMiddleware");
 
 router
   .route("/product")
-  .post(authMiddleware.verifyToken, upload.array("images", 5), productController.createProduct)
+  .post(
+    authMiddleware.verifyToken,
+    upload.array("images", 5),
+    productController.createProduct,
+  )
   .get(productController.getAllProduct);
 
 router
@@ -30,8 +34,10 @@ router
   .route("/product/removeImg/:productId")
   .post(authMiddleware.verifyToken, productController.deleteImg);
 
-  router
+router
   .route("/product/stocks/:productId")
   .put(authMiddleware.verifyToken, productController.updateProductStock);
+
+router.route("/scan/product").get(productController.getScannedProduct);
 
 module.exports = router;
