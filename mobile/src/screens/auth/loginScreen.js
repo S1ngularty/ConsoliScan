@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import Loader from "../../components/Loader";
 import GoogleSignIn from "../../components/GoogleSignIn";
 import * as Haptics from "expo-haptics";
 import { login } from "../../api/auth.api";
@@ -19,6 +20,7 @@ const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setLoading] = useState(false);
 
   const handleLogin = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -35,102 +37,113 @@ const LoginScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
-
-      {/* Background Design Elements */}
-      <View style={styles.background}>
-        <View style={[styles.bgShape, styles.bgShape1]} />
-        <View style={[styles.bgShape, styles.bgShape2]} />
-        <View style={[styles.bgShape, styles.bgShape3]} />
-        <View style={[styles.bgShape, styles.bgShape4]} />
-      </View>
-
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.content}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.logo}>
-            <MaterialCommunityIcons
-              name="scan-helper"
-              size={32}
-              color="#00A86B"
-            />
+      {!isLoading ? (
+       <View style={{
+        flex:1,
+        justifyContent:"center"
+       }}>
+         <Loader />
+       </View>
+      ) : (
+        <>
+          <View style={styles.background}>
+            <View style={[styles.bgShape, styles.bgShape1]} />
+            <View style={[styles.bgShape, styles.bgShape2]} />
+            <View style={[styles.bgShape, styles.bgShape3]} />
+            <View style={[styles.bgShape, styles.bgShape4]} />
           </View>
-          <Text style={styles.title}>ConsoliScan</Text>
-          <Text style={styles.subtitle}>Welcome back to smart shopping</Text>
-        </View>
 
-        {/* Form */}
-        <View style={styles.form}>
-          <TextInput
-            style={styles.input}
-            placeholder="Email address"
-            placeholderTextColor="#94a3b8"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-          />
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.content}
+          >
+            {/* Header */}
+            <View style={styles.header}>
+              <View style={styles.logo}>
+                <MaterialCommunityIcons
+                  name="scan-helper"
+                  size={32}
+                  color="#00A86B"
+                />
+              </View>
+              <Text style={styles.title}>ConsoliScan</Text>
+              <Text style={styles.subtitle}>
+                Welcome back to smart shopping
+              </Text>
+            </View>
 
-          <View style={styles.passwordContainer}>
-            <TextInput
-              style={styles.passwordInput}
-              placeholder="Password"
-              placeholderTextColor="#94a3b8"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-            />
-            <TouchableOpacity
-              style={styles.eyeButton}
-              onPress={() => setShowPassword(!showPassword)}
-            >
-              <MaterialCommunityIcons
-                name={showPassword ? "eye-off" : "eye"}
-                size={20}
-                color="#64748b"
+            {/* Form */}
+            <View style={styles.form}>
+              <TextInput
+                style={styles.input}
+                placeholder="Email address"
+                placeholderTextColor="#94a3b8"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
               />
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="Password"
+                  placeholderTextColor="#94a3b8"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity
+                  style={styles.eyeButton}
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  <MaterialCommunityIcons
+                    name={showPassword ? "eye-off" : "eye"}
+                    size={20}
+                    color="#64748b"
+                  />
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity style={styles.forgotPassword}>
+                <Text style={styles.forgotText}>Forgot password?</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.loginButton}
+                onPress={handleLogin}
+              >
+                <Text style={styles.loginText}>Sign in</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Divider */}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or continue with</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Google Login */}
+            <TouchableOpacity style={styles.googleButton}>
+              <MaterialCommunityIcons name="google" size={20} color="#DB4437" />
+              <Text>Continue with Google</Text>
             </TouchableOpacity>
-          </View>
 
-          <TouchableOpacity style={styles.forgotPassword}>
-            <Text style={styles.forgotText}>Forgot password?</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-            <Text style={styles.loginText}>Sign in</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Divider */}
-        <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or continue with</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        {/* Google Login */}
-        <TouchableOpacity
-          style={styles.googleButton}
-        >
-          <MaterialCommunityIcons name="google" size={20} color="#DB4437" />
-          <Text>Continue with Google</Text>
-        </TouchableOpacity>
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            Don't have an account?{" "}
-            <Text
-              style={styles.link}
-              onPress={() => navigation.navigate("Register")}
-            >
-              Sign up
-            </Text>
-          </Text>
-        </View>
-      </KeyboardAvoidingView>
+            {/* Footer */}
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>
+                Don't have an account?{" "}
+                <Text
+                  style={styles.link}
+                  onPress={() => navigation.navigate("Register")}
+                >
+                  Sign up
+                </Text>
+              </Text>
+            </View>
+          </KeyboardAvoidingView>
+        </>
+      )}
     </SafeAreaView>
   );
 };
