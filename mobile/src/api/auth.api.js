@@ -22,14 +22,15 @@ export async function login(email, password) {
   return data;
 }
 
-export async function VerifyToken(token){
-  const result = await axios.post(`${API_URL}/api/v1/verifyToken`,{},{
+export async function verifyToken(token){
+  const result = await axios.post(`${API_URL}api/v1/me`,{},{
     headers:{
       "Authorization":`Bearer ${token}`
     }
   })
 
-  if(!result) return 
 
-  return result.data.result
+  if(!result) throw new Error("expired token, unauthorized access") 
+
+  return result.data
  }

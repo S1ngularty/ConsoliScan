@@ -2,9 +2,9 @@ const jwt = require("jsonwebtoken");
 
 exports.verifyToken = async (req, res, next) => {
   try {
-    if (!req.cookies.token) throw new Error("missing a cookie token");
-    const token = String(req.cookies.token).trim();
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    if (!req.cookies.token && !req.headers.authorization) throw new Error("missing a cookie/Bearer token");
+    const token = req.cookies.token || String(req.headers.authorization).split(" ")[1]
+    const payload = jwt.verify(token.trim(), process.env.JWT_SECRET);
     if (!payload) throw new Error("invalid token");
     req.user = payload;
     next();

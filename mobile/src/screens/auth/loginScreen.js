@@ -14,13 +14,14 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Loader from "../../components/Loader";
 import GoogleSignIn from "../../components/GoogleSignIn";
 import * as Haptics from "expo-haptics";
-import { login } from "../../api/auth.api";
+import { login, verifyToken } from "../../api/auth.api";
+import { getToken } from "../../utils/authUtil";
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setLoading] = useState(false);
+  const [isLoading, setLoading] = useState(true);
 
   const handleLogin = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -34,16 +35,36 @@ const LoginScreen = ({ navigation }) => {
     }
   };
 
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const token = await getToken();
+        if (!token){
+           setLoading(false);
+           return
+        }
+        const data = await verifyToken(token);
+        if(data) navigation.navigate("HomeTabs")
+      } catch (error) {
+        console.log(error);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      {!isLoading ? (
-       <View style={{
-        flex:1,
-        justifyContent:"center"
-       }}>
-         <Loader />
-       </View>
+      {isLoading ? (
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+          }}
+        >
+          <Loader />
+        </View>
       ) : (
         <>
           <View style={styles.background}>
