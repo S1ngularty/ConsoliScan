@@ -236,4 +236,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default BarcodeScanner;
+export default BarcodeScanner;   

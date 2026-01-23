@@ -4,497 +4,482 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Image,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
+  Platform,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 
-export default function HomeScreen({ navigation }) {
-  const [points, setPoints] = useState(1250);
-  const [userName, setUserName] = useState("John Doe");
-  const [recentTransactions, setRecentTransactions] = useState([
-    { id: 1, store: "FreshMart", amount: 45.99, date: "Today", points: 45 },
-    { id: 2, store: "SuperGrocer", amount: 32.50, date: "Yesterday", points: 32 },
-    { id: 3, store: "Local Market", amount: 18.75, date: "2 days ago", points: 18 },
-  ]);
+const HomeScreen = ({ navigation }) => {
+  const [points] = useState(1250);
+  const [userName] = useState("John Doe");
 
-  const quickActions = [
-    {
-      id: 1,
-      title: "Scan Products",
-      icon: "barcode-scan",
-      color: "#00A86B",
-      screen: "Scanning",
-    },
-    {
-      id: 2,
-      title: "My Cart",
-      icon: "cart",
-      color: "#FF6B6B",
-      screen: "Cart",
-    },
-    {
-      id: 3,
-      title: "Nearby Stores",
-      icon: "store",
-      color: "#4ECDC4",
-      screen: "Stores",
-    },
-    {
-      id: 4,
-      title: "View Receipts",
-      icon: "receipt",
-      color: "#FFD166",
-      screen: "Receipts",
-    },
-  ];
+  // Local sub-component for Action Cards
+  const ActionCard = ({ title, icon, onPress, isPrimary }) => (
+    <TouchableOpacity 
+      onPress={onPress}
+      activeOpacity={0.7}
+      style={[styles.card, isPrimary && styles.primaryCard]}
+    >
+      <View style={[styles.cardIconBox, isPrimary && styles.primaryIconBox]}>
+        <MaterialCommunityIcons 
+          name={icon} 
+          size={26} 
+          color={isPrimary ? "#00A86B" : "#64748b"} 
+        />
+      </View>
+      <Text style={[styles.cardTitle, isPrimary && styles.primaryCardTitle]}>{title}</Text>
+    </TouchableOpacity>
+  );
 
-  const specialOffers = [
-    {
-      id: 1,
-      title: "Weekend Special",
-      description: "20% off on fresh vegetables",
-      validUntil: "Valid until Sunday",
-      icon: "leaf",
-    },
-    {
-      id: 2,
-      title: "Double Points",
-      description: "Earn double loyalty points",
-      validUntil: "All day Wednesday",
-      icon: "gift",
-    },
-  ];
+  // Local sub-component for Activity Rows
+  const TransactionItem = ({ store, date, amount, pts }) => (
+    <View style={styles.transRow}>
+      <View style={styles.transIcon}>
+        <MaterialCommunityIcons name="store-outline" size={20} color="#0f172a" />
+      </View>
+      <View style={{ flex: 1, marginLeft: 12 }}>
+        <Text style={styles.transStore}>{store}</Text>
+        <Text style={styles.transDate}>{date}</Text>
+      </View>
+      <View style={{ alignItems: 'flex-end' }}>
+        <Text style={styles.transAmount}>{amount}</Text>
+        <Text style={styles.transPoints}>+{pts} pts</Text>
+      </View>
+    </View>
+  );
+
+  // Local sub-component for Special Offer Card
+  const OfferCard = ({ title, description, color }) => (
+    <View style={[styles.offerCard, { backgroundColor: color }]}>
+      <View style={styles.offerContent}>
+        <Text style={styles.offerTitle}>{title}</Text>
+        <Text style={styles.offerDesc}>{description}</Text>
+      </View>
+      <TouchableOpacity style={styles.offerButton}>
+        <Text style={styles.offerButtonText}>Claim</Text>
+        <MaterialCommunityIcons name="chevron-right" size={16} color="#fff" />
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor="#00A86B" barStyle="light-content" />
-      
-      {/* Header Section */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.greeting}>Welcome back,</Text>
-            <Text style={styles.userName}>{userName}</Text>
-          </View>
-          <TouchableOpacity style={styles.notificationButton}>
-            <Ionicons name="notifications-outline" size={24} color="#fff" />
-            <View style={styles.notificationBadge}>
-              <Text style={styles.notificationText}>3</Text>
-            </View>
-          </TouchableOpacity>
+      <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
+
+      {/* --- TOP NAVIGATION --- */}
+      <View style={styles.navBar}>
+        <View>
+          <Text style={styles.greetingText}>Good Morning,</Text>
+          <Text style={styles.userNameText}>{userName}</Text>
         </View>
+        <TouchableOpacity style={styles.notifCircle}>
+          <Ionicons name="notifications-outline" size={22} color="#0f172a" />
+          <View style={styles.notifDot} />
+        </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Points Card */}
-        <View style={styles.pointsCard}>
-          <View style={styles.pointsHeader}>
-            <MaterialCommunityIcons name="trophy" size={28} color="#FFD166" />
-            <Text style={styles.pointsTitle}>Your Loyalty Points</Text>
-          </View>
-          <View style={styles.pointsContainer}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* --- POINTS BALANCE (HERO) --- */}
+        <View style={styles.heroSection}>
+          <Text style={styles.heroLabel}>Total Balance</Text>
+          <View style={styles.pointsRow}>
             <Text style={styles.pointsValue}>{points.toLocaleString()}</Text>
-            <Text style={styles.pointsLabel}>POINTS</Text>
+            <Text style={styles.pointsCurrency}>pts</Text>
           </View>
-          <View style={styles.pointsInfo}>
-            <View style={styles.pointsInfoItem}>
-              <MaterialCommunityIcons name="trending-up" size={20} color="#00A86B" />
-              <Text style={styles.pointsInfoText}>+125 points this week</Text>
-            </View>
-            <TouchableOpacity style={styles.redeemButton}>
-              <Text style={styles.redeemButtonText}>Redeem Rewards</Text>
-              <MaterialCommunityIcons name="gift" size={20} color="#fff" />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity style={styles.rewardPill}>
+            <MaterialCommunityIcons name="auto-fix" size={16} color="#00A86B" />
+            <Text style={styles.rewardText}>2 rewards ready to redeem</Text>
+            <MaterialCommunityIcons name="chevron-right" size={16} color="#00A86B" />
+          </TouchableOpacity>
         </View>
 
-        {/* Quick Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.quickActionsGrid}>
-            {quickActions.map((action) => (
-              <TouchableOpacity
-                key={action.id}
-                style={styles.quickActionCard}
-                onPress={() => navigation.navigate(action.screen)}
-              >
-                <View style={[styles.actionIconContainer, { backgroundColor: action.color + '20' }]}>
-                  <MaterialCommunityIcons
-                    name={action.icon}
-                    size={28}
-                    color={action.color}
-                  />
-                </View>
-                <Text style={styles.actionTitle}>{action.title}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+        {/* --- ACTION GRID --- */}
+        <View style={styles.gridContainer}>
+          <ActionCard 
+            title="Scan Product" 
+            icon="barcode-scan" 
+            onPress={() => navigation.navigate("Scan")} 
+            isPrimary 
+          />
+          <ActionCard 
+            title="My Cart" 
+            icon="basket-outline" 
+            onPress={() => navigation.navigate("Cart")} 
+          />
+          <ActionCard 
+            title="Nearby Stores" 
+            icon="map-marker-outline" 
+            onPress={() => navigation.navigate("Stores")} 
+          />
+          <ActionCard 
+            title="Activity" 
+            icon="script-text-outline" 
+            onPress={() => navigation.navigate("Transactions")} 
+          />
         </View>
 
-        {/* Recent Transactions */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Transactions</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Transactions')}>
-              <Text style={styles.seeAllText}>See All</Text>
-            </TouchableOpacity>
-          </View>
-          {recentTransactions.map((transaction) => (
-            <View key={transaction.id} style={styles.transactionCard}>
-              <View style={styles.transactionInfo}>
-                <View style={styles.storeIcon}>
-                  <MaterialCommunityIcons name="store" size={20} color="#00A86B" />
-                </View>
-                <View style={styles.transactionDetails}>
-                  <Text style={styles.storeName}>{transaction.store}</Text>
-                  <Text style={styles.transactionDate}>{transaction.date}</Text>
-                </View>
-              </View>
-              <View style={styles.transactionAmount}>
-                <Text style={styles.amountText}>${transaction.amount.toFixed(2)}</Text>
-                <View style={styles.pointsBadge}>
-                  <MaterialCommunityIcons name="star" size={12} color="#FFD166" />
-                  <Text style={styles.pointsBadgeText}>+{transaction.points}</Text>
-                </View>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        {/* Special Offers */}
-        <View style={styles.section}>
+        {/* --- SPECIAL OFFERS --- */}
+        <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Special Offers</Text>
-          {specialOffers.map((offer) => (
-            <View key={offer.id} style={styles.offerCard}>
-              <View style={styles.offerIconContainer}>
-                <MaterialCommunityIcons name={offer.icon} size={24} color="#fff" />
-              </View>
-              <View style={styles.offerContent}>
-                <Text style={styles.offerTitle}>{offer.title}</Text>
-                <Text style={styles.offerDescription}>{offer.description}</Text>
-                <Text style={styles.offerValid}>{offer.validUntil}</Text>
-              </View>
-              <TouchableOpacity style={styles.offerButton}>
-                <Text style={styles.offerButtonText}>View</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
+          <TouchableOpacity>
+            <Text style={styles.seeAll}>View all</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Scan QR Button */}
-        <TouchableOpacity
-          style={styles.scanButton}
-          onPress={() => navigation.navigate('Scanning')}
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          style={styles.offersScroll}
+          contentContainerStyle={styles.offersContainer}
         >
-          <MaterialCommunityIcons name="qrcode-scan" size={28} color="#fff" />
-          <Text style={styles.scanButtonText}>Scan QR Code at Checkout</Text>
-        </TouchableOpacity>
+          <OfferCard 
+            title="Double Points" 
+            description="Earn 2x points on all purchases today" 
+            color="#0f172a" 
+          />
+          <OfferCard 
+            title="Weekend Special" 
+            description="20% off fresh vegetables" 
+            color="#00A86B" 
+          />
+          <OfferCard 
+            title="Free Delivery" 
+            description="On orders above ₱500" 
+            color="#3b82f6" 
+          />
+        </ScrollView>
+
+        {/* --- RECENT ACTIVITY SECTION --- */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Recent Activity</Text>
+          <TouchableOpacity onPress={() => navigation.navigate("Transactions")}>
+            <Text style={styles.seeAll}>See history</Text>
+          </TouchableOpacity>
+        </View>
+
+        <TransactionItem 
+          store="FreshMart" 
+          date="2 hours ago" 
+          amount="₱240.00" 
+          pts="24" 
+        />
+        <TransactionItem 
+          store="SuperGrocer" 
+          date="Yesterday" 
+          amount="₱1,120.50" 
+          pts="112" 
+        />
+        <TransactionItem 
+          store="QuickMart Express" 
+          date="Dec 28, 2024" 
+          amount="₱45.99" 
+          pts="45" 
+        />
+
+        {/* --- TIPS CARD --- */}
+        <View style={styles.tipsCard}>
+          <MaterialCommunityIcons name="shield-check-outline" size={24} color="#0f172a" />
+          <View style={{ flex: 1, marginLeft: 16 }}>
+            <Text style={styles.tipsTitle}>Secure & Fast Checkout</Text>
+            <Text style={styles.tipsText}>Blockchain-verified transactions for maximum security</Text>
+          </View>
+        </View>
       </ScrollView>
+
+      {/* --- FLOATING SCAN BUTTON --- */}
+      <TouchableOpacity 
+        style={styles.floatingScan} 
+        onPress={() => navigation.getParent()?.navigate("Scan")}
+        activeOpacity={0.9}
+      >
+        <MaterialCommunityIcons name="qrcode-scan" size={22} color="#fff" />
+        <Text style={styles.floatingText}>Start Shopping</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F8F9FA",
+  container: { 
+    flex: 1, 
+    backgroundColor: "#F8F9FA" 
   },
-  header: {
-    backgroundColor: "#00A86B",
-    paddingHorizontal: 20,
-    paddingTop: 15,
-    paddingBottom: 20,
+  navBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 15,
   },
-  headerContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  greetingText: { 
+    fontSize: 14, 
+    color: "#94a3b8", 
+    fontWeight: '500' 
   },
-  greeting: {
-    color: "rgba(255,255,255,0.9)",
-    fontSize: 14,
-    marginBottom: 2,
+  userNameText: { 
+    fontSize: 18, 
+    color: "#0f172a", 
+    fontWeight: '800' 
   },
-  userName: {
-    color: "#fff",
-    fontSize: 22,
-    fontWeight: "bold",
+  notifCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#f1f5f9'
   },
-  notificationButton: {
-    padding: 8,
-    position: "relative",
+  notifDot: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF6B6B',
+    borderWidth: 2,
+    borderColor: '#fff'
   },
-  notificationBadge: {
-    position: "absolute",
-    top: 4,
-    right: 4,
-    backgroundColor: "#FF6B6B",
-    borderRadius: 10,
-    width: 18,
-    height: 18,
-    justifyContent: "center",
-    alignItems: "center",
+  scrollContent: { 
+    paddingBottom: 140 // Space for floating button + Tab bar
   },
-  notificationText: {
-    color: "#fff",
-    fontSize: 10,
-    fontWeight: "bold",
+  
+  heroSection: {
+    paddingHorizontal: 24,
+    paddingVertical: 35,
+    alignItems: 'center',
   },
-  pointsCard: {
-    backgroundColor: "#fff",
-    margin: 20,
-    marginTop: -30,
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+  heroLabel: { 
+    color: '#94a3b8', 
+    fontSize: 12, 
+    fontWeight: '800', 
+    letterSpacing: 1.2, 
+    textTransform: 'uppercase' 
   },
-  pointsHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 15,
+  pointsRow: { 
+    flexDirection: 'row', 
+    alignItems: 'baseline', 
+    marginTop: 8 
   },
-  pointsTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    marginLeft: 10,
+  pointsValue: { 
+    fontSize: 60, 
+    fontWeight: '900', 
+    color: '#0f172a',
+    letterSpacing: -1
   },
-  pointsContainer: {
-    alignItems: "center",
-    marginVertical: 10,
+  pointsCurrency: { 
+    fontSize: 20, 
+    fontWeight: '700', 
+    color: '#00A86B', 
+    marginLeft: 6 
   },
-  pointsValue: {
-    fontSize: 48,
-    fontWeight: "bold",
-    color: "#00A86B",
-  },
-  pointsLabel: {
-    fontSize: 14,
-    color: "#666",
-    fontWeight: "500",
-    letterSpacing: 1,
-  },
-  pointsInfo: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 15,
-    paddingTop: 15,
-    borderTopWidth: 1,
-    borderTopColor: "#f0f0f0",
-  },
-  pointsInfoItem: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  pointsInfoText: {
-    marginLeft: 8,
-    color: "#666",
-    fontSize: 14,
-  },
-  redeemButton: {
-    backgroundColor: "#00A86B",
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 15,
+  rewardPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 168, 107, 0.08)',
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
+    marginTop: 18,
   },
-  redeemButtonText: {
-    color: "#fff",
-    fontWeight: "600",
-    marginRight: 5,
+  rewardText: { 
+    color: '#00A86B', 
+    fontSize: 13, 
+    fontWeight: '700', 
+    marginHorizontal: 6 
   },
-  section: {
+
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     paddingHorizontal: 20,
-    marginBottom: 20,
+    justifyContent: 'space-between',
   },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 15,
+  card: {
+    width: '48%',
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#333",
+  primaryCard: { 
+    borderColor: 'rgba(0, 168, 107, 0.15)',
+    backgroundColor: '#ffffff' 
   },
-  seeAllText: {
-    color: "#00A86B",
-    fontWeight: "600",
-  },
-  quickActionsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
-  quickActionCard: {
-    width: "48%",
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  actionIconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  actionTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
-    textAlign: "center",
-  },
-  transactionCard: {
-    backgroundColor: "#fff",
+  cardIconBox: {
+    width: 46,
+    height: 46,
     borderRadius: 12,
-    padding: 16,
+    backgroundColor: '#f8fafc',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  primaryIconBox: { 
+    backgroundColor: 'rgba(0, 168, 107, 0.1)' 
+  },
+  cardTitle: { 
+    fontSize: 14, 
+    fontWeight: '700', 
+    color: '#64748b' 
+  },
+  primaryCardTitle: { 
+    color: '#0f172a' 
+  },
+
+  // Offers Section
+  offersScroll: {
     marginBottom: 10,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
   },
-  transactionInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  storeIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0, 168, 107, 0.1)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  transactionDetails: {
-    flexDirection: "column",
-  },
-  storeName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-  },
-  transactionDate: {
-    fontSize: 12,
-    color: "#666",
-    marginTop: 2,
-  },
-  transactionAmount: {
-    alignItems: "flex-end",
-  },
-  amountText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  pointsBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255, 209, 102, 0.1)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
-    marginTop: 4,
-  },
-  pointsBadgeText: {
-    fontSize: 12,
-    color: "#FFD166",
-    fontWeight: "600",
-    marginLeft: 4,
+  offersContainer: {
+    paddingHorizontal: 24,
   },
   offerCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  offerIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#00A86B",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 15,
+    width: 280,
+    borderRadius: 24,
+    padding: 24,
+    marginRight: 16,
+    justifyContent: 'space-between',
   },
   offerContent: {
-    flex: 1,
+    marginBottom: 20,
   },
   offerTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 4,
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#fff',
+    marginBottom: 8,
   },
-  offerDescription: {
+  offerDesc: {
     fontSize: 14,
-    color: "#666",
-    marginBottom: 2,
-  },
-  offerValid: {
-    fontSize: 12,
-    color: "#999",
+    color: 'rgba(255,255,255,0.9)',
+    lineHeight: 20,
   },
   offerButton: {
-    backgroundColor: "rgba(0, 168, 107, 0.1)",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
   },
   offerButtonText: {
-    color: "#00A86B",
-    fontWeight: "600",
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '800',
+    marginRight: 4,
   },
-  scanButton: {
-    backgroundColor: "#00A86B",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 18,
-    marginHorizontal: 20,
-    marginBottom: 30,
-    borderRadius: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 6,
+
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    marginTop: 25,
+    marginBottom: 16,
+    alignItems: 'center'
   },
-  scanButtonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
-    marginLeft: 10,
+  sectionTitle: { 
+    fontSize: 18, 
+    fontWeight: '800', 
+    color: '#0f172a' 
   },
+  seeAll: { 
+    color: '#00A86B', 
+    fontWeight: '700', 
+    fontSize: 13 
+  },
+
+  transRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    marginHorizontal: 24,
+    padding: 16,
+    borderRadius: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#f1f5f9'
+  },
+  transIcon: { 
+    width: 40, 
+    height: 40, 
+    borderRadius: 12, 
+    backgroundColor: '#f8fafc', 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  transStore: { 
+    fontSize: 15, 
+    fontWeight: '700', 
+    color: '#0f172a' 
+  },
+  transDate: { 
+    fontSize: 12, 
+    color: '#94a3b8', 
+    marginTop: 2 
+  },
+  transAmount: { 
+    fontSize: 15, 
+    fontWeight: '700', 
+    color: '#0f172a' 
+  },
+  transPoints: { 
+    fontSize: 12, 
+    color: '#00A86B', 
+    fontWeight: '800', 
+    marginTop: 2 
+  },
+
+  tipsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    marginHorizontal: 24,
+    marginTop: 20,
+    padding: 20,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#f1f5f9'
+  },
+  tipsTitle: { 
+    fontSize: 14, 
+    fontWeight: '800', 
+    color: '#0f172a', 
+    marginBottom: 2 
+  },
+  tipsText: { 
+    fontSize: 12, 
+    color: '#64748b' 
+  },
+
+  floatingScan: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 100 : 15,
+    left: 24,
+    right: 24,
+    height: 64,
+    backgroundColor: '#0f172a',
+    borderRadius: 20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: "#0f172a",
+    shadowOpacity: 0.25,
+    shadowRadius: 15,
+    elevation: 8,
+  },
+  floatingText: { 
+    color: '#fff', 
+    fontSize: 16, 
+    fontWeight: '800', 
+    marginLeft: 12 
+  }
 });
+
+export default HomeScreen;

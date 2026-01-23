@@ -4,13 +4,14 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { View } from "react-native";
 import { NavigationContainer } from "@react-navigation/native"; // Added import
+// import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-// Import your screens
-// import HomeScreen from "../screens/customer/HomeScreen";
-// import TransactionsScreen from "../screens/customer/TransactionsScreen";
-// import ProfileScreen from "../screens/customer/ProfileScreen";
-
+import HomeScreen from "../screens/customer/HomeScreen";
+import TransactionsScreen from "../screens/customer/TransactionScreen";
+import ProfileScreen from "../screens/customer/ProfileScreen";
+// import ScanningScreen from "../screens/customer/ScanningScreen";
 const Tab = createBottomTabNavigator();
+// const Stack = createNativeStackNavigator()
 
 // Custom Tab Bar Component
 const CustomTabBar = ({ state, descriptors, navigation }) => {
@@ -73,28 +74,14 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
 
 export default function HomeNavigator() {
   return (
-      <Tab.Navigator
-        tabBar={(props) => <CustomTabBar {...props} />}
-        screenOptions={{
-          headerShown: false,
-        }}
-      >
-        <Tab.Screen
-          // name="Home"
-          // component={HomeScreen}
-          // options={{ title: "Home" }}
-        />
-        <Tab.Screen
-          // name="Transactions"
-          // component={TransactionsScreen}
-          // options={{ title: "Transactions" }}
-        />
-        <Tab.Screen
-          // name="Profile"
-          // component={ProfileScreen}
-          // options={{ title: "Profile" }}
-        />
-      </Tab.Navigator>
+    <Tab.Navigator
+      tabBar={(props) => <CustomTabBar {...props} />}
+      screenOptions={{ headerShown: false }}
+    >
+      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Transactions" component={TransactionsScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
+    </Tab.Navigator>
   );
 }
 
