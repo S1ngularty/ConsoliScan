@@ -2,7 +2,7 @@ import axios from "axios";
 import { API_URL } from "../../constants/config";
 import { removeToken,storeToken } from "../../utils/authUtil";
 
-export async function loginApi(email, password) {
+export async function loginApi({email, password}) {
   if (!email.trim()) throw new Error("Email is required");
   if (!/\S+@\S+\.\S+/.test(email)) throw new Error("Invalid email format");
   if (!password) throw new Error("missing email field");
