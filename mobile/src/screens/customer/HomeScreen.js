@@ -163,19 +163,19 @@ const HomeScreen = ({ navigation }) => {
         </View>
 
         <TransactionItem 
-          store="FreshMart" 
+          store="Jollibee" 
           date="2 hours ago" 
           amount="₱240.00" 
           pts="24" 
         />
         <TransactionItem 
-          store="SuperGrocer" 
+          store="Superman" 
           date="Yesterday" 
           amount="₱1,120.50" 
           pts="112" 
         />
         <TransactionItem 
-          store="QuickMart Express" 
+          store="Express" 
           date="Dec 28, 2024" 
           amount="₱45.99" 
           pts="45" 
