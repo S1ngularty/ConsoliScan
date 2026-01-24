@@ -2,7 +2,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import HomeNavigator from "./HomeNavigator";
 import AuthNavigation from "./AuthNavigator";
-import ScanningScreen from "../screens/customer/scanningScreen";
+import ScanningScreen from "../screens/customer/ScanningScreen";
 
 const Stack = createNativeStackNavigator();
 
