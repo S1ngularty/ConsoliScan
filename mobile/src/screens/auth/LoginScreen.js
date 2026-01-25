@@ -12,51 +12,53 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Loader from "../../components/Loader";
-import GoogleSignIn from "../../components/GoogleSignIn";
 import * as Haptics from "expo-haptics";
-import { login, verifyToken } from "../../api/auth.api";
 import { getToken } from "../../utils/authUtil";
+import { useDispatch, useSelector } from "react-redux";
+import { login, verifyToken } from "../../features/auth/authThunks";
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setLoading] = useState(true);
+  const { loading, error } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
 
   const handleLogin = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     try {
-      await login(email, password);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      navigation.navigate("HomeTabs");
+      const result = await dispatch(login({ email, password }));
+      console.log(result);
+      if (login.fulfilled.match(result)) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        navigation.navigate("HomeTabs");
+      }
     } catch (error) {
       console.log(error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
   };
 
-  React.useEffect(() => {
-    (async () => {
-      try {
-        const token = await getToken();
-        if (!token){
-           setLoading(false);
-           return
-        }
-        const data = await verifyToken(token);
-        if(data) navigation.navigate("HomeTabs")
-      } catch (error) {
-        console.log(error);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+  // React.useEffect(() => {
+  //   (async () => {
+  //     try {
+  //       const token = await getToken();
+  //       if (!token) {
+  //         return;
+  //       }
+  //       const result = await dispatch(verifyToken(token));
+  //       if (verifyToken.fulfilled.match(result))
+  //         navigation.navigate("HomeTabs");
+  //     } catch (error) {
+  //       console.log(error);
+  //     }
+  //   })();
+  // }, []);
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      {isLoading ? (
+      {loading ? (
         <View
           style={{
             flex: 1,

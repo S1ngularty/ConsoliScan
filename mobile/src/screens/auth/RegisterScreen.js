@@ -17,7 +17,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { API_URL } from "../../constants/config";
-import axios from "axios"
+import { useDispatch, useSelector } from "react-redux";
+import { register } from "../../features/auth/authThunks";
+import axios from "axios";
 
 const { width } = Dimensions.get("window");
 
@@ -33,8 +35,9 @@ const RegisterScreen = ({ navigation }) => {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const { loading, error } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
 
   const validateForm = () => {
     const newErrors = {};
@@ -64,14 +67,12 @@ const RegisterScreen = ({ navigation }) => {
   };
 
   const handleRegister = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-    
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
     if (!validateForm()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
-
-    setIsLoading(true);
 
     // Prepare registration data
     const userData = {
@@ -86,20 +87,19 @@ const RegisterScreen = ({ navigation }) => {
 
     try {
       // Simulate API call
-      const isSuccess = await axios.post(`${API_URL}api/v1/register`,userData)
-      if(!isSuccess) throw new Error("failed to create you account")
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert(
-        "Success!",
-        "Account created successfully. You can now add more details in your dashboard.",
-        [{ text: "Continue", onPress: () => navigation.navigate("Scan") }],
-      );
+      const isSuccess = await dispatch(register(userData));
+      if (register.fulfilled.match(isSuccess)) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        navigation.navigate("HomeTabs");
+      } else if (register.rejected.match(isSuccess)) {
+        throw new Error(
+          "failed to create your account please try again later.",
+        );
+      }
     } catch (error) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      console.log(error)
+      console.log(error);
       Alert.alert("Error", "Registration failed. Please try again.");
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -392,12 +392,12 @@ const RegisterScreen = ({ navigation }) => {
               <Pressable
                 style={[
                   styles.registerButton,
-                  isLoading && styles.registerButtonDisabled,
+                  loading && styles.registerButtonDisabled,
                 ]}
                 onPress={handleRegister}
-                disabled={isLoading}
+                disabled={loading}
               >
-                {isLoading ? (
+                {loading ? (
                   <View style={styles.loadingContainer}>
                     <MaterialCommunityIcons
                       name="loading"
