@@ -21,23 +21,36 @@ const cartSlice = createSlice({
         state.cart.push({ ...addedItem });
       }
 
-      state.totalPrice += addedItem.price * addedItem.qty;
-      state.itemCount += addedItem.qty;
+      recalcTotal(state);
     },
 
+    adjustQuantity: (state, action) => {
+      const adjustProductQty = state.cart.find(
+        (i) => i._id === action.payload._id,
+      );
+      if (adjustProductQty) {
+        adjustProductQty.qty = action.payload.qty;
+        recalcTotal(state);
+      }
+    },
     removeToCart: (state, action) => {
       const itemToRemove = action.payload;
       const newCart = state.cart.filter((i) => i._id !== itemToRemove);
-      state.totalPrice = newCart.reduce(
-        (acc, curr) => acc + curr.price * curr.qty,
-        0,
-      );
-      state.itemCount = newCart.reduce((acc, curr) => acc + curr.qty, 0);
 
       state.cart = [...newCart];
+      recalcTotal(state);
     },
   },
 });
+
+const recalcTotal = (state) => {
+  const newCart = state.cart
+  state.totalPrice = newCart.reduce(
+    (acc, curr) => acc + curr.price * curr.qty,
+    0,
+  );
+  state.itemCount = newCart.reduce((acc, curr) => acc + curr.qty, 0);
+};
 
 export const { addToCart } = cartSlice.actions;
 export default cartSlice.reducer;
