@@ -23,6 +23,7 @@ const authSlice = createSlice({
     isLoggedIn: false,
     loading: false,
     error: null,
+    isNewUser: false,
   },
   reducers: {},
 
@@ -39,6 +40,7 @@ const authSlice = createSlice({
       .addCase(register.pending, pendingState)
       .addCase(register.fulfilled, (state, action) => {
         state.loading = false;
+        state.isNewUser = true;
       })
       .addCase(register.rejected, rejectedState);
   },
