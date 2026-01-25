@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { login, verifyToken } from "./authThunks";
+import { login, register, verifyToken } from "./authThunks";
 
 function pendingState(state) {
   state.loading = true;
@@ -34,7 +34,13 @@ const authSlice = createSlice({
 
       .addCase(verifyToken.pending, pendingState)
       .addCase(verifyToken.fulfilled, fulfilledState)
-      .addCase(verifyToken.rejected, rejectedState);
+      .addCase(verifyToken.rejected, rejectedState)
+
+      .addCase(register.pending, pendingState)
+      .addCase(register.fulfilled, (state, action) => {
+        state.loading = false;
+      })
+      .addCase(register.rejected, rejectedState);
   },
 });
 

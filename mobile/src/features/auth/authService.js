@@ -34,3 +34,8 @@ export async function verifyTokenApi(token){
 
   return result.data
  }
+
+ export async function registerApi(userData){
+    const isSuccess = await axios.post(`${API_URL}api/v1/register`,userData)
+    return isSuccess.data.result
+ }
