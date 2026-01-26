@@ -232,7 +232,7 @@ const BeneficiaryManagement = () => {
       {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" fontWeight={700} gutterBottom>
-          Beneficiary Management
+          Eligible Users Management
         </Typography>
         <Typography variant="body1" color="text.secondary">
           Manage and verify PWD and Senior Citizen identification cards

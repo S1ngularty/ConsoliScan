@@ -508,7 +508,7 @@ function ProductInventory() {
                       ${selectedProduct.price.toFixed(2)}
                     </Typography>
                     <Typography variant="caption" color="textSecondary">
-                      Total Value: $
+                      Total Value: ₱
                       {(
                         selectedProduct.price * selectedProduct.stockQuantity
                       ).toFixed(2)}

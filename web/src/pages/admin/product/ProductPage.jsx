@@ -24,7 +24,10 @@ import Toast from "../../../components/common/SnackbarComponent";
 import Loader from "../../../components/common/LoaderComponent";
 import ConfirmModalComponent from "../../../components/common/ConfirmModalComponent";
 
-import { fetchProducts, temporaryDelete } from "../../../services/productService";
+import {
+  fetchProducts,
+  temporaryDelete,
+} from "../../../services/productService";
 
 function ProductPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -189,7 +192,7 @@ function ProductPage() {
   const handleDelete = async () => {
     try {
       if (!deleteProductId) throw new Error("missing ProductId");
-      setShowConfirmModal(false)
+      setShowConfirmModal(false);
       setIsLoading(true);
       const result = await temporaryDelete(deleteProductId);
       if (!result) throw new Error("failed to delete the product");
@@ -219,10 +222,11 @@ function ProductPage() {
           data={editProduct}
           onClose={() => {
             setIsModalOpen(false);
+            setEditProduct("");
           }}
           onSave={() => {
             setIsModalOpen(false);
-            setEditProduct("")
+            setEditProduct("");
             showToast(
               `Successfully ${editProduct ? "edited" : "created"} the product!`,
               "success",
@@ -254,7 +258,7 @@ function ProductPage() {
       <Box className="product-header">
         <Box>
           <Typography variant="h5" sx={{ fontWeight: 700, color: "#111827" }}>
-            Inventory Management
+            Product Management
           </Typography>
           <Typography variant="body2" color="textSecondary">
             {filteredRows.length} total products available

@@ -27,7 +27,7 @@ function DashboardPage() {
   const stats = [
     {
       title: "Total Sales",
-      value: "$12,450.50",
+      value: "₱12,450.50",
       icon: <DollarSign />,
       trend: "+12.5%",
       color: "green",
@@ -177,7 +177,7 @@ function DashboardPage() {
                 <p className="item-title">Purchase by John Doe</p>
                 <p className="item-time">2 mins ago</p>
               </div>
-              <p className="item-amount">+$85.50</p>
+              <p className="item-amount">+₱85.50</p>
             </li>
             <li className="activity-item">
               <div className="user-avatar">AS</div>
