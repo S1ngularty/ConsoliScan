@@ -1,4 +1,11 @@
 https://github.com/jerpelhan/DAVE
+https://universe.roboflow.com/lamar-university-venef/grocery-rfn8l/dataset/9
+https://universe.roboflow.com/hackathon-shield-16kfu/convenience-store-items-u9kme
+
+one class
+https://universe.roboflow.com/rajat-kumar/grocery-store-tbgs5/browse?queryText=&pageSize=50&startingIndex=0&browseQuery=true
+https://universe.roboflow.com/objectdetection-d4gsn/objects-z1qpy/model/2?image=https%3A%2F%2Fcached.imagescaler.hbpl.co.uk%2Fresize%2FscaleHeight%2F815%2Fcached.offlinehbpl.hbpl.co.uk%2Fnews%2FOMC%2Fall-products-20170125054108782.gif
+https://universe.roboflow.com/grocery-dataset/grocery-dataset-oy6xj/dataset/2
 
 
 src/

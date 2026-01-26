@@ -30,15 +30,22 @@ const cartSchema = new mongoose.Schema(
       required: true,
       default: 0.0,
     },
+    itemCount: {
+      type: Number,
+      default: 0,
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-cartSchema.methods.computeTotalPrice = function () {
+cartSchema.methods.recalcTotal = function () {
   this.totalPrice = this.items.reduce(
-    (acc, item) => acc + item.product.price * item.qty,0
+    (acc, item) => acc + item.product.price * item.qty,
+    0,
   );
-  return
+
+  this.itemCount = this.items.reduce((acc, curr) => acc + curr.qty, 0);
+  return;
 };
 
 module.exports = mongoose.model("Cart", cartSchema);
