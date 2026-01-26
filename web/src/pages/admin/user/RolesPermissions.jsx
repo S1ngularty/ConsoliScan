@@ -50,6 +50,7 @@ import {
 
 import "../../../styles/admin/user/RolesPermission.css";
 import Toast from "../../../components/common/SnackbarComponent";
+import ExcelExportButton from "../../../components/admin/ExcelExportButton";
 import { getAllUser, updatePermission } from "../../../services/userService";
 
 function RolePermissions() {
@@ -507,13 +508,10 @@ function RolePermissions() {
           >
             Refresh
           </Button>
-          <Button
-            variant="contained"
-            startIcon={<Download size={18} />}
-            className="export-btn"
-          >
-            Export
-          </Button>
+
+          <ExcelExportButton data={
+            [...users] 
+          } />
         </Box>
       </Box>
 
