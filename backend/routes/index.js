@@ -4,6 +4,7 @@ const user = require("./userRoute");
 const category = require("./categoryRoute")
 const activityLogs = require("./activityLogsRoute")
 const eligible = require("./eligibleRoute")
+const cart = require("./cartRouter")
 
 module.exports = {
   product,
@@ -11,5 +12,6 @@ module.exports = {
   user,
   category,
   activityLogs,
-  eligible
+  eligible,
+  cart
 };

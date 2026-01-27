@@ -10,6 +10,7 @@ const {
   category,
   activityLogs,
   eligible,
+  cart
 } = require("./routes/index");
 const productModel = require("./models/productModel");
 
@@ -25,5 +26,6 @@ app.use("/api/v1", user);
 app.use("/api/v1", category);
 app.use("/api/v1", activityLogs);
 app.use("/api/v1", eligible);
+app.use("/api/v1", cart);
 
 module.exports = app;
