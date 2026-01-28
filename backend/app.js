@@ -10,11 +10,33 @@ const {
   category,
   activityLogs,
   eligible,
-  cart
+  cart,
 } = require("./routes/index");
 const productModel = require("./models/productModel");
 
-app.use(cors({ origin: true, credentials: true }));
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "http://localhost:8081",
+  "https://your-backend-name.onrender.com",
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // allow mobile apps / Postman
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("CORS not allowed"));
+    },
+    credentials: true,
+  }),
+);
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
