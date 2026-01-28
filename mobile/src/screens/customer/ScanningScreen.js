@@ -19,12 +19,12 @@ import { useDispatch, useSelector } from "react-redux";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-const ScanningScreen = () => {
+const ScanningScreen = ({ navigation }) => {
   const [scannedProduct, setScannedProduct] = useState(null);
   const [cart, setCart] = useState([]);
   const sheetPosition = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const dispatch = useDispatch();
-  const cartState = useSelector(state=>state.cart)
+  const cartState = useSelector((state) => state.cart);
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -70,8 +70,8 @@ const ScanningScreen = () => {
       selectedQuantity: quantity,
       addedAt: new Date().toISOString(),
     };
-    
-    dispatch(addToCart(newItem))
+
+    dispatch(addToCart(newItem));
     closeSheet();
   };
 
@@ -119,7 +119,15 @@ const ScanningScreen = () => {
             </Text>
           </View>
 
-          <TouchableOpacity style={styles.cartButton} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.cartButton}
+            activeOpacity={0.7}
+            onPress={() =>
+              navigation.navigate("HomeTabs", {
+                screen: "Cart",
+              })
+            }
+          >
             <MaterialCommunityIcons
               name="cart-outline"
               size={24}
@@ -127,7 +135,9 @@ const ScanningScreen = () => {
             />
             {cartState.cart.length > 0 && (
               <View style={styles.cartBadge}>
-                <Text style={styles.cartBadgeText}>{cartState.cart.length}</Text>
+                <Text style={styles.cartBadgeText}>
+                  {cartState.cart.length}
+                </Text>
               </View>
             )}
           </TouchableOpacity>
