@@ -39,21 +39,21 @@ const LoginScreen = ({ navigation }) => {
     }
   };
 
-  // React.useEffect(() => {
-  //   (async () => {
-  //     try {
-  //       const token = await getToken();
-  //       if (!token) {
-  //         return;
-  //       }
-  //       const result = await dispatch(verifyToken(token));
-  //       if (verifyToken.fulfilled.match(result))
-  //         navigation.navigate("HomeTabs");
-  //     } catch (error) {
-  //       console.log(error);
-  //     }
-  //   })();
-  // }, []);
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const token = await getToken();
+        if (!token) {
+          return;
+        }
+        const result = await dispatch(verifyToken(token));
+        if (verifyToken.fulfilled.match(result))
+          navigation.navigate("HomeTabs");
+      } catch (error) {
+        console.log(error);
+      }
+    })();
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
