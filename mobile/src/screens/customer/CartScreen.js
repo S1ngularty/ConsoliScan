@@ -16,6 +16,7 @@ import { useSelector, useDispatch } from "react-redux";
 import Loader from "../../components/Loader";
 import { adjustQuantity, removeToCart } from "../../features/cart/cartSlice";
 import { saveLocally } from "../../features/cart/cartThunks";
+import { debounceCartSync } from "../../features/cart/cartDebounce";
 
 const CartScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
@@ -62,6 +63,7 @@ const CartScreen = ({ navigation }) => {
       setRefreshing(false);
     }, 1000);
     dispatch(saveLocally());
+    debounceCartSync(dispatch);
   };
 
   const updateQuantity = (itemId, newQty) => {
@@ -78,6 +80,7 @@ const CartScreen = ({ navigation }) => {
       );
     }
     dispatch(saveLocally());
+    debounceCartSync(dispatch);
   };
 
   const removeItem = (itemId) => {
@@ -92,6 +95,7 @@ const CartScreen = ({ navigation }) => {
           onPress: () => {
             dispatch(removeToCart(itemId));
             dispatch(saveLocally());
+            debounceCartSync(dispatch);
           },
         },
       ],
@@ -110,6 +114,7 @@ const CartScreen = ({ navigation }) => {
             dispatch(removeToCart(item._id));
           });
           dispatch(saveLocally());
+          debounceCartSync(dispatch);
         },
       },
     ]);

@@ -22,7 +22,7 @@ const HomeScreen = ({ navigation }) => {
   useEffect(() => {
     (async () => {
       const currCart = await asyncStorage.getItem("cart");
-      console.log( JSON.parse(currCart));
+      // console.log( JSON.parse(currCart));
       dispatch(setCart(JSON.parse(currCart)))
     })();
   }, []);
