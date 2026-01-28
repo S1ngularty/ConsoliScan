@@ -9,6 +9,7 @@ import { NavigationContainer } from "@react-navigation/native"; // Added import
 import HomeScreen from "../screens/customer/HomeScreen";
 import TransactionsScreen from "../screens/customer/TransactionScreen";
 import ProfileScreen from "../screens/customer/ProfileScreen";
+import CartScreen from "../screens/customer/CartScreen";
 // import ScanningScreen from "../screens/customer/ScanningScreen";
 const Tab = createBottomTabNavigator();
 // const Stack = createNativeStackNavigator()
@@ -40,6 +41,8 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
               return isFocused ? "home" : "home-outline";
             case "Transactions":
               return isFocused ? "receipt" : "receipt-outline";
+            case "Cart":
+              return isFocused ? "cart" : "cart-outline";
             case "Profile":
               return isFocused ? "account" : "account-outline";
             default:
@@ -79,6 +82,7 @@ export default function HomeNavigator() {
       screenOptions={{ headerShown: false }}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Cart" component={CartScreen} />
       <Tab.Screen name="Transactions" component={TransactionsScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
