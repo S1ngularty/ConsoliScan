@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -10,26 +10,40 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
+import { useSelector, useDispatch } from "react-redux";
+import asyncStorage from "@react-native-async-storage/async-storage";
+import { setCart } from "../../features/cart/cartSlice";
 
 const HomeScreen = ({ navigation }) => {
   const [points] = useState(1250);
-  const [userName] = useState("John Doe");
+  const userState = useSelector((state) => state.auth);
+  const dispatch = useDispatch()
+
+  useEffect(() => {
+    (async () => {
+      const currCart = await asyncStorage.getItem("cart");
+      console.log( JSON.parse(currCart));
+      dispatch(setCart(JSON.parse(currCart)))
+    })();
+  }, []);
 
   // Local sub-component for Action Cards
   const ActionCard = ({ title, icon, onPress, isPrimary }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.7}
       style={[styles.card, isPrimary && styles.primaryCard]}
     >
       <View style={[styles.cardIconBox, isPrimary && styles.primaryIconBox]}>
-        <MaterialCommunityIcons 
-          name={icon} 
-          size={26} 
-          color={isPrimary ? "#00A86B" : "#64748b"} 
+        <MaterialCommunityIcons
+          name={icon}
+          size={26}
+          color={isPrimary ? "#00A86B" : "#64748b"}
         />
       </View>
-      <Text style={[styles.cardTitle, isPrimary && styles.primaryCardTitle]}>{title}</Text>
+      <Text style={[styles.cardTitle, isPrimary && styles.primaryCardTitle]}>
+        {title}
+      </Text>
     </TouchableOpacity>
   );
 
@@ -37,13 +51,17 @@ const HomeScreen = ({ navigation }) => {
   const TransactionItem = ({ store, date, amount, pts }) => (
     <View style={styles.transRow}>
       <View style={styles.transIcon}>
-        <MaterialCommunityIcons name="store-outline" size={20} color="#0f172a" />
+        <MaterialCommunityIcons
+          name="store-outline"
+          size={20}
+          color="#0f172a"
+        />
       </View>
       <View style={{ flex: 1, marginLeft: 12 }}>
         <Text style={styles.transStore}>{store}</Text>
         <Text style={styles.transDate}>{date}</Text>
       </View>
-      <View style={{ alignItems: 'flex-end' }}>
+      <View style={{ alignItems: "flex-end" }}>
         <Text style={styles.transAmount}>{amount}</Text>
         <Text style={styles.transPoints}>+{pts} pts</Text>
       </View>
@@ -72,7 +90,9 @@ const HomeScreen = ({ navigation }) => {
       <View style={styles.navBar}>
         <View>
           <Text style={styles.greetingText}>Good Morning,</Text>
-          <Text style={styles.userNameText}>{userName}</Text>
+          <Text style={styles.userNameText}>
+            {userState.user.email.split("@")[0]}
+          </Text>
         </View>
         <TouchableOpacity style={styles.notifCircle}>
           <Ionicons name="notifications-outline" size={22} color="#0f172a" />
@@ -80,8 +100,8 @@ const HomeScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
-        showsVerticalScrollIndicator={false} 
+      <ScrollView
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
         {/* --- POINTS BALANCE (HERO) --- */}
@@ -94,32 +114,36 @@ const HomeScreen = ({ navigation }) => {
           <TouchableOpacity style={styles.rewardPill}>
             <MaterialCommunityIcons name="auto-fix" size={16} color="#00A86B" />
             <Text style={styles.rewardText}>2 rewards ready to redeem</Text>
-            <MaterialCommunityIcons name="chevron-right" size={16} color="#00A86B" />
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={16}
+              color="#00A86B"
+            />
           </TouchableOpacity>
         </View>
 
         {/* --- ACTION GRID --- */}
         <View style={styles.gridContainer}>
-          <ActionCard 
-            title="Scan Product" 
-            icon="barcode-scan" 
-            onPress={() => navigation.navigate("Scan")} 
-            isPrimary 
+          <ActionCard
+            title="Scan Product"
+            icon="barcode-scan"
+            onPress={() => navigation.navigate("Scan")}
+            isPrimary
           />
-          <ActionCard 
-            title="My Cart" 
-            icon="basket-outline" 
-            onPress={() => navigation.navigate("Cart")} 
+          <ActionCard
+            title="My Cart"
+            icon="basket-outline"
+            onPress={() => navigation.navigate("Cart")}
           />
-          <ActionCard 
-            title="Nearby Stores" 
-            icon="map-marker-outline" 
-            onPress={() => navigation.navigate("Stores")} 
+          <ActionCard
+            title="Nearby Stores"
+            icon="map-marker-outline"
+            onPress={() => navigation.navigate("Stores")}
           />
-          <ActionCard 
-            title="Activity" 
-            icon="script-text-outline" 
-            onPress={() => navigation.navigate("Transactions")} 
+          <ActionCard
+            title="Activity"
+            icon="script-text-outline"
+            onPress={() => navigation.navigate("Transactions")}
           />
         </View>
 
@@ -131,26 +155,26 @@ const HomeScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
           style={styles.offersScroll}
           contentContainerStyle={styles.offersContainer}
         >
-          <OfferCard 
-            title="Double Points" 
-            description="Earn 2x points on all purchases today" 
-            color="#0f172a" 
+          <OfferCard
+            title="Double Points"
+            description="Earn 2x points on all purchases today"
+            color="#0f172a"
           />
-          <OfferCard 
-            title="Weekend Special" 
-            description="20% off fresh vegetables" 
-            color="#00A86B" 
+          <OfferCard
+            title="Weekend Special"
+            description="20% off fresh vegetables"
+            color="#00A86B"
           />
-          <OfferCard 
-            title="Free Delivery" 
-            description="On orders above ₱500" 
-            color="#3b82f6" 
+          <OfferCard
+            title="Free Delivery"
+            description="On orders above ₱500"
+            color="#3b82f6"
           />
         </ScrollView>
 
@@ -162,38 +186,44 @@ const HomeScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        <TransactionItem 
-          store="FreshMart" 
-          date="2 hours ago" 
-          amount="₱240.00" 
-          pts="24" 
+        <TransactionItem
+          store="FreshMart"
+          date="2 hours ago"
+          amount="₱240.00"
+          pts="24"
         />
-        <TransactionItem 
-          store="SuperGrocer" 
-          date="Yesterday" 
-          amount="₱1,120.50" 
-          pts="112" 
+        <TransactionItem
+          store="SuperGrocer"
+          date="Yesterday"
+          amount="₱1,120.50"
+          pts="112"
         />
-        <TransactionItem 
-          store="QuickMart Express" 
-          date="Dec 28, 2024" 
-          amount="₱45.99" 
-          pts="45" 
+        <TransactionItem
+          store="QuickMart Express"
+          date="Dec 28, 2024"
+          amount="₱45.99"
+          pts="45"
         />
 
         {/* --- TIPS CARD --- */}
         <View style={styles.tipsCard}>
-          <MaterialCommunityIcons name="shield-check-outline" size={24} color="#0f172a" />
+          <MaterialCommunityIcons
+            name="shield-check-outline"
+            size={24}
+            color="#0f172a"
+          />
           <View style={{ flex: 1, marginLeft: 16 }}>
             <Text style={styles.tipsTitle}>Secure & Fast Checkout</Text>
-            <Text style={styles.tipsText}>Blockchain-verified transactions for maximum security</Text>
+            <Text style={styles.tipsText}>
+              Blockchain-verified transactions for maximum security
+            </Text>
           </View>
         </View>
       </ScrollView>
 
       {/* --- FLOATING SCAN BUTTON --- */}
-      <TouchableOpacity 
-        style={styles.floatingScan} 
+      <TouchableOpacity
+        style={styles.floatingScan}
         onPress={() => navigation.getParent()?.navigate("Scan")}
         activeOpacity={0.9}
       >
@@ -205,135 +235,135 @@ const HomeScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: "#F8F9FA" 
+  container: {
+    flex: 1,
+    backgroundColor: "#F8F9FA",
   },
   navBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 24,
     paddingVertical: 15,
   },
-  greetingText: { 
-    fontSize: 14, 
-    color: "#94a3b8", 
-    fontWeight: '500' 
+  greetingText: {
+    fontSize: 14,
+    color: "#94a3b8",
+    fontWeight: "500",
   },
-  userNameText: { 
-    fontSize: 18, 
-    color: "#0f172a", 
-    fontWeight: '800' 
+  userNameText: {
+    fontSize: 18,
+    color: "#0f172a",
+    fontWeight: "800",
   },
   notifCircle: {
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: '#f1f5f9'
+    borderColor: "#f1f5f9",
   },
   notifDot: {
-    position: 'absolute',
+    position: "absolute",
     top: 12,
     right: 12,
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#FF6B6B',
+    backgroundColor: "#FF6B6B",
     borderWidth: 2,
-    borderColor: '#fff'
+    borderColor: "#fff",
   },
-  scrollContent: { 
-    paddingBottom: 140 // Space for floating button + Tab bar
+  scrollContent: {
+    paddingBottom: 140, // Space for floating button + Tab bar
   },
-  
+
   heroSection: {
     paddingHorizontal: 24,
     paddingVertical: 35,
-    alignItems: 'center',
+    alignItems: "center",
   },
-  heroLabel: { 
-    color: '#94a3b8', 
-    fontSize: 12, 
-    fontWeight: '800', 
-    letterSpacing: 1.2, 
-    textTransform: 'uppercase' 
+  heroLabel: {
+    color: "#94a3b8",
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
   },
-  pointsRow: { 
-    flexDirection: 'row', 
-    alignItems: 'baseline', 
-    marginTop: 8 
+  pointsRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    marginTop: 8,
   },
-  pointsValue: { 
-    fontSize: 60, 
-    fontWeight: '900', 
-    color: '#0f172a',
-    letterSpacing: -1
+  pointsValue: {
+    fontSize: 60,
+    fontWeight: "900",
+    color: "#0f172a",
+    letterSpacing: -1,
   },
-  pointsCurrency: { 
-    fontSize: 20, 
-    fontWeight: '700', 
-    color: '#00A86B', 
-    marginLeft: 6 
+  pointsCurrency: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#00A86B",
+    marginLeft: 6,
   },
   rewardPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 168, 107, 0.08)',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 168, 107, 0.08)",
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
     marginTop: 18,
   },
-  rewardText: { 
-    color: '#00A86B', 
-    fontSize: 13, 
-    fontWeight: '700', 
-    marginHorizontal: 6 
+  rewardText: {
+    color: "#00A86B",
+    fontSize: 13,
+    fontWeight: "700",
+    marginHorizontal: 6,
   },
 
   gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     paddingHorizontal: 20,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   card: {
-    width: '48%',
-    backgroundColor: '#fff',
+    width: "48%",
+    backgroundColor: "#fff",
     borderRadius: 24,
     padding: 20,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: '#f1f5f9',
+    borderColor: "#f1f5f9",
   },
-  primaryCard: { 
-    borderColor: 'rgba(0, 168, 107, 0.15)',
-    backgroundColor: '#ffffff' 
+  primaryCard: {
+    borderColor: "rgba(0, 168, 107, 0.15)",
+    backgroundColor: "#ffffff",
   },
   cardIconBox: {
     width: 46,
     height: 46,
     borderRadius: 12,
-    backgroundColor: '#f8fafc',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#f8fafc",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 16,
   },
-  primaryIconBox: { 
-    backgroundColor: 'rgba(0, 168, 107, 0.1)' 
+  primaryIconBox: {
+    backgroundColor: "rgba(0, 168, 107, 0.1)",
   },
-  cardTitle: { 
-    fontSize: 14, 
-    fontWeight: '700', 
-    color: '#64748b' 
+  cardTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#64748b",
   },
-  primaryCardTitle: { 
-    color: '#0f172a' 
+  primaryCardTitle: {
+    color: "#0f172a",
   },
 
   // Offers Section
@@ -348,138 +378,138 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 24,
     marginRight: 16,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   offerContent: {
     marginBottom: 20,
   },
   offerTitle: {
     fontSize: 20,
-    fontWeight: '800',
-    color: '#fff',
+    fontWeight: "800",
+    color: "#fff",
     marginBottom: 8,
   },
   offerDesc: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
+    color: "rgba(255,255,255,0.9)",
     lineHeight: 20,
   },
   offerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
   },
   offerButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: "800",
     marginRight: 4,
   },
 
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingHorizontal: 24,
     marginTop: 25,
     marginBottom: 16,
-    alignItems: 'center'
+    alignItems: "center",
   },
-  sectionTitle: { 
-    fontSize: 18, 
-    fontWeight: '800', 
-    color: '#0f172a' 
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#0f172a",
   },
-  seeAll: { 
-    color: '#00A86B', 
-    fontWeight: '700', 
-    fontSize: 13 
+  seeAll: {
+    color: "#00A86B",
+    fontWeight: "700",
+    fontSize: 13,
   },
 
   transRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
     marginHorizontal: 24,
     padding: 16,
     borderRadius: 20,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#f1f5f9'
+    borderColor: "#f1f5f9",
   },
-  transIcon: { 
-    width: 40, 
-    height: 40, 
-    borderRadius: 12, 
-    backgroundColor: '#f8fafc', 
-    justifyContent: 'center', 
-    alignItems: 'center' 
+  transIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#f8fafc",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  transStore: { 
-    fontSize: 15, 
-    fontWeight: '700', 
-    color: '#0f172a' 
+  transStore: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#0f172a",
   },
-  transDate: { 
-    fontSize: 12, 
-    color: '#94a3b8', 
-    marginTop: 2 
+  transDate: {
+    fontSize: 12,
+    color: "#94a3b8",
+    marginTop: 2,
   },
-  transAmount: { 
-    fontSize: 15, 
-    fontWeight: '700', 
-    color: '#0f172a' 
+  transAmount: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#0f172a",
   },
-  transPoints: { 
-    fontSize: 12, 
-    color: '#00A86B', 
-    fontWeight: '800', 
-    marginTop: 2 
+  transPoints: {
+    fontSize: 12,
+    color: "#00A86B",
+    fontWeight: "800",
+    marginTop: 2,
   },
 
   tipsCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
     marginHorizontal: 24,
     marginTop: 20,
     padding: 20,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#f1f5f9'
+    borderColor: "#f1f5f9",
   },
-  tipsTitle: { 
-    fontSize: 14, 
-    fontWeight: '800', 
-    color: '#0f172a', 
-    marginBottom: 2 
+  tipsTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#0f172a",
+    marginBottom: 2,
   },
-  tipsText: { 
-    fontSize: 12, 
-    color: '#64748b' 
+  tipsText: {
+    fontSize: 12,
+    color: "#64748b",
   },
 
   floatingScan: {
-    position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 100 : 15,
+    position: "absolute",
+    bottom: Platform.OS === "ios" ? 100 : 15,
     left: 24,
     right: 24,
     height: 64,
-    backgroundColor: '#0f172a',
+    backgroundColor: "#0f172a",
     borderRadius: 20,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     shadowColor: "#0f172a",
     shadowOpacity: 0.25,
     shadowRadius: 15,
     elevation: 8,
   },
-  floatingText: { 
-    color: '#fff', 
-    fontSize: 16, 
-    fontWeight: '800', 
-    marginLeft: 12 
-  }
+  floatingText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "800",
+    marginLeft: 12,
+  },
 });
 
 export default HomeScreen;

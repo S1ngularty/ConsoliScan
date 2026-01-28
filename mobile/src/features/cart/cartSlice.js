@@ -11,6 +11,10 @@ const cartSlice = createSlice({
   },
 
   reducers: {
+    setCart: (state, action) => {
+      state.cart = [...action.payload];
+      recalcTotal(state);
+    },
     addToCart: (state, action) => {
       const addedItem = action.payload;
       const existingItem = state.cart.find((i) => i._id === addedItem._id);
@@ -19,9 +23,9 @@ const cartSlice = createSlice({
         existingItem.qty += addedItem.selectedQuantity;
       } else {
         // Ensure the item has qty property
-        state.cart.push({ 
+        state.cart.push({
           ...addedItem,
-          qty: addedItem.selectedQuantity || 1 
+          qty: addedItem.selectedQuantity || 1,
         });
       }
 
@@ -36,13 +40,13 @@ const cartSlice = createSlice({
         recalcTotal(state);
       }
     },
-    
+
     removeFromCart: (state, action) => {
       const itemId = action.payload;
       state.cart = state.cart.filter((i) => i._id !== itemId);
       recalcTotal(state);
     },
-    
+
     clearCart: (state) => {
       state.cart = [];
       state.totalPrice = 0;
@@ -60,5 +64,6 @@ const recalcTotal = (state) => {
   state.itemCount = newCart.reduce((acc, curr) => acc + (curr.qty || 0), 0);
 };
 
-export const { addToCart, adjustQuantity, removeFromCart, clearCart } = cartSlice.actions;
+export const { setCart, addToCart, adjustQuantity, removeFromCart, clearCart } =
+  cartSlice.actions;
 export default cartSlice.reducer;

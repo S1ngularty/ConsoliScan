@@ -16,6 +16,8 @@ import ProductDetailSheet from "../../components/ProductDetailSheet";
 import { scanProduct } from "../../api/product.api";
 import { addToCart } from "../../features/cart/cartSlice";
 import { useDispatch, useSelector } from "react-redux";
+import { saveLocally } from "../../features/cart/cartThunks";
+import { debounceCartSync } from "../../features/cart/cartDebounce";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -72,6 +74,7 @@ const ScanningScreen = ({ navigation }) => {
     };
 
     dispatch(addToCart(newItem));
+    dispatch(saveLocally())
     closeSheet();
   };
 
