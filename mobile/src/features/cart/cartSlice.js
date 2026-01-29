@@ -6,6 +6,7 @@ const cartSlice = createSlice({
     cart: [],
     itemCount: 0,
     totalPrice: 0,
+    
     loading: false,
     error: null,
   },

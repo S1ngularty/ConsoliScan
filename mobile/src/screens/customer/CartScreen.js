@@ -14,7 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSelector, useDispatch } from "react-redux";
 import Loader from "../../components/Loader";
-import { adjustQuantity, removeToCart } from "../../features/cart/cartSlice";
+import { adjustQuantity, removeFromCart, clearCart } from "../../features/cart/cartSlice";
 import { saveLocally } from "../../features/cart/cartThunks";
 import { debounceCartSync } from "../../features/cart/cartDebounce";
 
@@ -69,7 +69,7 @@ const CartScreen = ({ navigation }) => {
   const updateQuantity = (itemId, newQty) => {
     if (newQty < 1) {
       // Remove item if quantity is 0
-      dispatch(removeToCart(itemId));
+      dispatch(clearCart(itemId));
     } else {
       // Update quantity using Redux
       dispatch(
@@ -93,7 +93,7 @@ const CartScreen = ({ navigation }) => {
           text: "Remove",
           style: "destructive",
           onPress: () => {
-            dispatch(removeToCart(itemId));
+            dispatch(removeFromCart(itemId));
             dispatch(saveLocally());
             debounceCartSync(dispatch);
           },
@@ -102,17 +102,14 @@ const CartScreen = ({ navigation }) => {
     );
   };
 
-  const clearCart = () => {
+  const clearAllItems = () => {
     Alert.alert("Clear Cart", "Are you sure you want to clear all items?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Clear All",
         style: "destructive",
         onPress: () => {
-          // Clear all items one by one or create a new action
-          cart.forEach((item) => {
-            dispatch(removeToCart(item._id));
-          });
+         dispatch(clearCart())
           dispatch(saveLocally());
           debounceCartSync(dispatch);
         },
@@ -272,7 +269,7 @@ const CartScreen = ({ navigation }) => {
         </View>
         <TouchableOpacity
           style={styles.clearButton}
-          onPress={clearCart}
+          onPress={clearAllItems}
           disabled={cart.length === 0}
         >
           <MaterialCommunityIcons
