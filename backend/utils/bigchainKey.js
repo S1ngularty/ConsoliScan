@@ -1,8 +1,8 @@
 const BigchainDB = require("bigchaindb-driver");
 
-const keypair = BigchainDB.Ed25519Keypair();
+const keypair = new BigchainDB.Ed25519Keypair();
 
 module.exports = {
-  publicKey: keypair.publicKey.toString(),
+  publicKey: keypair.publicKey,
   privateKey: keypair.privateKey.toString(),
 };

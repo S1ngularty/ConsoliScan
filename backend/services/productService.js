@@ -87,10 +87,15 @@ const update = async (request = {}) => {
     let temp = await uploadImage(request.files, "products");
     newImages = Array.isArray(temp) ? temp : [temp];
   }
+
   const updateQuery = {
     ...request.body,
     deletedAt: null,
   };
+
+  if(request.body.discountScopes){
+    updateQuery.discountScopes = String(request.body.discountScopes).split(',') 
+  }
   if (newImages.length > 0) {
     updateQuery.$push = {
       images: { $each: newImages },

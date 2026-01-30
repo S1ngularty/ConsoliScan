@@ -23,7 +23,7 @@ body.modal-open {
   border-radius: 20px;
   display: flex;
   flex-direction: column;
-  box-shadow: 
+  box-shadow:
     0 25px 50px -12px rgba(0, 0, 0, 0.25),
     0 0 0 1px rgba(255, 255, 255, 0.1);
   max-height: 90vh;
@@ -171,9 +171,15 @@ body.modal-open {
   animation: labelSlideDown 0.4s ease-out forwards;
 }
 
-.section-label:nth-of-type(1) { animation-delay: 0.6s; }
-.section-label:nth-of-type(2) { animation-delay: 0.7s; }
-.section-label:nth-of-type(3) { animation-delay: 0.8s; }
+.section-label:nth-of-type(1) {
+  animation-delay: 0.6s;
+}
+.section-label:nth-of-type(2) {
+  animation-delay: 0.7s;
+}
+.section-label:nth-of-type(3) {
+  animation-delay: 0.8s;
+}
 
 /* Inputs - Fixed layout */
 .input-grid {
@@ -184,8 +190,12 @@ body.modal-open {
   animation: fadeIn 0.5s ease-out forwards;
 }
 
-.input-grid:nth-of-type(1) { animation-delay: 0.7s; }
-.input-grid:nth-of-type(2) { animation-delay: 0.9s; }
+.input-grid:nth-of-type(1) {
+  animation-delay: 0.7s;
+}
+.input-grid:nth-of-type(2) {
+  animation-delay: 0.9s;
+}
 
 .input-group {
   margin-bottom: 0; /* Remove bottom margin, use gap on parent */
@@ -238,7 +248,7 @@ body.modal-open {
   border-color: #00a86b;
   outline: none;
   background: white;
-  box-shadow: 
+  box-shadow:
     0 0 0 3px rgba(0, 168, 107, 0.1),
     0 2px 8px rgba(0, 168, 107, 0.08);
   transform: translateY(-1px);
@@ -301,7 +311,7 @@ body.modal-open {
 }
 
 .image-preview-main:hover::after {
-  content: 'Click to change image';
+  content: "Click to change image";
   position: absolute;
   bottom: 10px;
   background: rgba(0, 0, 0, 0.7);
@@ -441,7 +451,7 @@ body.modal-open {
 
 /* Empty state for thumbnails */
 .thumb-placeholder:empty::after {
-  content: '';
+  content: "";
   width: 20px;
   height: 20px;
   background: #e2e8f0;
@@ -475,7 +485,7 @@ body.modal-open {
 }
 
 .image-loading::after {
-  content: '';
+  content: "";
   width: 20px;
   height: 20px;
   border: 2px solid #00a86b;
@@ -574,9 +584,23 @@ body.modal-open {
 
 /* Shake animation for invalid fields */
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-  20%, 40%, 60%, 80% { transform: translateX(5px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-5px);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(5px);
+  }
 }
 
 .input-error:focus {
@@ -585,13 +609,16 @@ body.modal-open {
 
 /* Required field indicator */
 .input-group label::after {
-  content: '*';
+  content: "*";
   color: #ef4444;
   margin-left: 4px;
   display: none;
 }
 
-.input-group label[for]:not([for="description"]):not([for="barcode"]):not([for="barcodeType"])::after {
+.input-group
+  label[for]:not([for="description"]):not([for="barcode"]):not(
+    [for="barcodeType"]
+  )::after {
   display: inline;
 }
 
@@ -601,7 +628,7 @@ body.modal-open {
 }
 
 .btn-primary::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -610,12 +637,14 @@ body.modal-open {
   background: rgba(255, 255, 255, 0.2);
   border-radius: 50%;
   transform: translate(-50%, -50%);
-  transition: width 0.6s, height 0.6s;
+  transition:
+    width 0.6s,
+    height 0.6s;
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 
+  box-shadow:
     0 8px 25px rgba(0, 168, 107, 0.3),
     0 0 0 1px rgba(255, 255, 255, 0.1);
 }
@@ -772,34 +801,171 @@ body.modal-open {
     gap: 24px;
     padding: 20px;
   }
-  
+
   .modal-container {
     max-height: 95vh;
   }
-  
+
   .modal-scroll-content {
     max-height: calc(95vh - 140px);
   }
-  
+
   .input-grid {
     grid-template-columns: 1fr;
     gap: 16px;
   }
-  
+
   .input-group.full {
     grid-column: span 1;
   }
-  
+
   .modal-header,
   .modal-footer {
     padding: 16px 20px;
   }
-  
+
   .image-thumbnails {
     grid-template-columns: repeat(3, 1fr);
   }
-  
+
   .image-preview-main {
     height: 180px;
+  }
+}
+
+/* Add these styles to your existing ProductModalStyle.css */
+
+/* Checkbox styles */
+.checkbox-group {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+  transition: all 0.3s ease;
+}
+
+.checkbox-group:hover {
+  border-color: #cbd5e1;
+  background: white;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  margin-bottom: 10px;
+  padding: 8px 0;
+  transition: all 0.3s ease;
+  border-radius: 6px;
+}
+
+.checkbox-label:hover {
+  background: #f1f5f9;
+  padding: 8px;
+  margin: -8px;
+}
+
+.checkbox-label:last-child {
+  margin-bottom: 0;
+}
+
+.checkbox-label input[type="checkbox"] {
+  display: none;
+}
+
+.checkmark {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #cbd5e1;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkmark {
+  background: #00a86b;
+  border-color: #00a86b;
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkmark::after {
+  content: "✓";
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.checkbox-label input[type="checkbox"]:disabled + .checkmark {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  cursor: not-allowed;
+}
+
+.checkbox-text {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.checkbox-label input[type="checkbox"]:checked ~ .checkbox-text {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.checkbox-label input[type="checkbox"]:disabled ~ .checkbox-text {
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+/* Animation for conditional fields */
+.checkbox-group:has(input[type="checkbox"]:checked) {
+  border-color: rgba(0, 168, 107, 0.3);
+  background: rgba(0, 168, 107, 0.02);
+}
+
+/* BNPC category field animation */
+.checkbox-group .input-group {
+  opacity: 0;
+  transform: translateY(-10px);
+  animation: fadeInDown 0.4s ease-out forwards;
+  margin-top: 12px;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .checkbox-group {
+    padding: 12px;
+  }
+
+  .checkbox-text {
+    font-size: 0.85rem;
+  }
+
+  .checkbox-label {
+    padding: 6px 0;
+  }
+
+  .checkbox-label:hover {
+    padding: 6px;
+    margin: -6px;
   }
 }

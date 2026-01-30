@@ -9,6 +9,10 @@ import {
   Image as ImageIcon,
   Tag,
   AlertCircle,
+  Scale,
+  Shield,
+  Percent,
+  Users,
 } from "lucide-react";
 import "../../styles/admin/product/ProductModalStyle.css";
 import {
@@ -26,11 +30,18 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
           name: "",
           sku: "",
           price: "",
+          srp: "",
           barcode: "",
           barcodeType: "UPC",
           stockQuantity: "",
+          unit: "pc",
           category: "",
           description: "",
+          isBNPC: false,
+          bnpcCategory: "",
+          priceControlled: false,
+          excludedFromDiscount: false,
+          discountScopes: [],
           images: [],
         },
   );
@@ -43,6 +54,44 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
   const [categories, setCategories] = React.useState([]);
 
   const fileInputRef = React.useRef(null);
+
+  // BNPC Categories from your Schema
+  const bnpcCategories = [
+    "RICE",
+    "CORN",
+    "FRESH_MEAT",
+    "FRESH_POULTRY",
+    "FRESH_FISH",
+    "VEGETABLES",
+    "FRUITS",
+    "EGGS",
+    "COOKING_OIL",
+    "SUGAR",
+    "MILK",
+    "COFFEE",
+    "NOODLES",
+    "SOAP",
+    "DETERGENT",
+    "CANNED_GOODS",
+    "OTHERS",
+  ];
+
+  // Unit options from your Schema
+  const unitOptions = ["kg", "g", "pc", "liter", "ml", "pack"];
+
+  // Discount scopes
+  const discountScopeOptions = ["PWD", "SENIOR", "PROMO"];
+
+  // Barcode Types from your Schema Enum
+  const barcodeTypes = [
+    "UPC",
+    "EAN_13",
+    "EAN_8",
+    "ISBN_10",
+    "ISBN_13",
+    "CODE_128",
+    "QR",
+  ];
 
   // Handle body scroll lock when modal is open
   useEffect(() => {
@@ -60,7 +109,10 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
   // Reset form when opening with new data
   useEffect(() => {
     if (isOpen && data) {
-      setProductInfo({ ...data });
+      setProductInfo({ 
+        ...data,
+        discountScopes: data.discountScopes || [],
+      });
       setSelectedImageIndex(0);
       setErrors({});
       setTouched({});
@@ -69,11 +121,18 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
         name: "",
         sku: "",
         price: "",
+        srp: "",
         barcode: "",
         barcodeType: "UPC",
         stockQuantity: "",
+        unit: "pc",
         category: "",
         description: "",
+        isBNPC: false,
+        bnpcCategory: "",
+        priceControlled: false,
+        excludedFromDiscount: false,
+        discountScopes: [],
         images: [],
       });
       setSelectedImageIndex(0);
@@ -94,8 +153,6 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
     return () => window.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
-
   const fetchCategories = async () => {
     const data = await getCategories();
     setCategories(data);
@@ -105,17 +162,6 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
   useEffect(() => {
     fetchCategories();
   }, []);
-
-  // Barcode Types from your Schema Enum
-  const barcodeTypes = [
-    "UPC",
-    "EAN_13",
-    "EAN_8",
-    "ISBN_10",
-    "ISBN_13",
-    "CODE_128",
-    "QR",
-  ];
 
   // Validation rules
   const validateField = (name, value) => {
@@ -147,6 +193,11 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
           error = "Price cannot exceed $1,000,000";
         break;
 
+      case "srp":
+        if (value && isNaN(value)) error = "SRP must be a number";
+        else if (value && parseFloat(value) < 0) error = "SRP cannot be negative";
+        break;
+
       case "stockQuantity":
         if (!value && value !== 0) error = "Stock quantity is required";
         else if (isNaN(value)) error = "Stock quantity must be a number";
@@ -157,8 +208,21 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
         break;
 
       case "barcode":
-        if (value && value.length > 50)
+        if (!value.trim()) error = "Barcode is required";
+        else if (value.length > 50)
           error = "Barcode must be less than 50 characters";
+        break;
+
+      case "category":
+        if (!value) error = "Category is required";
+        break;
+
+      case "unit":
+        if (!value) error = "Unit is required";
+        break;
+
+      case "bnpcCategory":
+        if (productInfo.isBNPC && !value) error = "BNPC category is required when BNPC is enabled";
         break;
 
       default:
@@ -175,11 +239,11 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
     newErrors.name = validateField("name", productInfo.name);
     newErrors.sku = validateField("sku", productInfo.sku);
     newErrors.price = validateField("price", productInfo.price);
-    newErrors.stockQuantity = validateField(
-      "stockQuantity",
-      productInfo.stockQuantity,
-    );
+    newErrors.stockQuantity = validateField("stockQuantity", productInfo.stockQuantity);
     newErrors.barcode = validateField("barcode", productInfo.barcode);
+    newErrors.category = validateField("category", productInfo.category);
+    newErrors.unit = validateField("unit", productInfo.unit);
+    newErrors.bnpcCategory = validateField("bnpcCategory", productInfo.bnpcCategory);
 
     // Validate at least one image for new products
     if (!data && (!productInfo.images || productInfo.images.length === 0)) {
@@ -189,10 +253,8 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
     return newErrors;
   };
 
-  useEffect(() => {
-    console.log(productInfo.category);
-  }, [productInfo]);
   const handleInput = (field, value) => {
+    // console.log(value)
     setProductInfo((prev) => ({ ...prev, [field]: value }));
 
     // Validate on change if field has been touched
@@ -200,6 +262,28 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
       const error = validateField(field, value);
       setErrors((prev) => ({ ...prev, [field]: error }));
     }
+
+    // If BNPC is disabled, clear BNPC category
+    if (field === "isBNPC" && !value) {
+      setProductInfo(prev => ({ ...prev, bnpcCategory: "" }));
+    }
+  };
+
+  const handleCheckbox = (field) => {
+    setProductInfo((prev) => ({ ...prev, [field]: !prev[field] }));
+  };
+
+  const handleDiscountScope = (scope) => {
+    const currentScopes = productInfo.discountScopes || [];
+    let newScopes;
+    
+    if (currentScopes.includes(scope)) {
+      newScopes = currentScopes.filter(s => s !== scope);
+    } else {
+      newScopes = [...currentScopes, scope];
+    }
+    
+    setProductInfo((prev) => ({ ...prev, discountScopes: newScopes }));
   };
 
   const handleBlur = (field) => {
@@ -333,11 +417,14 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
   const handleSave = async () => {
     // Mark all fields as touched
     setIsLoading(true);
-    const allFields = ["name", "sku", "price", "stockQuantity","category", "barcode"];
+    const allFields = ["name", "sku", "price", "stockQuantity", "category", "barcode", "unit"];
     const newTouched = {};
     allFields.forEach((field) => {
       newTouched[field] = true;
     });
+    if (productInfo.isBNPC) {
+      newTouched.bnpcCategory = true;
+    }
     setTouched(newTouched);
 
     // Validate entire form
@@ -397,6 +484,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
       onClose();
     }
   };
+
   return (
     <div className="modal-overlay" onClick={handleOverlayClick}>
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
@@ -450,22 +538,26 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
                 <br />
 
                 <div className="input-group" data-field="category">
-                  <div className="input-group">
-                    <label>Category *</label>
-                    <select
-                      value={productInfo.category|| ""}
-                      onChange={(e) => handleInput("category", e.target.value)}
-                    >
-                      {categories.map((category) => (
-                        <option
-                          key={category._id}
-                          value={category._id}
-                        >
-                          {category.categoryName}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <label>Category *</label>
+                  <select
+                    value={productInfo.category || ""}
+                    onChange={(e) => handleInput("category", e.target.value)}
+                    onBlur={() => handleBlur("category")}
+                    className={errors.category ? "input-error" : ""}
+                  >
+                    <option value="">Select a category</option>
+                    {categories.map((category) => (
+                      <option key={category._id} value={category._id}>
+                        {category.categoryName}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.category && (
+                    <div className="error-message">
+                      <AlertCircle size={12} />
+                      <span>{errors.category}</span>
+                    </div>
+                  )}
                 </div>
                 <br />
 
@@ -510,6 +602,52 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
                     )}
                   </div>
                 </div>
+
+                <div className="input-grid">
+                  <div className="input-group" data-field="srp">
+                    <label>Suggested Retail Price (SRP)</label>
+                    <div className="input-with-icon">
+                      <DollarSign size={14} className="input-icon" />
+                      <input
+                        type="number"
+                        value={productInfo.srp || ""}
+                        placeholder="0.00"
+                        step="0.01"
+                        min="0"
+                        onChange={(e) => handleInput("srp", e.target.value)}
+                        onBlur={() => handleBlur("srp")}
+                        className={errors.srp ? "input-error" : ""}
+                      />
+                    </div>
+                    {errors.srp && (
+                      <div className="error-message">
+                        <AlertCircle size={12} />
+                        <span>{errors.srp}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="input-group" data-field="unit">
+                    <label>Unit *</label>
+                    <select
+                      value={productInfo.unit || "pc"}
+                      onChange={(e) => handleInput("unit", e.target.value)}
+                      onBlur={() => handleBlur("unit")}
+                      className={errors.unit ? "input-error" : ""}
+                    >
+                      {unitOptions.map((unit) => (
+                        <option key={unit} value={unit}>
+                          {unit.toUpperCase()}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.unit && (
+                      <div className="error-message">
+                        <AlertCircle size={12} />
+                        <span>{errors.unit}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <div>
@@ -518,7 +656,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
                 </div>
                 <div className="input-grid">
                   <div className="input-group" data-field="barcode">
-                    <label>Barcode Number</label>
+                    <label>Barcode Number *</label>
                     <input
                       type="text"
                       value={productInfo.barcode || ""}
@@ -577,7 +715,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
               </div>
             </div>
 
-            {/* RIGHT COLUMN: Media & Description */}
+            {/* RIGHT COLUMN: Media & Advanced Settings */}
             <div className="side-panel">
               <div>
                 <div className="section-label">
@@ -680,6 +818,106 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
                       ></div>
                     ))}
                   </div>
+                </div>
+              </div>
+
+              <div>
+                <div className="section-label">
+                  <Scale size={14} /> Product Classification
+                </div>
+
+                <div className="checkbox-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={productInfo.isBNPC || false}
+                      onChange={() => handleCheckbox("isBNPC")}
+                    />
+                    <span className="checkmark"></span>
+                    <span className="checkbox-text">
+                      <Shield size={14} />
+                      BNPC (Basic Necessities & Prime Commodities)
+                    </span>
+                  </label>
+
+                  {productInfo.isBNPC && (
+                    <div className="input-group" data-field="bnpcCategory">
+                      <label>BNPC Category *</label>
+                      <select
+                        value={productInfo.bnpcCategory || ""}
+                        onChange={(e) => handleInput("bnpcCategory", e.target.value)}
+                        onBlur={() => handleBlur("bnpcCategory")}
+                        className={errors.bnpcCategory ? "input-error" : ""}
+                      >
+                        <option value="">Select BNPC Category</option>
+                        {bnpcCategories.map((category) => (
+                          <option key={category} value={category}>
+                            {category.replace(/_/g, ' ')}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.bnpcCategory && (
+                        <div className="error-message">
+                          <AlertCircle size={12} />
+                          <span>{errors.bnpcCategory}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="checkbox-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={productInfo.priceControlled || false}
+                      onChange={() => handleCheckbox("priceControlled")}
+                    />
+                    <span className="checkmark"></span>
+                    <span className="checkbox-text">
+                      Price Controlled (DTI Regulated)
+                    </span>
+                  </label>
+                </div>
+
+                <div className="checkbox-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={productInfo.excludedFromDiscount || false}
+                      onChange={() => handleCheckbox("excludedFromDiscount")}
+                    />
+                    <span className="checkmark"></span>
+                    <span className="checkbox-text">
+                      Excluded from Discounts
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <div className="section-label">
+                  <Percent size={14} /> Discount Eligibility
+                </div>
+                <div className="checkbox-group">
+                  <div className="checkbox-text">
+                    <Users size={14} />
+                    Applicable Discounts:
+                  </div>
+                  {discountScopeOptions.map((scope) => (
+                    <label key={scope} className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={productInfo.discountScopes?.includes(scope) || false}
+                        onChange={() => handleDiscountScope(scope)}
+                        disabled={productInfo.excludedFromDiscount}
+                      />
+                      <span className="checkmark"></span>
+                      <span className="checkbox-text">
+                        {scope}
+                      </span>
+                    </label>
+                  ))}
                 </div>
               </div>
 
