@@ -1,5 +1,5 @@
-const Order = require("../models/Order");
-const blockchainService = require("./blockchain.service");
+const Order = require("../models/orderModel");
+const blockchainService = require("./blockchainService");
 
 async function confirmOrder(orderData) {
   // 1 Save order (operational truth)
