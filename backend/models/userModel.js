@@ -99,6 +99,7 @@ userSchema.methods.getToken = function () {
   return jwt.sign(
     {
       userId: this._id,
+      name : this.name,
       role: this.role,
       status: this.status,
       email: this.email,

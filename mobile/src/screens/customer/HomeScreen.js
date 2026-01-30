@@ -91,7 +91,7 @@ const HomeScreen = ({ navigation }) => {
         <View>
           <Text style={styles.greetingText}>Good Morning,</Text>
           <Text style={styles.userNameText}>
-            {userState.user.email.split("@")[0]}
+            {userState.user.email.split("@")[0] || "Welcome back"}
           </Text>
         </View>
         <TouchableOpacity style={styles.notifCircle}>
