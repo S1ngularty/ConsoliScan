@@ -17,11 +17,11 @@ export const fetchProducts = async () => {
 
 export const handleProductRequest = async (data, files, requestMethod) => {
   if (!data) throw new Error("data is undefined");
-  console.log(data)
+  // console.log(data)
   const formData = new FormData();
   for (let pair of Object.entries(data)) {
     if (pair[0] === "images") continue;
-    console.log(pair)
+    // console.log(pair)
     formData.append(pair[0], pair[1]);
   }
   if (files) {
