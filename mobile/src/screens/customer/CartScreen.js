@@ -34,9 +34,9 @@ const CartScreen = ({ navigation, route }) => {
   const [voucherCode, setVoucherCode] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState(null);
   const [weeklyUsage, setWeeklyUsage] = useState(mockWeeklyUsage);
-  const eligibilityStatus = useSelector((state) => state.auth);
+  const eligibilityStatus = useSelector((state) => state.auth.eligible);
   const [userEligibility, setUserEligibility] = useState({
-    isPWD: true, // Fetch from user profile
+    isPWD: false, // Fetch from user profile
     isSenior: false,
   });
 
@@ -45,7 +45,16 @@ const CartScreen = ({ navigation, route }) => {
   const dispatch = useDispatch();
 
   // Check if user is eligible for BNPC discounts
-  const isEligibleUser = eligibilityStatus?.idType ?? false
+  const isEligibleUser = eligibilityStatus?.isVerified;
+
+  useEffect(() => {
+    (() => {
+      if (eligibilityStatus.idType === "senior")
+        setUserEligibility((prev) => ({ ...prev, isSenior: true }));
+      if (eligibilityStatus.idType === "pwd")
+        setUserEligibility((prev) => ({ ...prev, isPWD: true }));
+    })();
+  },[eligibilityStatus]);
 
   // Available vouchers
   const availableVouchers = [
