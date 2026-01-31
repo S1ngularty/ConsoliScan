@@ -20,6 +20,7 @@ import {
 } from "../../features/cart/cartSlice";
 import { saveLocally } from "../../features/cart/cartThunks";
 import { debounceCartSync } from "../../features/cart/cartDebounce";
+import { checkout } from "../../api/checkout.api";
 
 // Mock weekly usage tracker - in production, fetch from API
 const mockWeeklyUsage = {
@@ -307,7 +308,7 @@ const CartScreen = ({ navigation, route }) => {
     setVoucherCode("");
   };
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (cart.length === 0) {
       Alert.alert("Empty Cart", "Your cart is empty. Add items to checkout.");
       return;
@@ -405,11 +406,12 @@ const CartScreen = ({ navigation, route }) => {
       },
     };
 
-    console.log("CHECKOUT SNAPSHOT:", checkoutData);
-
-    // POST /checkout/queue
-    // backend returns { checkoutCode }
-    // show QR with checkoutCode
+    try {
+          const queueId = await checkout(checkoutData);
+          console.log(queueId)
+    } catch (error) {
+      console.error(error)
+    }
   };
 
   const formatDate = (dateString) => {
