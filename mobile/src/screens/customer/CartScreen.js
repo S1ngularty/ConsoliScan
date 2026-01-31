@@ -13,20 +13,39 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSelector, useDispatch } from "react-redux";
-import Loader from "../../components/Loader";
-import { adjustQuantity, removeFromCart, clearCart } from "../../features/cart/cartSlice";
+import {
+  adjustQuantity,
+  removeFromCart,
+  clearCart,
+} from "../../features/cart/cartSlice";
 import { saveLocally } from "../../features/cart/cartThunks";
 import { debounceCartSync } from "../../features/cart/cartDebounce";
 
-const CartScreen = ({ navigation }) => {
+// Mock weekly usage tracker - in production, fetch from API
+const mockWeeklyUsage = {
+  bnpcAmountUsed: 0, // Amount spent on BNPC this week
+  discountUsed: 0, // Discount used this week
+  weekStart: "2024-01-15",
+  weekEnd: "2024-01-21",
+};
+
+const CartScreen = ({ navigation, route }) => {
   const [refreshing, setRefreshing] = useState(false);
-  const [discount, setDiscount] = useState(0);
   const [voucherCode, setVoucherCode] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState(null);
+  const [weeklyUsage, setWeeklyUsage] = useState(mockWeeklyUsage);
+  const eligibilityStatus = useSelector((state) => state.auth);
+  const [userEligibility, setUserEligibility] = useState({
+    isPWD: true, // Fetch from user profile
+    isSenior: false,
+  });
 
   // Get cart from Redux store
-  const { cart, itemCount, totalPrice } = useSelector((state) => state.cart);
+  const { cart, itemCount } = useSelector((state) => state.cart);
   const dispatch = useDispatch();
+
+  // Check if user is eligible for BNPC discounts
+  const isEligibleUser = eligibilityStatus?.idType ?? false
 
   // Available vouchers
   const availableVouchers = [
@@ -44,17 +63,142 @@ const CartScreen = ({ navigation }) => {
       minSpend: 200,
       description: "Save ₱50 on orders above ₱200",
     },
-    {
-      code: "SCAN20",
-      discount: 20,
-      type: "percentage",
-      minSpend: 150,
-      description: "20% off for scanning products",
-    },
   ];
 
-  const calculateFinalTotal = () => {
-    return totalPrice - discount;
+  // =========================
+  // BNPC DISCOUNT CALCULATION
+  // =========================
+
+  // Step 1: Filter Eligible BNPC Items
+  const getEligibleBNPCItems = () => {
+    if (!isEligibleUser) return [];
+
+    const userType = userEligibility.isPWD ? "PWD" : "SENIOR";
+
+    return cart.filter((item) => {
+      const product = item.product || item;
+      return (
+        product.isBNPC &&
+        !product.excludedFromDiscount &&
+        product.discountScopes?.includes(userType)
+      );
+    });
+  };
+
+  // Step 2: Compute BNPC Subtotal
+  const calculateBNPCSubtotal = (eligibleItems) => {
+    return eligibleItems.reduce((sum, item) => {
+      return sum + item.price * item.qty;
+    }, 0);
+  };
+
+  // Step 3 & 4: Apply Weekly Caps
+  const calculateDiscountDetails = () => {
+    if (!isEligibleUser) {
+      return {
+        eligible: false,
+        discountApplied: 0,
+        bnpcSubtotal: 0,
+        cappedBNPCAmount: 0,
+        reason: "User not eligible for BNPC discounts",
+      };
+    }
+
+    const eligibleItems = getEligibleBNPCItems();
+
+    if (eligibleItems.length === 0) {
+      return {
+        eligible: false,
+        discountApplied: 0,
+        bnpcSubtotal: 0,
+        cappedBNPCAmount: 0,
+        reason: "No eligible BNPC items in cart",
+      };
+    }
+
+    const bnpcSubtotal = calculateBNPCSubtotal(eligibleItems);
+
+    // Weekly Purchase Cap: ₱2,500
+    const remainingPurchaseCap = Math.max(2500 - weeklyUsage.bnpcAmountUsed, 0);
+
+    if (remainingPurchaseCap === 0) {
+      return {
+        eligible: false,
+        discountApplied: 0,
+        bnpcSubtotal,
+        cappedBNPCAmount: 0,
+        reason: "Weekly purchase cap reached (₱2,500)",
+      };
+    }
+
+    const cappedBNPCAmount = Math.min(bnpcSubtotal, remainingPurchaseCap);
+
+    // Compute Raw 5% Discount
+    const rawDiscount = cappedBNPCAmount * 0.05;
+
+    // Weekly Discount Cap: ₱125
+    const remainingDiscountCap = Math.max(125 - weeklyUsage.discountUsed, 0);
+
+    if (remainingDiscountCap === 0) {
+      return {
+        eligible: false,
+        discountApplied: 0,
+        bnpcSubtotal,
+        cappedBNPCAmount,
+        reason: "Weekly discount cap reached (₱125)",
+      };
+    }
+
+    const discountApplied = Math.min(rawDiscount, remainingDiscountCap);
+
+    return {
+      eligible: true,
+      discountApplied,
+      bnpcSubtotal,
+      cappedBNPCAmount,
+      eligibleItemsCount: eligibleItems.length,
+      remainingPurchaseCap,
+      remainingDiscountCap,
+      weeklyPurchaseUsed: weeklyUsage.bnpcAmountUsed + cappedBNPCAmount,
+      weeklyDiscountUsed: weeklyUsage.discountUsed + discountApplied,
+    };
+  };
+
+  // Calculate voucher discount
+  const calculateVoucherDiscount = (subtotal) => {
+    if (!appliedVoucher) return 0;
+
+    const eligibleAmount = subtotal;
+
+    if (eligibleAmount < appliedVoucher.minSpend) return 0;
+
+    if (appliedVoucher.type === "percentage") {
+      return (eligibleAmount * appliedVoucher.discount) / 100;
+    } else {
+      return appliedVoucher.discount;
+    }
+  };
+
+  // Calculate all totals
+  const calculateTotals = () => {
+    const discountDetails = calculateDiscountDetails();
+    const subtotal = cart.reduce(
+      (total, item) => total + item.price * item.qty,
+      0,
+    );
+    const voucherDiscount = calculateVoucherDiscount(subtotal);
+    const finalTotal = Math.max(
+      0,
+      subtotal - discountDetails.discountApplied - voucherDiscount,
+    );
+
+    return {
+      subtotal,
+      bnpcDiscount: discountDetails.discountApplied,
+      voucherDiscount,
+      finalTotal,
+      discountDetails,
+    };
   };
 
   const onRefresh = () => {
@@ -68,10 +212,8 @@ const CartScreen = ({ navigation }) => {
 
   const updateQuantity = (itemId, newQty) => {
     if (newQty < 1) {
-      // Remove item if quantity is 0
-      dispatch(clearCart(itemId));
+      dispatch(removeFromCart(itemId));
     } else {
-      // Update quantity using Redux
       dispatch(
         adjustQuantity({
           _id: itemId,
@@ -109,7 +251,7 @@ const CartScreen = ({ navigation }) => {
         text: "Clear All",
         style: "destructive",
         onPress: () => {
-         dispatch(clearCart())
+          dispatch(clearCart());
           dispatch(saveLocally());
           debounceCartSync(dispatch);
         },
@@ -117,16 +259,9 @@ const CartScreen = ({ navigation }) => {
     ]);
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "Recently added";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
-  };
-
   const handleApplyVoucher = () => {
+    const totals = calculateTotals();
+
     if (!voucherCode.trim()) {
       Alert.alert("Invalid Code", "Please enter a voucher code");
       return;
@@ -141,7 +276,7 @@ const CartScreen = ({ navigation }) => {
       return;
     }
 
-    if (totalPrice < voucher.minSpend) {
+    if (totals.subtotal < voucher.minSpend) {
       Alert.alert(
         "Minimum Spend Required",
         `Minimum spend of ₱${voucher.minSpend} required for this voucher`,
@@ -149,23 +284,16 @@ const CartScreen = ({ navigation }) => {
       return;
     }
 
-    let calculatedDiscount = 0;
-    if (voucher.type === "percentage") {
-      calculatedDiscount = (totalPrice * voucher.discount) / 100;
-    } else {
-      calculatedDiscount = voucher.discount;
-    }
-
-    setDiscount(calculatedDiscount);
     setAppliedVoucher(voucher);
+
+    const voucherDiscount = calculateVoucherDiscount(totals.subtotal);
     Alert.alert(
       "Success",
-      `Voucher applied! You saved ₱${calculatedDiscount.toFixed(2)}`,
+      `Voucher applied! You saved ₱${voucherDiscount.toFixed(2)}`,
     );
   };
 
   const handleRemoveVoucher = () => {
-    setDiscount(0);
     setAppliedVoucher(null);
     setVoucherCode("");
   };
@@ -176,80 +304,176 @@ const CartScreen = ({ navigation }) => {
       return;
     }
 
+    const totals = calculateTotals();
+    const discountDetails = totals.discountDetails;
+
     const checkoutData = {
-      cart,
-      totalPrice,
-      discount,
-      finalTotal: calculateFinalTotal(),
+      cart: cart.map((item) => {
+        const product = item.product || item;
+        const isBNPCEligible =
+          discountDetails.eligible &&
+          product.isBNPC &&
+          !product.excludedFromDiscount &&
+          product.discountScopes?.includes(
+            userEligibility.isPWD ? "PWD" : "SENIOR",
+          );
+
+        return {
+          ...item,
+          isBNPCEligible,
+          bnpcDiscount: isBNPCEligible ? item.price * item.qty * 0.05 : 0,
+        };
+      }),
+      totals,
+      discountDetails,
       voucher: appliedVoucher,
+      userEligibility,
+      weeklyUsage: {
+        ...weeklyUsage,
+        bnpcAmountUsed:
+          discountDetails.weeklyPurchaseUsed || weeklyUsage.bnpcAmountUsed,
+        discountUsed:
+          discountDetails.weeklyDiscountUsed || weeklyUsage.discountUsed,
+      },
     };
 
     navigation.navigate("Checkout", { checkoutData });
   };
 
-  const renderCartItem = (item) => (
-    <View key={item._id} style={styles.cartItem}>
-      <Image
-        source={{
-          uri:
-            item.images?.[0]?.url ||
-            item.product?.images?.[0]?.url ||
-            "https://via.placeholder.com/100",
-        }}
-        style={styles.itemImage}
-        resizeMode="cover"
-      />
+  const formatDate = (dateString) => {
+    if (!dateString) return "Recently added";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+  };
 
-      <View style={styles.itemInfo}>
-        <Text style={styles.itemName} numberOfLines={2}>
-          {item.name || item.product?.name || "Product"}
-        </Text>
-        <Text style={styles.itemPrice}>
-          ₱{item.price?.toFixed(2) || "0.00"}
-        </Text>
-        <Text style={styles.itemDate}>Added {formatDate(item.dateAdded)}</Text>
-      </View>
+  const renderCartItem = (item) => {
+    const totals = calculateTotals();
+    const product = item.product || item;
+    const itemTotal = item.price * item.qty;
 
-      <View style={styles.itemActions}>
-        <View style={styles.quantityContainer}>
-          <TouchableOpacity
-            style={styles.qtyButton}
-            onPress={() => updateQuantity(item._id, item.qty - 1)}
-          >
-            <MaterialCommunityIcons name="minus" size={18} color="#666" />
-          </TouchableOpacity>
+    // Check if item is BNPC eligible
+    const isBNPCEligible =
+      totals.discountDetails.eligible &&
+      product.isBNPC &&
+      !product.excludedFromDiscount &&
+      product.discountScopes?.includes(
+        userEligibility.isPWD ? "PWD" : "SENIOR",
+      );
 
-          <View style={styles.qtyDisplay}>
-            <Text style={styles.qtyText}>{item.qty}</Text>
+    const bnpcItemDiscount = isBNPCEligible ? itemTotal * 0.05 : 0;
+
+    return (
+      <View key={item._id} style={styles.cartItem}>
+        <Image
+          source={{
+            uri:
+              item.images?.[0]?.url ||
+              item.product?.images?.[0]?.url ||
+              "https://via.placeholder.com/100",
+          }}
+          style={styles.itemImage}
+          resizeMode="cover"
+        />
+
+        <View style={styles.itemInfo}>
+          <Text style={styles.itemName} numberOfLines={2}>
+            {item.name || product.name || "Product"}
+          </Text>
+
+          {product.isBNPC && (
+            <View style={styles.bnpcBadgeContainer}>
+              <View style={styles.bnpcBadge}>
+                <Text style={styles.bnpcBadgeText}>BNPC</Text>
+              </View>
+              {!product.excludedFromDiscount && (
+                <Text style={styles.discountEligibleText}>
+                  Eligible for {product.discountScopes?.join("/")} discount
+                </Text>
+              )}
+            </View>
+          )}
+
+          <View style={styles.priceRow}>
+            <Text style={styles.itemPrice}>
+              ₱{item.price?.toFixed(2) || "0.00"}
+            </Text>
+            <Text style={styles.itemUnit}>per {product.unit || "pc"}</Text>
           </View>
 
-          <TouchableOpacity
-            style={styles.qtyButton}
-            onPress={() => updateQuantity(item._id, item.qty + 1)}
-          >
-            <MaterialCommunityIcons name="plus" size={18} color="#666" />
-          </TouchableOpacity>
-        </View>
+          {isBNPCEligible && bnpcItemDiscount > 0 && (
+            <View style={styles.discountRow}>
+              <MaterialCommunityIcons
+                name="percent"
+                size={12}
+                color="#00A86B"
+              />
+              <Text style={styles.discountText}>
+                5% off: ₱{bnpcItemDiscount.toFixed(2)}
+              </Text>
+            </View>
+          )}
 
-        <View style={styles.itemTotal}>
-          <Text style={styles.itemTotalText}>
-            ₱{((item.price || 0) * item.qty).toFixed(2)}
+          <Text style={styles.itemDate}>
+            Added {formatDate(item.dateAdded)}
           </Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.removeButton}
-          onPress={() => removeItem(item._id)}
-        >
-          <MaterialCommunityIcons
-            name="trash-can-outline"
-            size={20}
-            color="#f44336"
-          />
-        </TouchableOpacity>
+        <View style={styles.itemActions}>
+          <View style={styles.quantityContainer}>
+            <TouchableOpacity
+              style={styles.qtyButton}
+              onPress={() => updateQuantity(item._id, item.qty - 1)}
+            >
+              <MaterialCommunityIcons name="minus" size={18} color="#666" />
+            </TouchableOpacity>
+
+            <View style={styles.qtyDisplay}>
+              <Text style={styles.qtyText}>{item.qty}</Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.qtyButton}
+              onPress={() => updateQuantity(item._id, item.qty + 1)}
+            >
+              <MaterialCommunityIcons name="plus" size={18} color="#666" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.itemTotal}>
+            {bnpcItemDiscount > 0 ? (
+              <>
+                <Text style={styles.originalPrice}>
+                  ₱{itemTotal.toFixed(2)}
+                </Text>
+                <Text style={styles.discountedPrice}>
+                  ₱{(itemTotal - bnpcItemDiscount).toFixed(2)}
+                </Text>
+              </>
+            ) : (
+              <Text style={styles.itemTotalText}>₱{itemTotal.toFixed(2)}</Text>
+            )}
+          </View>
+
+          <TouchableOpacity
+            style={styles.removeButton}
+            onPress={() => removeItem(item._id)}
+          >
+            <MaterialCommunityIcons
+              name="trash-can-outline"
+              size={20}
+              color="#f44336"
+            />
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
+
+  const totals = calculateTotals();
+  const discountDetails = totals.discountDetails;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -290,6 +514,40 @@ const CartScreen = ({ navigation }) => {
           />
         }
       >
+        {/* User Eligibility Banner */}
+        {cart.length > 0 && (
+          <View style={styles.eligibilityCard}>
+            <View style={styles.eligibilityHeader}>
+              {isEligibleUser ? (
+                <>
+                  <MaterialCommunityIcons
+                    name="shield-check"
+                    size={22}
+                    color="#00A86B"
+                  />
+                  <Text style={styles.eligibilityTitle}>
+                    You're eligible for BNPC discounts!
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <MaterialCommunityIcons
+                    name="shield-off"
+                    size={22}
+                    color="#999"
+                  />
+                  <Text style={styles.eligibilityTitle}>Regular customer</Text>
+                </>
+              )}
+            </View>
+            <Text style={styles.eligibilityText}>
+              {isEligibleUser
+                ? `As a ${userEligibility.isPWD ? "PWD" : "Senior Citizen"}, you get 5% off on eligible BNPC items (up to ₱125/week)`
+                : "Sign up for PWD/Senior benefits to get discounts on BNPC items"}
+            </Text>
+          </View>
+        )}
+
         {/* Cart Items */}
         {cart.length > 0 ? (
           <View style={styles.cartItemsContainer}>
@@ -358,58 +616,17 @@ const CartScreen = ({ navigation }) => {
                   autoCapitalize="characters"
                 />
                 <TouchableOpacity
-                  style={styles.applyButton}
+                  style={[
+                    styles.applyButton,
+                    !voucherCode.trim() && styles.applyButtonDisabled,
+                  ]}
                   onPress={handleApplyVoucher}
+                  disabled={!voucherCode.trim()}
                 >
                   <Text style={styles.applyButtonText}>Apply</Text>
                 </TouchableOpacity>
               </View>
             )}
-
-            {/* Available Vouchers */}
-            <View style={styles.availableVouchers}>
-              <Text style={styles.availableVouchersTitle}>
-                Available Vouchers
-              </Text>
-              {availableVouchers.map((voucher) => (
-                <View key={voucher.code} style={styles.voucherItem}>
-                  <View style={styles.voucherItemIcon}>
-                    <MaterialCommunityIcons
-                      name="ticket-percent"
-                      size={18}
-                      color="#FF9800"
-                    />
-                  </View>
-                  <View style={styles.voucherItemContent}>
-                    <Text style={styles.voucherItemCode}>{voucher.code}</Text>
-                    <Text style={styles.voucherItemDesc}>
-                      {voucher.description}
-                    </Text>
-                    <Text style={styles.voucherItemTerms}>
-                      Min. spend ₱{voucher.minSpend}
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.useVoucherButton}
-                    onPress={() => {
-                      setVoucherCode(voucher.code);
-                      handleApplyVoucher();
-                    }}
-                    disabled={totalPrice < voucher.minSpend}
-                  >
-                    <Text
-                      style={[
-                        styles.useVoucherText,
-                        totalPrice < voucher.minSpend &&
-                          styles.useVoucherTextDisabled,
-                      ]}
-                    >
-                      Use
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </View>
           </View>
         )}
 
@@ -418,43 +635,180 @@ const CartScreen = ({ navigation }) => {
           <View style={styles.summaryCard}>
             <Text style={styles.summaryTitle}>Order Summary</Text>
 
+            {/* Subtotal */}
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Subtotal</Text>
-              <Text style={styles.summaryValue}>₱{totalPrice.toFixed(2)}</Text>
+              <Text style={styles.summaryValue}>
+                ₱{totals.subtotal.toFixed(2)}
+              </Text>
             </View>
 
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Shipping</Text>
-              <Text style={styles.summaryValue}>₱0.00</Text>
-            </View>
+            {/* BNPC Discount Details */}
+            {discountDetails.eligible && discountDetails.bnpcSubtotal > 0 && (
+              <>
+                <View style={styles.sectionDivider} />
+                <Text style={styles.discountSectionTitle}>BNPC Discount</Text>
 
-            {discount > 0 && (
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Discount</Text>
-                <Text style={[styles.summaryValue, styles.discountValue]}>
-                  -₱{discount.toFixed(2)}
-                </Text>
-              </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Eligible BNPC items</Text>
+                  <Text style={styles.detailValue}>
+                    {discountDetails.eligibleItemsCount} items
+                  </Text>
+                </View>
+
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>BNPC subtotal</Text>
+                  <Text style={styles.detailValue}>
+                    ₱{discountDetails.bnpcSubtotal.toFixed(2)}
+                  </Text>
+                </View>
+
+                {discountDetails.bnpcSubtotal >
+                  discountDetails.cappedBNPCAmount && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>After weekly cap</Text>
+                    <Text style={styles.detailValue}>
+                      ₱{discountDetails.cappedBNPCAmount.toFixed(2)}
+                      <Text style={styles.capNote}>
+                        {" "}
+                        (₱{discountDetails.remainingPurchaseCap?.toFixed(
+                          2,
+                        )}{" "}
+                        remaining)
+                      </Text>
+                    </Text>
+                  </View>
+                )}
+
+                <View style={styles.detailRow}>
+                  <View style={styles.discountRateContainer}>
+                    <MaterialCommunityIcons
+                      name="percent"
+                      size={14}
+                      color="#00A86B"
+                    />
+                    <Text style={styles.detailLabel}>5% discount</Text>
+                  </View>
+                  <Text style={styles.detailValue}>
+                    -₱{(discountDetails.cappedBNPCAmount * 0.05).toFixed(2)}
+                  </Text>
+                </View>
+
+                {discountDetails.discountApplied <
+                  discountDetails.cappedBNPCAmount * 0.05 && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>After discount cap</Text>
+                    <Text style={styles.detailValue}>
+                      -₱{discountDetails.discountApplied.toFixed(2)}
+                      <Text style={styles.capNote}>
+                        {" "}
+                        (₱{discountDetails.remainingDiscountCap?.toFixed(
+                          2,
+                        )}{" "}
+                        remaining)
+                      </Text>
+                    </Text>
+                  </View>
+                )}
+
+                <View style={styles.summaryRow}>
+                  <Text style={[styles.summaryLabel, styles.bnpcDiscountLabel]}>
+                    Total BNPC Discount
+                  </Text>
+                  <Text style={[styles.summaryValue, styles.bnpcDiscountValue]}>
+                    -₱{discountDetails.discountApplied.toFixed(2)}
+                  </Text>
+                </View>
+
+                <View style={styles.weeklySummary}>
+                  <Text style={styles.weeklySummaryText}>
+                    Weekly usage: ₱
+                    {discountDetails.weeklyPurchaseUsed?.toFixed(2)} / ₱2,500
+                    spent
+                  </Text>
+                  <Text style={styles.weeklySummaryText}>
+                    Weekly discount: ₱
+                    {discountDetails.weeklyDiscountUsed?.toFixed(2)} / ₱125 used
+                  </Text>
+                </View>
+              </>
             )}
 
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Tax</Text>
-              <Text style={styles.summaryValue}>₱0.00</Text>
-            </View>
+            {/* Voucher Discount */}
+            {appliedVoucher && totals.voucherDiscount > 0 && (
+              <>
+                <View style={styles.sectionDivider} />
+                <Text style={styles.discountSectionTitle}>
+                  Voucher Discount
+                </Text>
+
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>{appliedVoucher.code}</Text>
+                  <Text style={styles.detailValue}>
+                    {appliedVoucher.type === "percentage"
+                      ? `${appliedVoucher.discount}% off`
+                      : `₱${appliedVoucher.discount} off`}
+                  </Text>
+                </View>
+
+                <View style={styles.summaryRow}>
+                  <Text
+                    style={[styles.summaryLabel, styles.voucherDiscountLabel]}
+                  >
+                    Voucher Discount
+                  </Text>
+                  <Text
+                    style={[styles.summaryValue, styles.voucherDiscountValue]}
+                  >
+                    -₱{totals.voucherDiscount.toFixed(2)}
+                  </Text>
+                </View>
+              </>
+            )}
+
+            {/* If not eligible, show reason */}
+            {!discountDetails.eligible && discountDetails.reason && (
+              <>
+                <View style={styles.sectionDivider} />
+                <View style={styles.noDiscountContainer}>
+                  <MaterialCommunityIcons
+                    name="information"
+                    size={16}
+                    color="#999"
+                  />
+                  <Text style={styles.noDiscountText}>
+                    {discountDetails.reason}
+                  </Text>
+                </View>
+              </>
+            )}
 
             <View style={styles.divider} />
 
+            {/* Final Total */}
             <View style={styles.summaryRow}>
-              <Text style={styles.totalLabel}>Total</Text>
+              <Text style={styles.totalLabel}>Total Amount</Text>
               <Text style={styles.totalValue}>
-                ₱{calculateFinalTotal().toFixed(2)}
+                ₱{totals.finalTotal.toFixed(2)}
               </Text>
             </View>
 
-            {discount > 0 && (
-              <Text style={styles.savingsText}>
-                You saved ₱{discount.toFixed(2)} with {appliedVoucher?.code}
-              </Text>
+            {/* Total Savings */}
+            {(discountDetails.discountApplied > 0 ||
+              totals.voucherDiscount > 0) && (
+              <View style={styles.savingsContainer}>
+                <MaterialCommunityIcons
+                  name="piggy-bank"
+                  size={16}
+                  color="#00A86B"
+                />
+                <Text style={styles.savingsText}>
+                  You save ₱
+                  {(
+                    discountDetails.discountApplied + totals.voucherDiscount
+                  ).toFixed(2)}
+                </Text>
+              </View>
             )}
           </View>
         )}
@@ -467,8 +821,8 @@ const CartScreen = ({ navigation }) => {
               <Text style={styles.pointsTitle}>Earn Points</Text>
             </View>
             <Text style={styles.pointsText}>
-              You'll earn {Math.floor(calculateFinalTotal() / 10)} loyalty
-              points with this purchase
+              You'll earn {Math.floor(totals.finalTotal / 10)} loyalty points
+              with this purchase
             </Text>
           </View>
         )}
@@ -480,10 +834,12 @@ const CartScreen = ({ navigation }) => {
           <View style={styles.totalContainer}>
             <Text style={styles.totalText}>Total:</Text>
             <Text style={styles.totalAmount}>
-              ₱{calculateFinalTotal().toFixed(2)}
+              ₱{totals.finalTotal.toFixed(2)}
             </Text>
-            {discount > 0 && (
-              <Text style={styles.originalPrice}>₱{totalPrice.toFixed(2)}</Text>
+            {discountDetails.discountApplied > 0 && (
+              <Text style={styles.originalPrice}>
+                Was: ₱{totals.subtotal.toFixed(2)}
+              </Text>
             )}
           </View>
 
@@ -546,6 +902,36 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#f0f0f0",
   },
+  // Eligibility Card
+  eligibilityCard: {
+    backgroundColor: "#fff",
+    marginHorizontal: 20,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  eligibilityHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  eligibilityTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#000",
+    marginLeft: 10,
+  },
+  eligibilityText: {
+    fontSize: 14,
+    color: "#666",
+    lineHeight: 20,
+  },
+  // Cart Items
   cartItemsContainer: {
     paddingHorizontal: 20,
     paddingTop: 16,
@@ -577,14 +963,56 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#000",
-    marginBottom: 4,
+    marginBottom: 6,
     lineHeight: 20,
+  },
+  bnpcBadgeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+    gap: 8,
+  },
+  bnpcBadge: {
+    backgroundColor: "#FF9800",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  bnpcBadgeText: {
+    fontSize: 10,
+    color: "#fff",
+    fontWeight: "700",
+  },
+  discountEligibleText: {
+    fontSize: 11,
+    color: "#00A86B",
+    fontStyle: "italic",
+  },
+  priceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 4,
   },
   itemPrice: {
     fontSize: 16,
     fontWeight: "700",
     color: "#00A86B",
+  },
+  itemUnit: {
+    fontSize: 12,
+    color: "#888",
+  },
+  discountRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     marginBottom: 4,
+  },
+  discountText: {
+    fontSize: 12,
+    color: "#00A86B",
+    fontWeight: "600",
   },
   itemDate: {
     fontSize: 12,
@@ -623,11 +1051,23 @@ const styles = StyleSheet.create({
   },
   itemTotal: {
     marginTop: 8,
+    alignItems: "flex-end",
   },
   itemTotalText: {
     fontSize: 16,
     fontWeight: "800",
     color: "#000",
+  },
+  originalPrice: {
+    fontSize: 12,
+    color: "#999",
+    textDecorationLine: "line-through",
+    marginBottom: 2,
+  },
+  discountedPrice: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#00A86B",
   },
   removeButton: {
     width: 36,
@@ -675,6 +1115,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+  // Voucher Section
   voucherCard: {
     backgroundColor: "#fff",
     marginHorizontal: 20,
@@ -719,6 +1160,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     justifyContent: "center",
+  },
+  applyButtonDisabled: {
+    backgroundColor: "#ccc",
   },
   applyButtonText: {
     color: "#fff",
@@ -766,67 +1210,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
-  availableVouchers: {
-    marginTop: 20,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: "#f0f0f0",
-  },
-  availableVouchersTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 12,
-  },
-  voucherItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f8f8f8",
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-  voucherItemIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#fff3e0",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  voucherItemContent: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  voucherItemCode: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#FF9800",
-  },
-  voucherItemDesc: {
-    fontSize: 12,
-    color: "#666",
-    marginTop: 2,
-  },
-  voucherItemTerms: {
-    fontSize: 10,
-    color: "#999",
-    marginTop: 2,
-  },
-  useVoucherButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: "#00A86B",
-    borderRadius: 8,
-  },
-  useVoucherText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  useVoucherTextDisabled: {
-    color: "#ccc",
-  },
+  // Order Summary
   summaryCard: {
     backgroundColor: "#fff",
     marginHorizontal: 20,
@@ -860,9 +1244,85 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#000",
   },
-  discountValue: {
+  // Discount Details
+  discountSectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#000",
+    marginBottom: 12,
+    marginTop: 8,
+  },
+  detailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  detailLabel: {
+    fontSize: 14,
+    color: "#666",
+  },
+  detailValue: {
+    fontSize: 14,
+    color: "#000",
+    fontWeight: "500",
+  },
+  discountRateContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  bnpcDiscountLabel: {
+    fontWeight: "700",
+    color: "#000",
+  },
+  bnpcDiscountValue: {
     color: "#00A86B",
     fontWeight: "700",
+  },
+  voucherDiscountLabel: {
+    fontWeight: "700",
+    color: "#000",
+  },
+  voucherDiscountValue: {
+    color: "#FF9800",
+    fontWeight: "700",
+  },
+  capNote: {
+    fontSize: 12,
+    color: "#999",
+    fontStyle: "italic",
+  },
+  weeklySummary: {
+    backgroundColor: "#f8f8f8",
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  weeklySummaryText: {
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 4,
+  },
+  noDiscountContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#f8f8f8",
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  noDiscountText: {
+    fontSize: 13,
+    color: "#999",
+    fontStyle: "italic",
+    flex: 1,
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: "#f0f0f0",
+    marginVertical: 16,
   },
   divider: {
     height: 1,
@@ -879,12 +1339,22 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#00A86B",
   },
-  savingsText: {
-    fontSize: 13,
-    color: "#00A86B",
-    marginTop: 8,
-    fontStyle: "italic",
+  savingsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    justifyContent: "center",
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: "#f0f9f5",
+    borderRadius: 8,
   },
+  savingsText: {
+    fontSize: 14,
+    color: "#00A86B",
+    fontWeight: "600",
+  },
+  // Points Card
   pointsCard: {
     backgroundColor: "#fff",
     marginHorizontal: 20,
@@ -915,6 +1385,7 @@ const styles = StyleSheet.create({
     color: "#666",
     lineHeight: 20,
   },
+  // Checkout Bar
   checkoutBar: {
     position: "absolute",
     bottom: 0,

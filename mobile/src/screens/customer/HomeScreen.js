@@ -89,9 +89,9 @@ const HomeScreen = ({ navigation }) => {
       {/* --- TOP NAVIGATION --- */}
       <View style={styles.navBar}>
         <View>
-          <Text style={styles.greetingText}>Good Morning,</Text>
+          <Text style={styles.greetingText}>Good Day,</Text>
           <Text style={styles.userNameText}>
-            {userState.user.email.split("@")[0] || "Welcome back"}
+            {userState.user?.name || "Welcome back"}
           </Text>
         </View>
         <TouchableOpacity style={styles.notifCircle}>

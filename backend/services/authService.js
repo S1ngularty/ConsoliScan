@@ -1,4 +1,5 @@
 const User = require("../models/userModel");
+const Eligible = require("../models/eligibleModel");
 const admin = require("../configs/firebase");
 const { createLog } = require("./activityLogsService");
 const bcrypt = require("bcrypt");
@@ -20,18 +21,34 @@ exports.register = async (request) => {
 
 exports.login = async (request) => {
   const { email, password } = request.body;
-  const user = await User.findOne({ email }).select(
+  let user = await User.findOne({ email }).select(
     "+password role email name status",
   );
   if (!user) throw new Error("account does not exist");
   if (user.status === "inactive") throw new Error("user is inactive");
 
+  let eligibiltyStatus = null;
+
+  if (user.role === "user") {
+    eligibiltyStatus = await Eligible.findOne({ user: user._id });
+  }
+
   const isMatched = await bcrypt.compare(password, user.password);
   if (!isMatched) throw new Error("password does not match");
   const jwtToken = await user.getToken();
   if (!jwtToken) throw new Error("failed to generate user token");
-  delete user.password
-  return { ...user, token: jwtToken };
+  delete user.password;
+  return { user, eligibiltyStatus, token: jwtToken };
+};
+
+exports.verifyToken = async (request) => {
+  const { user } = request;
+  let eligibilityStatus = null;
+  if (user.role === "user") {
+    eligibilityStatus = await Eligible.findOne({ user: user.userId });
+  }
+
+  return { user, eligibilityStatus };
 };
 
 exports.googleAuth = async (request, response) => {

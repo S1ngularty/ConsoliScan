@@ -5,9 +5,10 @@ const { createLog } = require("./activityLogsService");
 
 exports.create = async (request) => {
   const { userId } = request.params;
+  console.log(userId)
   if (!request.body) throw new Error("empty request body");
-  console.log(request.body);
-  console.log(request.files);
+  // console.log(request.body);
+  // console.log(request.files);
   const { idFront, idBack, userPhoto } = request.files;
   if (!idFront) throw new Error("front id image is required");
   if (!idBack) throw new Error("back id image is required");
@@ -18,7 +19,7 @@ exports.create = async (request) => {
   let uploadedIdBack = await uploadImage(idBack, path);
   let uploadedUserPhoto = await uploadImage(userPhoto, path);
 
-  console.log(uploadedIdFront, uploadedIdBack, uploadedUserPhoto);
+  // console.log(uploadedIdFront, uploadedIdBack, uploadedUserPhoto);
 
   request.body.idImage = {
     front: uploadedIdFront,
