@@ -10,12 +10,31 @@ exports.checkout = async (request) => {
   const expiresAt = Date.now() + 10 * 60 * 1000;
   data.user = userId;
   data.checkoutCode = checkoutCode;
-  data.expiresAt = expiresAt
+  data.expiresAt = expiresAt;
 
-//   const isQueue = await Queue.create({ ...data });
+  //   const isQueue = await Queue.create({ ...data });
 
   return {
     checkoutCode,
-    expiresAt
+    expiresAt,
   };
+};
+
+exports.getOrder = async (request) => {
+  const { orderId } = request.params;
+  const { userId } = request.user;
+
+  const order = Queue.findOneAndUpdate(
+    { checkoutCode: orderId },
+    {
+      cashier: userId,
+      status: "SCANNED",
+      scannedAt: Date.now(),
+    },
+    { new: true },
+  );
+
+  if (!order) throw new Error("order not found");
+
+  return order;
 };

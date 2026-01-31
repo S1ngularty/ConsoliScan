@@ -4,5 +4,6 @@ const authMiddlware = require("../middlewares/authMiddleware")
 const queueController = require("../controllers/checkoutQueueController")
 
 router.route("/checkout").post(authMiddlware.verifyToken,queueController.userCheckout)
+router.route("/order/:orderId").put(authMiddlware.verifyToken, queueController.getCustomerOrder)
 
 module.exports = router
