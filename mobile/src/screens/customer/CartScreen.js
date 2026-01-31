@@ -407,9 +407,9 @@ const CartScreen = ({ navigation, route }) => {
     };
 
     try {
-          const queueId = await checkout(checkoutData);
-          console.log(queueId)
-    } catch (error) {
+          const queue = await checkout(checkoutData);
+          navigation.navigate("QR",queue)
+        } catch (error) {
       console.error(error)
     }
   };

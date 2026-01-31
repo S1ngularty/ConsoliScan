@@ -12,7 +12,7 @@ exports.checkout = async (request) => {
   data.checkoutCode = checkoutCode;
   data.expiresAt = expiresAt
 
-  const isQueue = await Queue.create({ ...data });
+//   const isQueue = await Queue.create({ ...data });
 
   return {
     checkoutCode,
