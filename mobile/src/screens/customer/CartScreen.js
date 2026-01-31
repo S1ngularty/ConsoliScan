@@ -54,7 +54,7 @@ const CartScreen = ({ navigation, route }) => {
       if (eligibilityStatus.idType === "pwd")
         setUserEligibility((prev) => ({ ...prev, isPWD: true }));
     })();
-  },[eligibilityStatus]);
+  }, [eligibilityStatus]);
 
   // Available vouchers
   const availableVouchers = [
@@ -316,37 +316,100 @@ const CartScreen = ({ navigation, route }) => {
     const totals = calculateTotals();
     const discountDetails = totals.discountDetails;
 
-    const checkoutData = {
-      cart: cart.map((item) => {
-        const product = item.product || item;
-        const isBNPCEligible =
-          discountDetails.eligible &&
+    /* ======================
+     SANITIZE CART ITEMS
+  ====================== */
+
+    const items = cart.map((item) => {
+      const product = item.product || item;
+
+      const isBNPCEligible =
+        (discountDetails.eligible &&
           product.isBNPC &&
           !product.excludedFromDiscount &&
           product.discountScopes?.includes(
             userEligibility.isPWD ? "PWD" : "SENIOR",
-          );
+          )) ??
+        false;
 
-        return {
-          ...item,
-          isBNPCEligible,
-          bnpcDiscount: isBNPCEligible ? item.price * item.qty * 0.05 : 0,
-        };
-      }),
-      totals,
-      discountDetails,
-      voucher: appliedVoucher,
-      userEligibility,
-      weeklyUsage: {
-        ...weeklyUsage,
+      return {
+        product: product._id,
+        name: product.name,
+        sku: product.sku,
+
+        quantity: item.selectedQuantity,
+        unitPrice: item.price,
+
+        categoryType: product.bnpcCategory || null,
+        isBNPCEligible,
+      };
+    });
+
+    /* ======================
+     FREEZE TOTALS
+  ====================== */
+
+    const checkoutTotals = {
+      subtotal: totals.subtotal,
+      discountTotal: (totals.bnpcDiscount || 0) + (totals.voucherDiscount || 0),
+      finalTotal: totals.finalTotal,
+    };
+
+    /* ======================
+     DISCOUNT SNAPSHOT
+  ====================== */
+
+    const discountSnapshot = {
+      eligible: discountDetails.eligible,
+      eligibleItemsCount: discountDetails.eligibleItemsCount,
+
+      bnpcSubtotal: discountDetails.bnpcSubtotal,
+      cappedBNPCAmount: discountDetails.cappedBNPCAmount,
+
+      discountApplied: discountDetails.discountApplied,
+
+      weeklyDiscountUsed: discountDetails.weeklyDiscountUsed,
+      weeklyPurchaseUsed: discountDetails.weeklyPurchaseUsed,
+
+      remainingDiscountCap: discountDetails.remainingDiscountCap,
+      remainingPurchaseCap: discountDetails.remainingPurchaseCap,
+    };
+
+    /* ======================
+     FINAL CHECKOUT PAYLOAD
+  ====================== */
+
+    const checkoutData = {
+      items,
+      totals: checkoutTotals,
+      discountSnapshot,
+
+      userEligibility: {
+        isPWD: userEligibility.isPWD,
+        isSenior: userEligibility.isSenior,
+      },
+
+      voucher: appliedVoucher
+        ? {
+            code: appliedVoucher.code,
+            discountAmount: appliedVoucher.discountAmount,
+          }
+        : null,
+
+      weeklyUsageSnapshot: {
         bnpcAmountUsed:
-          discountDetails.weeklyPurchaseUsed || weeklyUsage.bnpcAmountUsed,
+          discountDetails.weeklyPurchaseUsed ?? weeklyUsage.bnpcAmountUsed,
+
         discountUsed:
-          discountDetails.weeklyDiscountUsed || weeklyUsage.discountUsed,
+          discountDetails.weeklyDiscountUsed ?? weeklyUsage.discountUsed,
       },
     };
 
-    navigation.navigate("Checkout", { checkoutData });
+    console.log("CHECKOUT SNAPSHOT:", checkoutData);
+
+    // POST /checkout/queue
+    // backend returns { checkoutCode }
+    // show QR with checkoutCode
   };
 
   const formatDate = (dateString) => {
