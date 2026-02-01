@@ -1,10 +1,11 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useSelector } from "react-redux";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import AuthNavigation from "./AuthNavigator";
 import CustomerStackNavigator from "./CustomerStackNavigator";
 import CashierStackNavigator from "./CashierStackNavigator";
+import SplashScreen from "../screens/SplashScreen";
 
 const ROLES = {
   Customer: "user",
@@ -15,6 +16,11 @@ const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
   const { loading, isLoggedIn, role } = useSelector((state) => state.auth);
+
+  const [appIsReady, setAppIsReady] = useState(false);
+  if (!appIsReady) {
+    return <SplashScreen onReady={()=> setAppIsReady(true)} />;
+  }
 
   // useEffect(() => {
   //   console.log(loading, isLoggedIn, role);

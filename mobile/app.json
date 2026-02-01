@@ -9,9 +9,9 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/splash-icon-consoliscan.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#00A86B"
     },
     "ios": {
       "supportsTablet": true
@@ -20,7 +20,11 @@
       "package": "com.tupt.ConsoliScan",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#00A86B"
+      },
+      "splash": {
+        "backgroundColor": "#00A86B",
+        "resizeMode": "contain"
       },
       "edgeToEdgeEnabled": true,
       "permissions": ["android.permission.CAMERA"]
@@ -36,7 +40,8 @@
           "microphonePermission": "Allow $(ConsoliScan) to access your microphone",
           "recordAudioAndroid": false
         }
-      ]
+      ],
+      "expo-font"
     ],
     "extra": {
       "eas": {

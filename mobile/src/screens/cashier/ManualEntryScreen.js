@@ -20,6 +20,7 @@ const ManualEntryScreen = () => {
   const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+
   const handleSubmit = async () => {
     if (!code.trim()) {
       Alert.alert('Error', 'Please enter a checkout code');

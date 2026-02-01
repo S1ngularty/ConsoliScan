@@ -7,9 +7,11 @@ import QRScanningScreen from "../screens/cashier/QRScanningScreen";
 const Stack = createNativeStackNavigator();
 
 export default function CashierStackNavigator() {
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="ManualEntry" component={ManualEntryScreen} />
-    <Stack.Screen name="OrderDetails" component={OrderDetailsScreen} />
-    <Stack.Screen name="QRScanning" component={QRScanningScreen} />
-  </Stack.Navigator>;
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="QRScanning" component={QRScanningScreen} />
+      <Stack.Screen name="ManualEntry" component={ManualEntryScreen} />
+      <Stack.Screen name="OrderDetails" component={OrderDetailsScreen} />
+    </Stack.Navigator>
+  );
 }
