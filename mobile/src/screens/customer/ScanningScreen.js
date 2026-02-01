@@ -14,10 +14,10 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import BarcodeScanner from "../../components/BarcodeScanner";
 import ProductDetailSheet from "../../components/ProductDetailSheet";
 import { scanProduct } from "../../api/product.api";
-import { addToCart } from "../../features/cart/cartSlice";
+import { addToCart } from "../../features/slices/cart/cartSlice";
 import { useDispatch, useSelector } from "react-redux";
-import { saveLocally } from "../../features/cart/cartThunks";
-import { debounceCartSync } from "../../features/cart/cartDebounce";
+import { saveLocally } from "../../features/slices/cart/cartThunks";
+import { debounceCartSync } from "../../features/slices/cart/cartDebounce";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 

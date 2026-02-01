@@ -17,9 +17,9 @@ import {
   adjustQuantity,
   removeFromCart,
   clearCart,
-} from "../../features/cart/cartSlice";
-import { saveLocally } from "../../features/cart/cartThunks";
-import { debounceCartSync } from "../../features/cart/cartDebounce";
+} from "../../features/slices/cart/cartSlice";
+import { saveLocally } from "../../features/slices/cart/cartThunks";
+import { debounceCartSync } from "../../features/slices/cart/cartDebounce";
 import { checkout } from "../../api/checkout.api";
 
 // Mock weekly usage tracker - in production, fetch from API

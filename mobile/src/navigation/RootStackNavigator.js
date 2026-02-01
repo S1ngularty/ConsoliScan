@@ -16,9 +16,9 @@ const Stack = createNativeStackNavigator();
 export default function RootNavigator() {
   const { loading, isLoggedIn, role } = useSelector((state) => state.auth);
 
-  useEffect(() => {
-    console.log(loading, isLoggedIn, role);
-  }, [loading, isLoggedIn, role]);
+  // useEffect(() => {
+  //   console.log(loading, isLoggedIn, role);
+  // }, [loading, isLoggedIn, role]);
 
   return (
     <Stack.Navigator id="RootStack" screenOptions={{ headerShown: false }}>

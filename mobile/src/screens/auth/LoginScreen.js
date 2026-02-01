@@ -15,7 +15,7 @@ import Loader from "../../components/Loader";
 import * as Haptics from "expo-haptics";
 import { getToken } from "../../utils/authUtil";
 import { useDispatch, useSelector } from "react-redux";
-import { login, verifyToken } from "../../features/auth/authThunks";
+import { login, verifyToken } from "../../features/slices/auth/authThunks";
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");

@@ -27,10 +27,10 @@ exports.login = async (request) => {
   if (!user) throw new Error("account does not exist");
   if (user.status === "inactive") throw new Error("user is inactive");
 
-  let eligibiltyStatus = null;
+  let eligibilityStatus = null;
 
   if (user.role === "user") {
-    eligibiltyStatus = await Eligible.findOne({ user: user._id });
+    eligibilityStatus = await Eligible.findOne({ user: user._id });
   }
 
   const isMatched = await bcrypt.compare(password, user.password);
@@ -38,7 +38,7 @@ exports.login = async (request) => {
   const jwtToken = await user.getToken();
   if (!jwtToken) throw new Error("failed to generate user token");
   delete user.password;
-  return { user, eligibiltyStatus, token: jwtToken };
+  return { user, eligibilityStatus, token: jwtToken };
 };
 
 exports.verifyToken = async (request) => {

@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { login, register, verifyToken } from "./authThunks";
+import { login, register, verifyToken, logout } from "./authThunks";
 
 function pendingState(state) {
   state.loading = true;
@@ -8,9 +8,9 @@ function pendingState(state) {
 function fulfilledState(state, action) {
   state.loading = false;
   state.isLoggedIn = true;
-  state.role = action.payload.result.user.role;
-  state.user = action.payload.result.user;
-  state.eligible = action.payload.result.eligibilityStatus || null;
+  state.role = action.payload.user.role;
+  state.user = action.payload.user;
+  state.eligible = action.payload.eligibilityStatus || null;
 }
 
 function rejectedState(state, action) {
@@ -22,7 +22,7 @@ const authSlice = createSlice({
   name: "auth",
   initialState: {
     user: null,
-    role:"guest",
+    role: "guest",
     eligible: null,
     isLoggedIn: false,
     loading: false,
@@ -46,9 +46,20 @@ const authSlice = createSlice({
         state.loading = false;
         state.isNewUser = true;
       })
-      .addCase(register.rejected, rejectedState);
+      .addCase(register.rejected, rejectedState)
+
+      .addCase(logout.rejected, rejectedState)
+      .addCase(logout.fulfilled, (state) => {
+        state.user = null;
+        state.role = "guest";
+        state.eligible = null;
+        state.isLoggedIn = false;
+        state.loading = false;
+        state.error = null;
+        state.isNewUser = false;
+      })
+      .addCase(logout.pending, pendingState);
   },
 });
 
-export const {} = authSlice.actions;
 export default authSlice.reducer;

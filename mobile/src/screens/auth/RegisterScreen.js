@@ -18,7 +18,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { API_URL } from "../../constants/config";
 import { useDispatch, useSelector } from "react-redux";
-import { register } from "../../features/auth/authThunks";
+import { register } from "../../features/slices/auth/authThunks";
 import axios from "axios";
 
 const { width } = Dimensions.get("window");

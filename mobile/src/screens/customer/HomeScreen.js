@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import { useSelector, useDispatch } from "react-redux";
 import asyncStorage from "@react-native-async-storage/async-storage";
-import { setCart } from "../../features/cart/cartSlice";
+import { setCart } from "../../features/slices/cart/cartSlice";
 
 const HomeScreen = ({ navigation }) => {
   const [points] = useState(1250);

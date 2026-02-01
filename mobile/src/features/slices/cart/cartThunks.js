@@ -1,6 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { syncCartApi } from "../../api/cart.api";
+import { syncCartApi } from "../../../api/cart.api";
 
 export const saveLocally = createAsyncThunk(
   "cart/saveLocally",
