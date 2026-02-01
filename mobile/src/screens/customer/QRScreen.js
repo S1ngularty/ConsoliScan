@@ -1,14 +1,53 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, Alert } from "react-native";
 import QRCode from "react-native-qrcode-svg";
+import { io } from "socket.io-client";
+import { SOCKET_API } from "../../constants/config";
 
 export default function CheckoutQRScreen({ route, navigation }) {
-  const { checkoutCode, expiresAt } = route.params;
+  const { checkoutCode, expiresAt, token } = route.params;
   const [timeLeft, setTimeLeft] = useState("");
 
-  /* ======================
-     COUNTDOWN TIMER
-  ====================== */
+  useEffect(() => {
+    const socket = io(SOCKET_API, {
+      auth: {
+        token,
+      },
+    });
+
+    socket.on("connected", ({ success }) => {
+      if (!success) navigation.goBack();
+
+      socket.emit(`checkout:join`, { checkoutCode });
+    });
+
+     socket.on("checkout:state", (data) => {
+      console.log(" checkout:state", data)
+      setStatus(data.status)
+      setTotals(data.totals)
+    })
+
+    socket.on("checkout:scanned", ({ cashierId }) => {
+      console.log("Checkout scanned by cashier:", cashierId)
+      setStatus("SCANNED")
+    })
+
+    socket.on("checkout:locked", ({ finalTotals }) => {
+      console.log(" Checkout totals locked:", finalTotals)
+      setTotals(finalTotals)
+      setStatus("LOCKED")
+    })
+
+    socket.on("checkout:paid", ({ orderId }) => {
+      console.log(" Payment success! Order ID:", orderId)
+      setStatus("PAID")
+    })
+
+    return () => {
+      socket.disconnect()
+    }
+
+  }, [token, checkoutCode]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -18,7 +57,7 @@ export default function CheckoutQRScreen({ route, navigation }) {
         clearInterval(interval);
         Alert.alert(
           "Checkout Expired",
-          "Your checkout session expired. Please try again."
+          "Your checkout session expired. Please try again.",
         );
         navigation.goBack();
       } else {
@@ -40,11 +79,7 @@ export default function CheckoutQRScreen({ route, navigation }) {
       <Text style={styles.title}>Show this QR to the cashier</Text>
 
       <View style={styles.qrWrapper}>
-        <QRCode
-          value={checkoutCode}
-          size={220}
-          backgroundColor="white"
-        />
+        <QRCode value={checkoutCode} size={220} backgroundColor="white" />
       </View>
 
       <Text style={styles.codeText}>{checkoutCode}</Text>
@@ -60,21 +95,20 @@ export default function CheckoutQRScreen({ route, navigation }) {
   );
 }
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
-    padding: 24
+    padding: 24,
   },
 
   title: {
     fontSize: 18,
     fontWeight: "600",
     marginBottom: 24,
-    textAlign: "center"
+    textAlign: "center",
   },
 
   qrWrapper: {
@@ -82,29 +116,29 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 12,
     elevation: 4,
-    marginBottom: 16
+    marginBottom: 16,
   },
 
   codeText: {
     marginTop: 8,
     fontSize: 14,
-    color: "#666"
+    color: "#666",
   },
 
   timer: {
     marginTop: 16,
     fontSize: 14,
-    color: "#444"
+    color: "#444",
   },
 
   bold: {
-    fontWeight: "700"
+    fontWeight: "700",
   },
 
   note: {
     marginTop: 24,
     fontSize: 12,
     color: "#888",
-    textAlign: "center"
-  }
+    textAlign: "center",
+  },
 });

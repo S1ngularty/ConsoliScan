@@ -21,6 +21,7 @@ import {
 import { saveLocally } from "../../features/slices/cart/cartThunks";
 import { debounceCartSync } from "../../features/slices/cart/cartDebounce";
 import { checkout } from "../../api/checkout.api";
+import { getToken } from "../../utils/authUtil";
 
 // Mock weekly usage tracker - in production, fetch from API
 const mockWeeklyUsage = {
@@ -407,8 +408,9 @@ const CartScreen = ({ navigation, route }) => {
     };
 
     try {
+        const token = await getToken()
           const queue = await checkout(checkoutData);
-          navigation.navigate("QR",queue)
+          navigation.navigate("QR",{...queue,token})
         } catch (error) {
       console.error(error)
     }
