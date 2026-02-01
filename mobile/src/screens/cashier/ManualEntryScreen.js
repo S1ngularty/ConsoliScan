@@ -9,6 +9,8 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -19,7 +21,6 @@ const ManualEntryScreen = () => {
   const navigation = useNavigation();
   const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
 
   const handleSubmit = async () => {
     if (!code.trim()) {
@@ -34,7 +35,20 @@ const ManualEntryScreen = () => {
 
     setIsLoading(true);
     try {
-      const response = await api.get(`/checkout-queue/${code.trim().toUpperCase()}/validate`);
+      // Simulated API call - replace with actual API
+      const mockResponse = {
+        data: {
+          status: 'ACTIVE',
+          orderId: 'ORD-12345',
+          items: [],
+          total: 0,
+        }
+      };
+      
+      // Comment this out when using real API
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      const response = mockResponse; // Replace with: await api.get(`/checkout-queue/${code.trim().toUpperCase()}/validate`);
       
       if (response.data.status === 'SCANNED') {
         throw new Error('This code has already been scanned');
@@ -52,14 +66,16 @@ const ManualEntryScreen = () => {
         throw new Error('This checkout code has expired');
       }
 
-      // Mark as scanned
-      await api.post(`/checkout-queue/${code}/scan`);
+      // Mark as scanned - comment this out when using real API
+      // await api.post(`/checkout-queue/${code}/scan`);
       
-      navigation.navigate('OrderDetails', {
-        checkoutData: response.data,
-        checkoutCode: code.trim().toUpperCase()
-      });
+      // navigation.navigate('OrderDetails', {
+      //   checkoutData: response.data,
+      //   checkoutCode: code.trim().toUpperCase()
+      // });
 
+      Alert.alert('Success', 'Code validated successfully!');
+      
     } catch (error) {
       Alert.alert('Error', error.message || 'Failed to validate checkout code');
     } finally {
@@ -79,67 +95,92 @@ const ManualEntryScreen = () => {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#000" />
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          <View>
+          <View style={styles.headerCenter}>
             <Text style={styles.title}>Manual Entry</Text>
-            <Text style={styles.subtitle}>Enter customer's checkout code</Text>
+            <Text style={styles.subtitle}>Enter checkout code</Text>
           </View>
-          <View style={{ width: 44 }} />
+          <View style={styles.headerRightPlaceholder} />
         </View>
 
-        <View style={styles.content}>
-          <View style={styles.iconContainer}>
-            <MaterialCommunityIcons name="keyboard" size={80} color="#00A86B" />
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.content}>
+            <View style={styles.iconContainer}>
+              <View style={styles.iconCircle}>
+                <MaterialCommunityIcons name="keyboard-outline" size={48} color="#00A86B" />
+              </View>
+            </View>
+
+            <View style={styles.instructionContainer}>
+              <Text style={styles.instruction}>
+                Ask customer for checkout code
+              </Text>
+              <Text style={styles.example}>Example: ABC123XYZ</Text>
+            </View>
+
+            <View style={styles.inputSection}>
+              <View style={styles.inputContainer}>
+                <View style={styles.inputIcon}>
+                  <MaterialCommunityIcons name="barcode" size={22} color="#64748B" />
+                </View>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter 8-12 digit code"
+                  placeholderTextColor="#94A3B8"
+                  value={code}
+                  onChangeText={setCode}
+                  autoCapitalize="characters"
+                  maxLength={12}
+                  autoFocus
+                  editable={!isLoading}
+                  returnKeyType="done"
+                  onSubmitEditing={handleSubmit}
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.submitButton,
+                  (!code.trim() || isLoading) && styles.submitButtonDisabled
+                ]}
+                onPress={handleSubmit}
+                disabled={!code.trim() || isLoading}
+                activeOpacity={0.8}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="check-circle" size={22} color="#FFFFFF" />
+                    <Text style={styles.submitButtonText}>Validate Code</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.scanInsteadButton}
+                onPress={() => navigation.goBack()}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons name="qrcode-scan" size={18} color="#64748B" />
+                <Text style={styles.scanInsteadText}>Scan QR code instead</Text>
+              </TouchableOpacity>
+            </View>
           </View>
+        </ScrollView>
 
-          <Text style={styles.instruction}>
-            Ask the customer for their checkout code
-          </Text>
-
-          <Text style={styles.example}>Example: ABC123XYZ</Text>
-
-          <View style={styles.inputContainer}>
-            <MaterialCommunityIcons name="qrcode" size={24} color="#666" />
-            <TextInput
-              style={styles.input}
-              placeholder="Enter checkout code"
-              value={code}
-              onChangeText={setCode}
-              autoCapitalize="characters"
-              maxLength={12}
-              autoFocus
-              editable={!isLoading}
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.submitButton, (!code.trim() || isLoading) && styles.submitButtonDisabled]}
-            onPress={handleSubmit}
-            disabled={!code.trim() || isLoading}
-          >
-            {isLoading ? (
-              <MaterialCommunityIcons name="loading" size={24} color="#fff" />
-            ) : (
-              <>
-                <MaterialCommunityIcons name="check-circle" size={24} color="#fff" />
-                <Text style={styles.submitButtonText}>Validate Code</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.scanInsteadButton}
-            onPress={() => navigation.goBack()}
-          >
-            <MaterialCommunityIcons name="qrcode-scan" size={20} color="#666" />
-            <Text style={styles.scanInsteadText}>Scan QR code instead</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Help Text */}
+        {/* Help Section */}
         <View style={styles.helpContainer}>
-          <MaterialCommunityIcons name="information" size={16} color="#666" />
+          <View style={styles.helpHeader}>
+            <MaterialCommunityIcons name="information-outline" size={18} color="#64748B" />
+            <Text style={styles.helpTitle}>Note</Text>
+          </View>
           <Text style={styles.helpText}>
             The checkout code is displayed on the customer's device after they confirm their order
           </Text>
@@ -152,124 +193,158 @@ const ManualEntryScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F8FAFC',
   },
   keyboardView: {
     flex: 1,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    alignItems: 'center',
+    backgroundColor: '#00A86B',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    height: 60,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f5f5f5',
-    justifyContent: 'center',
+    padding: 8,
+  },
+  headerCenter: {
+    flex: 1,
     alignItems: 'center',
   },
+  headerRightPlaceholder: {
+    width: 44,
+  },
   title: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#000',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   subtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
-    textAlign: 'center',
+    fontSize: 12,
+    color: '#E8F5EF',
+    marginTop: 2,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
   },
   content: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: 24,
+    paddingTop: 40,
   },
   iconContainer: {
-    marginBottom: 30,
+    marginBottom: 24,
+  },
+  iconCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#E8F5EF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  instructionContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
   },
   instruction: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
-    color: '#000',
-    marginBottom: 8,
+    color: '#1E293B',
     textAlign: 'center',
+    marginBottom: 8,
   },
   example: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 40,
+    color: '#64748B',
     fontStyle: 'italic',
+  },
+  inputSection: {
+    width: '100%',
+    alignItems: 'center',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    backgroundColor: '#f8f8f8',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
     borderWidth: 2,
-    borderColor: '#00A86B',
-    marginBottom: 20,
+    borderColor: '#E8F5EF',
+    marginBottom: 24,
+    paddingHorizontal: 16,
+    height: 56,
+  },
+  inputIcon: {
+    marginRight: 12,
   },
   input: {
     flex: 1,
     fontSize: 18,
-    color: '#000',
-    marginLeft: 12,
-    fontWeight: '600',
+    color: '#1E293B',
+    fontWeight: '500',
+    height: '100%',
   },
   submitButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#00A86B',
-    paddingHorizontal: 30,
-    paddingVertical: 14,
-    borderRadius: 12,
-    width: '100%',
     justifyContent: 'center',
+    backgroundColor: '#00A86B',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    width: '100%',
+    marginBottom: 16,
   },
   submitButtonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: '#CBD5E1',
   },
   submitButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+    marginLeft: 8,
   },
   scanInsteadButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 20,
+    paddingVertical: 12,
   },
   scanInsteadText: {
-    color: '#666',
+    color: '#64748B',
     fontSize: 14,
+    marginLeft: 8,
   },
   helpContainer: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E8F5EF',
+  },
+  helpHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    padding: 20,
-    backgroundColor: '#f8f8f8',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 12,
+    marginBottom: 8,
+  },
+  helpTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginLeft: 6,
   },
   helpText: {
-    flex: 1,
     fontSize: 13,
-    color: '#666',
+    color: '#64748B',
     lineHeight: 18,
   },
 });
