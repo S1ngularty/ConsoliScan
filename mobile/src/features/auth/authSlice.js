@@ -8,6 +8,7 @@ function pendingState(state) {
 function fulfilledState(state, action) {
   state.loading = false;
   state.isLoggedIn = true;
+  state.role = action.payload.result.user.role;
   state.user = action.payload.result.user;
   state.eligible = action.payload.result.eligibilityStatus || null;
 }
@@ -21,6 +22,7 @@ const authSlice = createSlice({
   name: "auth",
   initialState: {
     user: null,
+    role:"guest",
     eligible: null,
     isLoggedIn: false,
     loading: false,

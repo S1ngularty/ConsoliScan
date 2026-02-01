@@ -19,7 +19,6 @@ export async function loginApi({email, password}) {
   const data = result.data.result
   const isStored =await storeToken(data.token)
   if(isStored) throw new Eror("failed to store the user token")
-    console.log(data)
   return data;
 }
 

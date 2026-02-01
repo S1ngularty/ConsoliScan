@@ -31,10 +31,9 @@ const LoginScreen = ({ navigation }) => {
       console.log(result);
       if (login.fulfilled.match(result)) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        navigation.navigate("HomeTabs");
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
   };
@@ -48,7 +47,7 @@ const LoginScreen = ({ navigation }) => {
         }
         const result = await dispatch(verifyToken(token));
         if (verifyToken.fulfilled.match(result))
-          navigation.navigate("HomeTabs");
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } catch (error) {
         console.log(error);
       }
