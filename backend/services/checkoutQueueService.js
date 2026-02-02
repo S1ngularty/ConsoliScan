@@ -1,4 +1,5 @@
 const Queue = require("../models/checkoutQueueModel");
+const checkoutEmitter = require("../helper/socketEmitter");
 const crypto = require("crypto");
 
 exports.checkout = async (request) => {
@@ -13,8 +14,9 @@ exports.checkout = async (request) => {
 
   const isQueue = await Queue.findOneAndUpdate(
     {
-      user:userId,
+      user: userId,
       status: { $eq: "PENDING" },
+      expiresAt: { $gte: new Date() },
     },
     {
       ...data,
@@ -29,13 +31,13 @@ exports.checkout = async (request) => {
 };
 
 exports.getOrder = async (request) => {
-  const { orderId } = request.params;
-  const { userId } = request.user;
+  const { checkoutCode } = request.params;
+  const { userId, name } = request.user;
 
   const order = Queue.findOneAndUpdate(
-    { checkoutCode: orderId },
+    { checkoutCode: checkoutCode },
     {
-      cashier: userId,
+      cashier: { cashierId: userId, name },
       status: "SCANNED",
       scannedAt: Date.now(),
     },
@@ -44,5 +46,13 @@ exports.getOrder = async (request) => {
 
   if (!order) throw new Error("order not found");
 
+  checkoutEmitter.emitCheckout(checkoutCode, "checkout:scanned", {
+    status: order.status,
+    totals: order.totals,
+    cashier: name,
+  });
+
   return order;
 };
+
+

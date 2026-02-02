@@ -8,7 +8,7 @@ exports.registerCheckoutEvents = async (socket) => {
     const checkoutDoc = await CheckOutQueue.findOne({
       checkoutCode,
       status: { $eq: "PENDING" },
-      expiresAt: { $lte: Date.now() },
+      expiresAt: { $gte: new Date()},
     });
 
     if (!checkout) return;
