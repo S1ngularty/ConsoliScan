@@ -1,5 +1,7 @@
 const jwtToken = require("jsonwebtoken");
 const { Server } = require("socket.io");
+const {setSocketInstance} = require("./helper/socketEmitter");
+const { registerCheckoutEvents } = require("./services/registerCheckoutEvents");
 let io = null;
 
 const initSocket = (rawServer) => {
@@ -28,7 +30,10 @@ const initSocket = (rawServer) => {
     socket.emit("connected", {
       success: true,
     });
+    registerCheckoutEvents(socket)
   });
+
+  setSocketInstance(io)
 };
 
 module.exports = initSocket;

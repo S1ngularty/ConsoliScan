@@ -41,7 +41,8 @@ export default function CheckoutQRScreen({ route, navigation }) {
       setTotals(data.totals);
     });
 
-    socket.on("checkout:scanned", ({ cashierId }) => {
+    socket.on("checkout:scanned", ({ cashier }) => {
+      console.log(cashier);
       setStatus("SCANNED");
     });
 
@@ -65,7 +66,7 @@ export default function CheckoutQRScreen({ route, navigation }) {
   useEffect(() => {
     const interval = setInterval(() => {
       const diff = new Date(expiresAt).getTime() - Date.now();
-
+      if (status !== "WAITING") clearInterval(interval);
       if (diff <= 0) {
         clearInterval(interval);
         Alert.alert(
@@ -81,7 +82,7 @@ export default function CheckoutQRScreen({ route, navigation }) {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [expiresAt]);
+  }, [expiresAt, status]);
 
   const renderStep = (step, index) => {
     const isCompleted = index < currentStepIndex;

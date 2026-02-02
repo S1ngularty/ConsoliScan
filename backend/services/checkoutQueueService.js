@@ -33,7 +33,6 @@ exports.checkout = async (request) => {
 exports.getOrder = async (request) => {
   const { checkoutCode } = request.params;
   const { userId, name } = request.user;
-
   const order = Queue.findOneAndUpdate(
     { checkoutCode: checkoutCode },
     {

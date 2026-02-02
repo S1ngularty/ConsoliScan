@@ -11,7 +11,7 @@ exports.registerCheckoutEvents = async (socket) => {
       expiresAt: { $gte: new Date()},
     });
 
-    if (!checkout) return;
+    if (!checkoutDoc) return;
 
     if (role === "user" && checkoutDoc.user.toString() !== userId) return;
     if (
@@ -22,7 +22,7 @@ exports.registerCheckoutEvents = async (socket) => {
       return;
 
     socket.join(`checkout:${checkoutCode}`);
-
+    console.log(`checkout:${checkoutCode}`)
     socket.emit("checkout:state", {
       status: checkoutDoc.status,
       totals: checkoutDoc.totals,

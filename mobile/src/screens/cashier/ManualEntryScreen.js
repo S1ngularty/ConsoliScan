@@ -15,8 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-// import api from '../../services/api';
-
+import { getCheckoutDetails } from '../../api/checkout.api';
 const ManualEntryScreen = () => {
   const navigation = useNavigation();
   const [code, setCode] = useState('');
@@ -27,54 +26,23 @@ const ManualEntryScreen = () => {
       Alert.alert('Error', 'Please enter a checkout code');
       return;
     }
-
-    if (!/^[A-Z0-9]{8,12}$/i.test(code)) {
-      Alert.alert('Error', 'Invalid code format. Must be 8-12 alphanumeric characters');
-      return;
-    }
+    // if (!/^[A-Z0-9]{8,12}$/i.test(code)) {
+    //   Alert.alert('Error', 'Invalid code format. Must be 8-12 alphanumeric characters');
+    //   return;
+    // }
 
     setIsLoading(true);
     try {
-      // Simulated API call - replace with actual API
-      const mockResponse = {
-        data: {
-          status: 'ACTIVE',
-          orderId: 'ORD-12345',
-          items: [],
-          total: 0,
-        }
-      };
-      
-      // Comment this out when using real API
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const response = mockResponse; // Replace with: await api.get(`/checkout-queue/${code.trim().toUpperCase()}/validate`);
-      
-      if (response.data.status === 'SCANNED') {
-        throw new Error('This code has already been scanned');
-      }
-
-      if (response.data.status === 'PAID') {
-        throw new Error('This order has already been paid');
-      }
-
-      if (response.data.status === 'CANCELLED') {
-        throw new Error('This order has been cancelled');
-      }
-
-      if (response.data.status === 'EXPIRED') {
-        throw new Error('This checkout code has expired');
-      }
+      const data = await getCheckoutDetails(code)
+            
 
       // Mark as scanned - comment this out when using real API
-      // await api.post(`/checkout-queue/${code}/scan`);
       
-      // navigation.navigate('OrderDetails', {
-      //   checkoutData: response.data,
-      //   checkoutCode: code.trim().toUpperCase()
-      // });
+      navigation.navigate('OrderDetails', {
+        checkoutData: data,
+        checkoutCode: code.trim().toUpperCase()
+      });
 
-      Alert.alert('Success', 'Code validated successfully!');
       
     } catch (error) {
       Alert.alert('Error', error.message || 'Failed to validate checkout code');
