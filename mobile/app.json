@@ -23,8 +23,9 @@
         "backgroundColor": "#00A86B"
       },
       "splash": {
-        "backgroundColor": "#00A86B",
-        "resizeMode": "contain"
+        "image": "./assets/splash-icon-consoliscan.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#00A86B"
       },
       "edgeToEdgeEnabled": true,
       "permissions": ["android.permission.CAMERA"]

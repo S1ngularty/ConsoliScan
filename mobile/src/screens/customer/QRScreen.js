@@ -8,11 +8,11 @@ import { SOCKET_API } from "../../constants/config";
 export default function CheckoutQRScreen({ route, navigation }) {
   const { checkoutCode, expiresAt, token } = route.params;
   const [timeLeft, setTimeLeft] = useState("");
-  const [status, setStatus] = useState("WAITING"); // WAITING, SCANNED, LOCKED, PAID
+  const [status, setStatus] = useState("PENDING"); // PENDING, SCANNED, LOCKED, PAID
   const [totals, setTotals] = useState(null);
 
   const steps = [
-    { key: "WAITING", label: "Waiting" },
+    { key: "PENDING", label: "PENDING" },
     { key: "SCANNED", label: "Scanned" },
     { key: "LOCKED", label: "Locked" },
     { key: "PAID", label: "Paid" },
@@ -37,11 +37,13 @@ export default function CheckoutQRScreen({ route, navigation }) {
     });
 
     socket.on("checkout:state", (data) => {
-      setStatus(data.status || "WAITING");
+      console.log(data)
+      setStatus(data.status || "PENDING");
       setTotals(data.totals);
     });
 
-    socket.on("checkout:scanned", ({ cashier }) => {
+    socket.on("checkout:scanned", ({ cashier,status,totals }) => {
+      console.log(cashier,status,totals)
       console.log(cashier);
       setStatus("SCANNED");
     });
@@ -66,7 +68,6 @@ export default function CheckoutQRScreen({ route, navigation }) {
   useEffect(() => {
     const interval = setInterval(() => {
       const diff = new Date(expiresAt).getTime() - Date.now();
-      if (status !== "WAITING") clearInterval(interval);
       if (diff <= 0) {
         clearInterval(interval);
         Alert.alert(
@@ -132,7 +133,7 @@ export default function CheckoutQRScreen({ route, navigation }) {
 
   const renderStatusMessage = () => {
     switch (status) {
-      case "WAITING":
+      case "PENDING":
         return "Show QR to cashier";
       case "SCANNED":
         return "Scanning items...";
@@ -146,7 +147,7 @@ export default function CheckoutQRScreen({ route, navigation }) {
   };
 
   const renderTotals = () => {
-    if (!totals || status === "WAITING") return null;
+    if (!totals || status === "PENDING") return null;
 
     return (
       <View style={styles.totalsContainer}>
