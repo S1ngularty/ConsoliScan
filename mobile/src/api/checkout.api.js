@@ -1,6 +1,7 @@
 import axios from "axios";
 import { API_URL } from "../constants/config";
 import { getToken } from "../utils/authUtil";
+
 export const checkout = async (data) => {
   if (!data) throw new Error("empty cart");
   // console.log("CHECKOUT SNAPSHOT:", data);

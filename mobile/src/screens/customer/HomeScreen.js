@@ -13,17 +13,21 @@ import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import { useSelector, useDispatch } from "react-redux";
 import asyncStorage from "@react-native-async-storage/async-storage";
 import { setCart } from "../../features/slices/cart/cartSlice";
+import { getCartFromServer } from "../../features/slices/cart/cartThunks";
 
 const HomeScreen = ({ navigation }) => {
   const [points] = useState(1250);
   const userState = useSelector((state) => state.auth);
-  const dispatch = useDispatch()
+  const dispatch = useDispatch();
 
   useEffect(() => {
     (async () => {
-      const currCart = await asyncStorage.getItem("cart");
-      // console.log( JSON.parse(currCart));
-      dispatch(setCart(JSON.parse(currCart)))
+      if (!userState.isLoggedIn) return
+        dispatch(getCartFromServer());
+      
+      //  const currCart = await asyncStorage.getItem("cart");
+      //  console.log(JSON.parse(currCart))
+      //    dispatch(setCart(JSON.parse(currCart)));
     })();
   }, []);
 

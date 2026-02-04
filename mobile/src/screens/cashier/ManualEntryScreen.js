@@ -34,7 +34,7 @@ const ManualEntryScreen = () => {
     setIsLoading(true);
     try {
       const data = await getCheckoutDetails(code)
-            
+          if(!data) throw new Error("cannot find the order")
 
       // Mark as scanned - comment this out when using real API
       

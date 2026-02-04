@@ -1,4 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
+import { getCartFromServer } from "./cartThunks";
 
 const cartSlice = createSlice({
   name: "cart",
@@ -6,7 +7,7 @@ const cartSlice = createSlice({
     cart: [],
     itemCount: 0,
     totalPrice: 0,
-    
+
     loading: false,
     error: null,
   },
@@ -23,7 +24,6 @@ const cartSlice = createSlice({
       if (existingItem) {
         existingItem.qty += addedItem.selectedQuantity;
       } else {
-        // Ensure the item has qty property
         state.cart.push({
           ...addedItem,
           qty: addedItem.selectedQuantity || 1,
@@ -53,7 +53,17 @@ const cartSlice = createSlice({
       state.totalPrice = 0;
       state.itemCount = 0;
     },
+
+  
   },
+
+  extraReducers: (builder) => {
+    builder.addCase(getCartFromServer.fulfilled, (state, action) => {
+      
+      state.cart = action.payload.items;
+      recalcTotal(state);
+    });
+  },  
 });
 
 const recalcTotal = (state) => {

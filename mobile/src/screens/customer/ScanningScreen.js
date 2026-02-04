@@ -74,7 +74,8 @@ const ScanningScreen = ({ navigation }) => {
     };
 
     dispatch(addToCart(newItem));
-    dispatch(saveLocally())
+    debounceCartSync(dispatch)
+    // dispatch(saveLocally())
     closeSheet();
   };
 

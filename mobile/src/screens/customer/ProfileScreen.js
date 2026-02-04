@@ -93,7 +93,7 @@ const ProfileScreen = ({ navigation }) => {
         style: "destructive",
         onPress: async () => {
           try {
-            dispatch(saveLocally());
+            // dispatch(saveLocally());
             debounceCartSync(dispatch);
 
             dispatch(logout());

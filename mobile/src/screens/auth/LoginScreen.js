@@ -28,7 +28,7 @@ const LoginScreen = ({ navigation }) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     try {
       const result = await dispatch(login({ email, password }));
-      console.log(result);
+      // console.log(result);
       if (login.fulfilled.match(result)) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }

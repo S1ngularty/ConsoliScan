@@ -5,20 +5,21 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   ActivityIndicator,
   Alert,
   ScrollView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { MACHINE_SERVICE } from "../../constants/config";
 
 export default function ObjectDetectionScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { checkoutCode, orderItems = [] } = route.params || {};
-  
+
   const [permission, requestPermission] = useCameraPermissions();
   const [count, setCount] = useState(0);
   const [detectedItems, setDetectedItems] = useState([]);
@@ -30,25 +31,36 @@ export default function ObjectDetectionScreen() {
   const cameraRef = useRef(null);
 
   // Get total items expected from order
-  const totalExpectedItems = orderItems.reduce((sum, item) => sum + item.quantity, 0);
+  const totalExpectedItems = orderItems.reduce(
+    (sum, item) => sum + item.quantity,
+    0,
+  );
 
   // Calculate validation status
-  const validationStatus = count === totalExpectedItems ? 'success' : 
-                         count > totalExpectedItems ? 'extra' : 'missing';
+  const validationStatus =
+    count === totalExpectedItems
+      ? "success"
+      : count > totalExpectedItems
+        ? "extra"
+        : "missing";
 
   const getStatusColor = () => {
     switch (validationStatus) {
-      case 'success': return '#00A86B';
-      case 'extra': return '#FF9800';
-      case 'missing': return '#EF4444';
-      default: return '#64748B';
+      case "success":
+        return "#00A86B";
+      case "extra":
+        return "#FF9800";
+      case "missing":
+        return "#EF4444";
+      default:
+        return "#64748B";
     }
   };
 
   const getStatusMessage = () => {
-    if (validationStatus === 'success') {
-      return 'All items match!';
-    } else if (validationStatus === 'extra') {
+    if (validationStatus === "success") {
+      return "All items match!";
+    } else if (validationStatus === "extra") {
       return `Extra items detected (${count} vs ${totalExpectedItems})`;
     } else {
       return `Missing items (${count} vs ${totalExpectedItems})`;
@@ -56,12 +68,10 @@ export default function ObjectDetectionScreen() {
   };
 
   useEffect(() => {
-    if (validationComplete && validationStatus === 'success') {
-      Alert.alert(
-        'Validation Complete',
-        'All items match the order.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+    if (validationComplete && validationStatus === "success") {
+      Alert.alert("Validation Complete", "All items match the order.", [
+        { text: "OK", onPress: () => navigation.goBack() },
+      ]);
     }
   }, [validationComplete]);
 
@@ -75,7 +85,10 @@ export default function ObjectDetectionScreen() {
         <Text style={styles.permissionText}>
           We need camera permission to detect items
         </Text>
-        <TouchableOpacity style={styles.grantButton} onPress={requestPermission}>
+        <TouchableOpacity
+          style={styles.grantButton}
+          onPress={requestPermission}
+        >
           <MaterialCommunityIcons name="camera" size={20} color="#FFFFFF" />
           <Text style={styles.grantButtonText}>Grant Permission</Text>
         </TouchableOpacity>
@@ -91,7 +104,7 @@ export default function ObjectDetectionScreen() {
 
     try {
       // Take picture
-      const photo = await cameraRef.current.takePictureAsync({ 
+      const photo = await cameraRef.current.takePictureAsync({
         quality: 0.8,
         skipProcessing: false,
       });
@@ -107,7 +120,7 @@ export default function ObjectDetectionScreen() {
       });
 
       // Call FastAPI backend (Update IP as needed)
-      const res = await fetch("http://192.168.1.11:8000/detect", {
+      const res = await fetch(`${MACHINE_SERVICE}/detect`, {
         method: "POST",
         body: data,
         headers: {
@@ -116,11 +129,11 @@ export default function ObjectDetectionScreen() {
       });
 
       const json = await res.json();
-      console.log(json)
+      console.log(json);
       if (json.count !== undefined) {
         const newCount = json.count;
         setCount(newCount);
-        
+
         // Add to scan history
         const newScan = {
           id: Date.now(),
@@ -128,22 +141,23 @@ export default function ObjectDetectionScreen() {
           timestamp: new Date().toLocaleTimeString(),
           matched: newCount === totalExpectedItems,
         };
-        setScans(prev => [newScan, ...prev.slice(0, 4)]); // Keep last 5 scans
-        
+        setScans((prev) => [newScan, ...prev.slice(0, 4)]); // Keep last 5 scans
+
         // Update detected items (mock data for now)
-        const mockDetectedItems = orderItems.map(item => ({
+        const mockDetectedItems = orderItems.map((item) => ({
           ...item,
           detected: Math.floor(Math.random() * (item.quantity + 2)),
         }));
         setDetectedItems(mockDetectedItems);
-
       } else if (json.error) {
         Alert.alert("Detection Error", json.error);
       }
-
     } catch (error) {
       console.log("Detection request error:", error);
-      Alert.alert("Error", "Failed to connect to detection service. Please try again.");
+      Alert.alert(
+        "Error",
+        "Failed to connect to detection service. Please try again.",
+      );
     } finally {
       setLoading(false);
       setScanning(false);
@@ -151,7 +165,7 @@ export default function ObjectDetectionScreen() {
   };
 
   const handleToggleCamera = () => {
-    setCameraFacing(current => (current === "back" ? "front" : "back"));
+    setCameraFacing((current) => (current === "back" ? "front" : "back"));
   };
 
   const handleCompleteValidation = () => {
@@ -159,7 +173,6 @@ export default function ObjectDetectionScreen() {
       Alert.alert("No Items Detected", "Please scan items first.");
       return;
     }
-    
     setValidationComplete(true);
   };
 
@@ -177,17 +190,21 @@ export default function ObjectDetectionScreen() {
         >
           <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
         </TouchableOpacity>
-        
+
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Object Detection</Text>
           <Text style={styles.headerSubtitle}>Checkout: {checkoutCode}</Text>
         </View>
-        
+
         <TouchableOpacity
           style={styles.flipButton}
           onPress={handleToggleCamera}
         >
-          <MaterialCommunityIcons name="camera-flip" size={24} color="#FFFFFF" />
+          <MaterialCommunityIcons
+            name="camera-flip"
+            size={24}
+            color="#FFFFFF"
+          />
         </TouchableOpacity>
       </View>
 
@@ -205,7 +222,7 @@ export default function ObjectDetectionScreen() {
               <View style={styles.cornerTR} />
               <View style={styles.cornerBL} />
               <View style={styles.cornerBR} />
-              
+
               {scanning && (
                 <View style={styles.scanningIndicator}>
                   <ActivityIndicator color="#00A86B" size="large" />
@@ -213,7 +230,7 @@ export default function ObjectDetectionScreen() {
                 </View>
               )}
             </View>
-            
+
             <View style={styles.instructionContainer}>
               <Text style={styles.instructionText}>
                 Place items within the frame
@@ -253,22 +270,22 @@ export default function ObjectDetectionScreen() {
             <MaterialCommunityIcons name="counter" size={24} color="#64748B" />
             <Text style={styles.summaryTitle}>Detection Results</Text>
           </View>
-          
+
           <View style={styles.countRow}>
             <View style={styles.countItem}>
               <Text style={styles.countLabel}>Detected</Text>
               <Text style={styles.countValue}>{count}</Text>
             </View>
-            
+
             <View style={styles.countDivider} />
-            
+
             <View style={styles.countItem}>
               <Text style={styles.countLabel}>Expected</Text>
               <Text style={styles.countValue}>{totalExpectedItems}</Text>
             </View>
-            
+
             <View style={styles.countDivider} />
-            
+
             <View style={styles.countItem}>
               <Text style={styles.countLabel}>Status</Text>
               <Text style={[styles.statusText, { color: getStatusColor() }]}>
@@ -276,14 +293,23 @@ export default function ObjectDetectionScreen() {
               </Text>
             </View>
           </View>
-          
-          <View style={[styles.statusMessage, { backgroundColor: `${getStatusColor()}20` }]}>
-            <MaterialCommunityIcons 
-              name={validationStatus === 'success' ? "check-circle" : "alert-circle"} 
-              size={20} 
-              color={getStatusColor()} 
+
+          <View
+            style={[
+              styles.statusMessage,
+              { backgroundColor: `${getStatusColor()}20` },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name={
+                validationStatus === "success" ? "check-circle" : "alert-circle"
+              }
+              size={20}
+              color={getStatusColor()}
             />
-            <Text style={[styles.statusMessageText, { color: getStatusColor() }]}>
+            <Text
+              style={[styles.statusMessageText, { color: getStatusColor() }]}
+            >
               {getStatusMessage()}
             </Text>
           </View>
@@ -293,10 +319,14 @@ export default function ObjectDetectionScreen() {
         {detectedItems.length > 0 && (
           <View style={styles.itemsCard}>
             <View style={styles.itemsHeader}>
-              <MaterialCommunityIcons name="format-list-bulleted" size={22} color="#64748B" />
+              <MaterialCommunityIcons
+                name="format-list-bulleted"
+                size={22}
+                color="#64748B"
+              />
               <Text style={styles.itemsTitle}>Item Details</Text>
             </View>
-            
+
             {detectedItems.map((item, index) => (
               <View key={index} style={styles.itemRow}>
                 <View style={styles.itemInfo}>
@@ -305,13 +335,17 @@ export default function ObjectDetectionScreen() {
                   </Text>
                   <Text style={styles.itemSku}>SKU: {item.sku}</Text>
                 </View>
-                
+
                 <View style={styles.itemCounts}>
                   <View style={styles.countBadge}>
-                    <Text style={styles.expectedCount}>Exp: {item.quantity}</Text>
+                    <Text style={styles.expectedCount}>
+                      Exp: {item.quantity}
+                    </Text>
                   </View>
                   <View style={styles.countBadge}>
-                    <Text style={styles.detectedCount}>Det: {item.detected}</Text>
+                    <Text style={styles.detectedCount}>
+                      Det: {item.detected}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -323,17 +357,21 @@ export default function ObjectDetectionScreen() {
         {scans.length > 0 && (
           <View style={styles.historyCard}>
             <View style={styles.historyHeader}>
-              <MaterialCommunityIcons name="history" size={22} color="#64748B" />
+              <MaterialCommunityIcons
+                name="history"
+                size={22}
+                color="#64748B"
+              />
               <Text style={styles.historyTitle}>Recent Scans</Text>
             </View>
-            
+
             {scans.map((scan, index) => (
               <View key={scan.id} style={styles.scanItem}>
                 <View style={styles.scanInfo}>
-                  <MaterialCommunityIcons 
-                    name={scan.matched ? "check-circle" : "alert-circle"} 
-                    size={18} 
-                    color={scan.matched ? "#00A86B" : "#FF9800"} 
+                  <MaterialCommunityIcons
+                    name={scan.matched ? "check-circle" : "alert-circle"}
+                    size={18}
+                    color={scan.matched ? "#00A86B" : "#FF9800"}
                   />
                   <Text style={styles.scanTime}>{scan.timestamp}</Text>
                 </View>
@@ -347,16 +385,17 @@ export default function ObjectDetectionScreen() {
         <TouchableOpacity
           style={[
             styles.completeButton,
-            (count === 0 || validationComplete) && styles.completeButtonDisabled
+            (count === 0 || validationComplete) &&
+              styles.completeButtonDisabled,
           ]}
           onPress={validationComplete ? handleRetry : handleCompleteValidation}
-          disabled={count === 0 || validationComplete}
+          // disabled={count === 0 || validationComplete}
           activeOpacity={0.8}
         >
-          <MaterialCommunityIcons 
-            name={validationComplete ? "refresh" : "check-circle"} 
-            size={22} 
-            color="#FFFFFF" 
+          <MaterialCommunityIcons
+            name={validationComplete ? "refresh" : "check-circle"}
+            size={22}
+            color="#FFFFFF"
           />
           <Text style={styles.completeButtonText}>
             {validationComplete ? "Scan Again" : "Complete Validation"}
@@ -436,7 +475,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   cameraContainer: {
-    flex: 2,
+    flex: 3,
     backgroundColor: "#000",
   },
   camera: {

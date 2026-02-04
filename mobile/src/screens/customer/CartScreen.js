@@ -17,8 +17,13 @@ import {
   adjustQuantity,
   removeFromCart,
   clearCart,
+  setCart,
 } from "../../features/slices/cart/cartSlice";
-import { saveLocally } from "../../features/slices/cart/cartThunks";
+import {
+  clearCartToServer,
+  getCartFromServer,
+  saveLocally,
+} from "../../features/slices/cart/cartThunks";
 import { debounceCartSync } from "../../features/slices/cart/cartDebounce";
 import { checkout } from "../../api/checkout.api";
 import { getToken } from "../../utils/authUtil";
@@ -38,24 +43,31 @@ const CartScreen = ({ navigation, route }) => {
   const [weeklyUsage, setWeeklyUsage] = useState(mockWeeklyUsage);
   const eligibilityStatus = useSelector((state) => state.auth.eligible);
   const [userEligibility, setUserEligibility] = useState({
-    isPWD: false, // Fetch from user profile
+    isPWD: false,
     isSenior: false,
   });
 
+  const dispatch = useDispatch();
+
   // Get cart from Redux store
   const { cart, itemCount } = useSelector((state) => state.cart);
-  const dispatch = useDispatch();
 
   // Check if user is eligible for BNPC discounts
   const isEligibleUser = eligibilityStatus?.isVerified;
 
   useEffect(() => {
-    (() => {
-      if (eligibilityStatus.idType === "senior")
-        setUserEligibility((prev) => ({ ...prev, isSenior: true }));
-      if (eligibilityStatus.idType === "pwd")
-        setUserEligibility((prev) => ({ ...prev, isPWD: true }));
-    })();
+    // Fetch cart from server on mount
+    dispatch(getCartFromServer());
+  }, []);
+
+  useEffect(() => {
+    // Set user eligibility based on auth status
+    if (eligibilityStatus?.idType === "senior") {
+      setUserEligibility((prev) => ({ ...prev, isSenior: true }));
+    }
+    if (eligibilityStatus?.idType === "pwd") {
+      setUserEligibility((prev) => ({ ...prev, isPWD: true }));
+    }
   }, [eligibilityStatus]);
 
   // Available vouchers
@@ -77,6 +89,67 @@ const CartScreen = ({ navigation, route }) => {
   ];
 
   // =========================
+  // HELPER FUNCTIONS FOR DATA SYNC
+  // =========================
+
+  // Normalize cart item for consistent data structure
+  const normalizeCartItem = (item) => {
+    // Check if item is from server (has product nested) or local (flat)
+    const product = item.product || item;
+    const quantity = item.selectedQuantity || item.qty || 1;
+    
+    // Extract all necessary fields
+    return {
+      _id: item._id || product._id,
+      name: item.name || product.name,
+      price: Number(item.price || product.price || 0),
+      images: item.images || product.images || [],
+      selectedQuantity: Number(quantity),
+      qty: Number(quantity),
+      dateAdded: item.dateAdded || new Date().toISOString(),
+      
+      // Product details for discount calculations
+      product: {
+        _id: product._id,
+        name: product.name,
+        price: Number(product.price || 0),
+        isBNPC: product.isBNPC || false,
+        excludedFromDiscount: product.excludedFromDiscount || false,
+        discountScopes: product.discountScopes || [],
+        bnpcCategory: product.bnpcCategory || "",
+        unit: product.unit || "pc",
+        images: product.images || []
+      }
+    };
+  };
+
+  // Calculate cart totals safely
+  const calculateCartTotals = () => {
+    if (!cart || cart.length === 0) {
+      return { subtotal: 0, itemCount: 0 };
+    }
+
+    let subtotal = 0;
+    let totalItems = 0;
+
+    cart.forEach(item => {
+      const normalizedItem = normalizeCartItem(item);
+      const price = Number(normalizedItem.price) || 0;
+      const quantity = Number(normalizedItem.selectedQuantity) || 1;
+      
+      if (!isNaN(price) && !isNaN(quantity)) {
+        subtotal += price * quantity;
+        totalItems += quantity;
+      }
+    });
+
+    return {
+      subtotal: parseFloat(subtotal.toFixed(2)),
+      itemCount: totalItems
+    };
+  };
+
+  // =========================
   // BNPC DISCOUNT CALCULATION
   // =========================
 
@@ -87,7 +160,9 @@ const CartScreen = ({ navigation, route }) => {
     const userType = userEligibility.isPWD ? "PWD" : "SENIOR";
 
     return cart.filter((item) => {
-      const product = item.product || item;
+      const normalizedItem = normalizeCartItem(item);
+      const product = normalizedItem.product;
+      
       return (
         product.isBNPC &&
         !product.excludedFromDiscount &&
@@ -96,10 +171,13 @@ const CartScreen = ({ navigation, route }) => {
     });
   };
 
-  // Step 2: Compute BNPC Subtotal
+  // Step 2: Compute BNPC Subtotal safely
   const calculateBNPCSubtotal = (eligibleItems) => {
     return eligibleItems.reduce((sum, item) => {
-      return sum + item.price * item.qty;
+      const normalizedItem = normalizeCartItem(item);
+      const price = Number(normalizedItem.price) || 0;
+      const quantity = Number(normalizedItem.selectedQuantity) || 1;
+      return sum + (price * quantity);
     }, 0);
   };
 
@@ -193,10 +271,7 @@ const CartScreen = ({ navigation, route }) => {
   // Calculate all totals
   const calculateTotals = () => {
     const discountDetails = calculateDiscountDetails();
-    const subtotal = cart.reduce(
-      (total, item) => total + item.price * item.qty,
-      0,
-    );
+    const { subtotal } = calculateCartTotals();
     const voucherDiscount = calculateVoucherDiscount(subtotal);
     const finalTotal = Math.max(
       0,
@@ -212,27 +287,35 @@ const CartScreen = ({ navigation, route }) => {
     };
   };
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => {
+    try {
+      await dispatch(getCartFromServer());
+    } catch (error) {
+      console.error("Error refreshing cart:", error);
+    } finally {
       setRefreshing(false);
-    }, 1000);
-    dispatch(saveLocally());
-    debounceCartSync(dispatch);
+    }
   };
 
   const updateQuantity = (itemId, newQty) => {
     if (newQty < 1) {
       dispatch(removeFromCart(itemId));
     } else {
-      dispatch(
-        adjustQuantity({
-          _id: itemId,
-          selectedQuantity: newQty,
-        }),
-      );
+      // Find the item to get its correct structure
+      const item = cart.find(item => item._id === itemId);
+      if (item) {
+        const normalizedItem = normalizeCartItem(item);
+        dispatch(
+          adjustQuantity({
+            _id: itemId,
+            selectedQuantity: newQty,
+            price: normalizedItem.price,
+            name: normalizedItem.name
+          }),
+        );
+      }
     }
-    dispatch(saveLocally());
     debounceCartSync(dispatch);
   };
 
@@ -247,7 +330,6 @@ const CartScreen = ({ navigation, route }) => {
           style: "destructive",
           onPress: () => {
             dispatch(removeFromCart(itemId));
-            dispatch(saveLocally());
             debounceCartSync(dispatch);
           },
         },
@@ -263,8 +345,7 @@ const CartScreen = ({ navigation, route }) => {
         style: "destructive",
         onPress: () => {
           dispatch(clearCart());
-          dispatch(saveLocally());
-          debounceCartSync(dispatch);
+          dispatch(clearCartToServer());
         },
       },
     ]);
@@ -310,7 +391,9 @@ const CartScreen = ({ navigation, route }) => {
   };
 
   const handleCheckout = async () => {
-    if (cart.length === 0) {
+    const { itemCount } = calculateCartTotals();
+    
+    if (itemCount === 0) {
       Alert.alert("Empty Cart", "Your cart is empty. Add items to checkout.");
       return;
     }
@@ -320,10 +403,11 @@ const CartScreen = ({ navigation, route }) => {
 
     /* ======================
      SANITIZE CART ITEMS
-  ====================== */
+    ====================== */
 
     const items = cart.map((item) => {
-      const product = item.product || item;
+      const normalizedItem = normalizeCartItem(item);
+      const product = normalizedItem.product;
 
       const isBNPCEligible =
         (discountDetails.eligible &&
@@ -331,17 +415,14 @@ const CartScreen = ({ navigation, route }) => {
           !product.excludedFromDiscount &&
           product.discountScopes?.includes(
             userEligibility.isPWD ? "PWD" : "SENIOR",
-          )) ??
-        false;
+          )) ?? false;
 
       return {
         product: product._id,
         name: product.name,
-        sku: product.sku,
-
-        quantity: item.selectedQuantity,
-        unitPrice: item.price,
-
+        sku: product.sku || `PROD-${product._id.slice(-6)}`,
+        quantity: normalizedItem.selectedQuantity,
+        unitPrice: normalizedItem.price,
         categoryType: product.bnpcCategory || null,
         isBNPCEligible,
       };
@@ -349,7 +430,7 @@ const CartScreen = ({ navigation, route }) => {
 
     /* ======================
      FREEZE TOTALS
-  ====================== */
+    ====================== */
 
     const checkoutTotals = {
       subtotal: totals.subtotal,
@@ -359,77 +440,76 @@ const CartScreen = ({ navigation, route }) => {
 
     /* ======================
      DISCOUNT SNAPSHOT
-  ====================== */
+    ====================== */
 
     const discountSnapshot = {
       eligible: discountDetails.eligible,
-      eligibleItemsCount: discountDetails.eligibleItemsCount,
-
-      bnpcSubtotal: discountDetails.bnpcSubtotal,
-      cappedBNPCAmount: discountDetails.cappedBNPCAmount,
-
-      discountApplied: discountDetails.discountApplied,
-
-      weeklyDiscountUsed: discountDetails.weeklyDiscountUsed,
-      weeklyPurchaseUsed: discountDetails.weeklyPurchaseUsed,
-
-      remainingDiscountCap: discountDetails.remainingDiscountCap,
-      remainingPurchaseCap: discountDetails.remainingPurchaseCap,
+      eligibleItemsCount: discountDetails.eligibleItemsCount || 0,
+      bnpcSubtotal: discountDetails.bnpcSubtotal || 0,
+      cappedBNPCAmount: discountDetails.cappedBNPCAmount || 0,
+      discountApplied: discountDetails.discountApplied || 0,
+      weeklyDiscountUsed: discountDetails.weeklyDiscountUsed || weeklyUsage.discountUsed,
+      weeklyPurchaseUsed: discountDetails.weeklyPurchaseUsed || weeklyUsage.bnpcAmountUsed,
+      remainingDiscountCap: discountDetails.remainingDiscountCap || (125 - weeklyUsage.discountUsed),
+      remainingPurchaseCap: discountDetails.remainingPurchaseCap || (2500 - weeklyUsage.bnpcAmountUsed),
     };
 
     /* ======================
      FINAL CHECKOUT PAYLOAD
-  ====================== */
+    ====================== */
 
     const checkoutData = {
       items,
       totals: checkoutTotals,
       discountSnapshot,
-
       userEligibility: {
         isPWD: userEligibility.isPWD,
         isSenior: userEligibility.isSenior,
       },
-
       voucher: appliedVoucher
         ? {
             code: appliedVoucher.code,
-            discountAmount: appliedVoucher.discountAmount,
+            discountAmount: totals.voucherDiscount || appliedVoucher.discount,
           }
         : null,
-
       weeklyUsageSnapshot: {
-        bnpcAmountUsed:
-          discountDetails.weeklyPurchaseUsed ?? weeklyUsage.bnpcAmountUsed,
-
-        discountUsed:
-          discountDetails.weeklyDiscountUsed ?? weeklyUsage.discountUsed,
+        bnpcAmountUsed: discountSnapshot.weeklyPurchaseUsed,
+        discountUsed: discountSnapshot.weeklyDiscountUsed,
       },
     };
 
+    console.log("Checkout payload:", checkoutData);
+
     try {
-        const token = await getToken()
-          const queue = await checkout(checkoutData);
-          navigation.navigate("QR",{...queue,token})
-        } catch (error) {
-      console.error(error)
+      const token = await getToken();
+      const queue = await checkout(checkoutData);
+      navigation.navigate("QR", { ...queue, token });
+    } catch (error) {
+      console.error("Checkout error:", error);
+      Alert.alert("Checkout Failed", error.message || "Please try again");
     }
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return "Recently added";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
+    } catch {
+      return "Recently added";
+    }
   };
 
   const renderCartItem = (item) => {
+    const normalizedItem = normalizeCartItem(item);
+    const product = normalizedItem.product;
+    const itemTotal = normalizedItem.price * normalizedItem.selectedQuantity;
+    
     const totals = calculateTotals();
-    const product = item.product || item;
-    const itemTotal = item.price * item.qty;
-
+    
     // Check if item is BNPC eligible
     const isBNPCEligible =
       totals.discountDetails.eligible &&
@@ -442,12 +522,12 @@ const CartScreen = ({ navigation, route }) => {
     const bnpcItemDiscount = isBNPCEligible ? itemTotal * 0.05 : 0;
 
     return (
-      <View key={item._id} style={styles.cartItem}>
+      <View key={normalizedItem._id} style={styles.cartItem}>
         <Image
           source={{
             uri:
-              item.images?.[0]?.url ||
-              item.product?.images?.[0]?.url ||
+              normalizedItem.images?.[0]?.url ||
+              product.images?.[0]?.url ||
               "https://via.placeholder.com/100",
           }}
           style={styles.itemImage}
@@ -456,7 +536,7 @@ const CartScreen = ({ navigation, route }) => {
 
         <View style={styles.itemInfo}>
           <Text style={styles.itemName} numberOfLines={2}>
-            {item.name || product.name || "Product"}
+            {normalizedItem.name}
           </Text>
 
           {product.isBNPC && (
@@ -464,7 +544,7 @@ const CartScreen = ({ navigation, route }) => {
               <View style={styles.bnpcBadge}>
                 <Text style={styles.bnpcBadgeText}>BNPC</Text>
               </View>
-              {!product.excludedFromDiscount && (
+              {!product.excludedFromDiscount && product.discountScopes?.length > 0 && (
                 <Text style={styles.discountEligibleText}>
                   Eligible for {product.discountScopes?.join("/")} discount
                 </Text>
@@ -474,7 +554,7 @@ const CartScreen = ({ navigation, route }) => {
 
           <View style={styles.priceRow}>
             <Text style={styles.itemPrice}>
-              ₱{item.price?.toFixed(2) || "0.00"}
+              ₱{normalizedItem.price.toFixed(2)}
             </Text>
             <Text style={styles.itemUnit}>per {product.unit || "pc"}</Text>
           </View>
@@ -493,7 +573,7 @@ const CartScreen = ({ navigation, route }) => {
           )}
 
           <Text style={styles.itemDate}>
-            Added {formatDate(item.dateAdded)}
+            Added {formatDate(normalizedItem.dateAdded)}
           </Text>
         </View>
 
@@ -501,18 +581,18 @@ const CartScreen = ({ navigation, route }) => {
           <View style={styles.quantityContainer}>
             <TouchableOpacity
               style={styles.qtyButton}
-              onPress={() => updateQuantity(item._id, item.qty - 1)}
+              onPress={() => updateQuantity(normalizedItem._id, normalizedItem.selectedQuantity - 1)}
             >
               <MaterialCommunityIcons name="minus" size={18} color="#666" />
             </TouchableOpacity>
 
             <View style={styles.qtyDisplay}>
-              <Text style={styles.qtyText}>{item.qty}</Text>
+              <Text style={styles.qtyText}>{normalizedItem.selectedQuantity}</Text>
             </View>
 
             <TouchableOpacity
               style={styles.qtyButton}
-              onPress={() => updateQuantity(item._id, item.qty + 1)}
+              onPress={() => updateQuantity(normalizedItem._id, normalizedItem.selectedQuantity + 1)}
             >
               <MaterialCommunityIcons name="plus" size={18} color="#666" />
             </TouchableOpacity>
@@ -535,7 +615,7 @@ const CartScreen = ({ navigation, route }) => {
 
           <TouchableOpacity
             style={styles.removeButton}
-            onPress={() => removeItem(item._id)}
+            onPress={() => removeItem(normalizedItem._id)}
           >
             <MaterialCommunityIcons
               name="trash-can-outline"
@@ -550,6 +630,7 @@ const CartScreen = ({ navigation, route }) => {
 
   const totals = calculateTotals();
   const discountDetails = totals.discountDetails;
+  const { itemCount: displayItemCount } = calculateCartTotals();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -564,7 +645,7 @@ const CartScreen = ({ navigation, route }) => {
         <View>
           <Text style={styles.title}>My Cart</Text>
           <Text style={styles.subtitle}>
-            {itemCount} item{itemCount !== 1 ? "s" : ""}
+            {displayItemCount} item{displayItemCount !== 1 ? "s" : ""}
           </Text>
         </View>
         <TouchableOpacity
@@ -932,6 +1013,7 @@ const CartScreen = ({ navigation, route }) => {
     </SafeAreaView>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {

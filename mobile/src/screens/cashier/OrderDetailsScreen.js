@@ -1,5 +1,5 @@
 // screens/cashier/OrderDetailsScreen.jsx
-import React, { useState } from 'react';
+import React, { useState,useRef } from 'react';
 import {
   View,
   Text,
@@ -18,69 +18,14 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 const OrderDetailsScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  
-  // Mock data
-  const mockCheckoutData = {
-    status: "SCANNED",
-    items: [
-      {
-        product: "product_1",
-        name: "Milk - Fresh Cow 1L",
-        sku: "MILK-001",
-        quantity: 2,
-        unitPrice: 89.50,
-        categoryType: "Dairy",
-        isBNPCEligible: true
-      },
-      {
-        product: "product_2",
-        name: "Rice - Jasmine 1kg",
-        sku: "RICE-002",
-        quantity: 1,
-        unitPrice: 65.00,
-        categoryType: "Grains",
-        isBNPCEligible: true
-      },
-      {
-        product: "product_3",
-        name: "Coca-Cola 1.5L",
-        sku: "DRINK-003",
-        quantity: 3,
-        unitPrice: 75.00,
-        categoryType: "Beverages",
-        isBNPCEligible: false
-      }
-    ],
-    totals: {
-      subtotal: 684.00,
-      discountTotal: 18.23,
-      finalTotal: 665.77
-    },
-    discountSnapshot: {
-      eligible: true,
-      eligibleItemsCount: 3,
-      bnpcSubtotal: 364.50,
-      discountApplied: 18.23,
-    },
-    userEligibility: {
-      isPWD: true,
-      isSenior: false
-    },
-    voucher: {
-      code: "SAVE50",
-      discountAmount: 50.00
-    },
-    scannedAt: new Date(Date.now() - 15 * 60000).toISOString(),
-    expiresAt: new Date(Date.now() + 45 * 60000).toISOString()
-  };
 
-  const { checkoutData = mockCheckoutData, checkoutCode = 'ABC123XYZ' } = route.params || {};
+  const { checkoutData, checkoutCode  } = route.params || {};
   
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [order, setOrder] = useState(checkoutData);
   const [showValidationOptions, setShowValidationOptions] = useState(false);
-  const [isValidating, setIsValidating] = useState(false);
+  const [isValidated, setIsValidated] = useState(false);
 
   const onRefresh = async () => {
     setRefreshing(true);
