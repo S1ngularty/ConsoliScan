@@ -42,9 +42,9 @@ exports.getOrder = async (request) => {
     },
     { new: true },
   ).populate({
-    path:"items.product",
-    select:"barcode barcodeType"
-  })
+    path: "items.product",
+    select: "barcode barcodeType",
+  });
 
   if (!order) throw new Error("order not found");
 
@@ -57,4 +57,28 @@ exports.getOrder = async (request) => {
   return order;
 };
 
+exports.lockedOrder = async (request) => {
+  const { userId } = request.user;
+  if (!request.body) throw new Error("empty request content");
+  const { checkoutCode } = request.body;
+  const order = await Queue.findOneAndUpdate(
+    { checkoutCode, cashier: userId },
+    {
+      status: "LOCKED",
+    },
+    { new: true, runValidators: true },
+  ).populate({
+    path: "items.product",
+    select: "checkoutCode",
+  });
+
+  if (!order)throw new Error("failed to update checkout status");
+
+  checkoutEmitter.emitCheckout(checkoutCode,"checkout:LOCKED",{
+     status: order.status,
+    totals: order.totals,
+    cashier: order.name,
+  })
+  return result;
+};
 
