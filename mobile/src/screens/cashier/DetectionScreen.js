@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -15,14 +16,18 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { MACHINE_SERVICE } from "../../constants/config";
 
+const { width, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const RESULTS_PANEL_HEIGHT = SCREEN_HEIGHT * 0.45;
+const SCAN_FRAME_SIZE = 250;
+
 export default function ObjectDetectionScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { checkoutCode, orderItems = [] } = route.params || {};
+  const { checkoutCode, orderItems = [], checkoutData } = route.params || {};
 
   const [permission, requestPermission] = useCameraPermissions();
-  const [count, setCount] = useState(0);
-  const [detectedItems, setDetectedItems] = useState([]);
+  const [remainingItems, setRemainingItems] = useState(orderItems.reduce((sum, item) => sum + item.quantity, 0));
+  const [totalDetected, setTotalDetected] = useState(0);
   const [loading, setLoading] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [cameraFacing, setCameraFacing] = useState("back");
@@ -31,21 +36,17 @@ export default function ObjectDetectionScreen() {
   const cameraRef = useRef(null);
 
   // Get total items expected from order
-  const totalExpectedItems = orderItems.reduce(
-    (sum, item) => sum + item.quantity,
-    0,
-  );
+  const totalExpectedItems = orderItems.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Calculate validation status
-  const validationStatus =
-    count === totalExpectedItems
-      ? "success"
-      : count > totalExpectedItems
-        ? "extra"
-        : "missing";
+  // Calculate validation status based on remaining items
+  const getValidationStatus = () => {
+    if (remainingItems === 0) return "success";
+    if (remainingItems < 0) return "extra"; // More detected than expected
+    return "missing"; // Some items still missing
+  };
 
-  const getStatusColor = () => {
-    switch (validationStatus) {
+  const getStatusColor = (status) => {
+    switch (status) {
       case "success":
         return "#00A86B";
       case "extra":
@@ -57,29 +58,48 @@ export default function ObjectDetectionScreen() {
     }
   };
 
-  const getStatusMessage = () => {
-    if (validationStatus === "success") {
-      return "All items match!";
-    } else if (validationStatus === "extra") {
-      return `Extra items detected (${count} vs ${totalExpectedItems})`;
+  const getStatusMessage = (status) => {
+    if (status === "success") {
+      return "All items detected!";
+    } else if (status === "extra") {
+      return `Extra items detected (${Math.abs(remainingItems)} extra)`;
     } else {
-      return `Missing items (${count} vs ${totalExpectedItems})`;
+      return `${remainingItems} item(s) remaining`;
     }
   };
 
+  // Auto-return to OrderDetails when validation is complete and successful
   useEffect(() => {
-    if (validationComplete && validationStatus === "success") {
-      Alert.alert("Validation Complete", "All items match the order.", [
-        { text: "OK", onPress: () => navigation.goBack() },
-      ]);
+    if (validationComplete && getValidationStatus() === "success") {
+      const timer = setTimeout(() => {
+        navigation.navigate('OrderDetails', {
+          validationResult: {
+            isValidated: true,
+            validationMethod: 'object_detection',
+            validationDate: new Date().toISOString(),
+            scannedCount: totalExpectedItems - remainingItems,
+            totalCount: totalExpectedItems,
+          },
+          checkoutCode,
+          checkoutData,
+        });
+      }, 1500);
+      
+      return () => clearTimeout(timer);
     }
-  }, [validationComplete]);
+  }, [validationComplete, remainingItems, totalExpectedItems, checkoutCode, checkoutData, navigation]);
 
-  if (!permission) return <View />;
+  if (!permission) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#00A86B" />
+      </View>
+    );
+  }
 
   if (!permission.granted) {
     return (
-      <View style={styles.permissionContainer}>
+      <SafeAreaView style={styles.permissionContainer}>
         <MaterialCommunityIcons name="camera-off" size={80} color="#64748B" />
         <Text style={styles.permissionTitle}>Camera Access Required</Text>
         <Text style={styles.permissionText}>
@@ -92,7 +112,7 @@ export default function ObjectDetectionScreen() {
           <MaterialCommunityIcons name="camera" size={20} color="#FFFFFF" />
           <Text style={styles.grantButtonText}>Grant Permission</Text>
         </TouchableOpacity>
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -109,8 +129,6 @@ export default function ObjectDetectionScreen() {
         skipProcessing: false,
       });
 
-      // Show loading indicator
-
       // Prepare form data
       const data = new FormData();
       data.append("file", {
@@ -119,7 +137,7 @@ export default function ObjectDetectionScreen() {
         name: "detection.jpg",
       });
 
-      // Call FastAPI backend (Update IP as needed)
+      // Call FastAPI backend
       const res = await fetch(`${MACHINE_SERVICE}/detect`, {
         method: "POST",
         body: data,
@@ -129,34 +147,65 @@ export default function ObjectDetectionScreen() {
       });
 
       const json = await res.json();
-      console.log(json);
+      
       if (json.count !== undefined) {
-        const newCount = json.count;
-        setCount(newCount);
-
+        const newDetectionCount = json.count;
+        
         // Add to scan history
         const newScan = {
           id: Date.now(),
-          count: newCount,
-          timestamp: new Date().toLocaleTimeString(),
-          matched: newCount === totalExpectedItems,
+          detectedCount: newDetectionCount,
+          timestamp: new Date().toLocaleTimeString([], { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          }),
         };
-        setScans((prev) => [newScan, ...prev.slice(0, 4)]); // Keep last 5 scans
+        setScans((prev) => [newScan, ...prev.slice(0, 4)]);
 
-        // Update detected items (mock data for now)
-        const mockDetectedItems = orderItems.map((item) => ({
-          ...item,
-          detected: Math.floor(Math.random() * (item.quantity + 2)),
-        }));
-        setDetectedItems(mockDetectedItems);
+        // Update total detected count
+        setTotalDetected(newDetectionCount);
+
+        // Calculate new remaining items
+        // This scan detected X items, so subtract X from remaining
+        const newRemaining = totalExpectedItems - newDetectionCount;
+        setRemainingItems(newRemaining);
+
+        // Show alert with current status
+        if (newRemaining === 0) {
+          Alert.alert(
+            "Perfect Match!",
+            `Detected ${newDetectionCount} items which matches the order.`,
+            [
+              { 
+                text: "Continue", 
+                onPress: () => {
+                  setValidationComplete(true);
+                }
+              }
+            ]
+          );
+        } else if (newRemaining > 0) {
+          Alert.alert(
+            "Items Detected",
+            `Detected ${newDetectionCount} items. ${newRemaining} item(s) remaining.`,
+            [{ text: "OK" }]
+          );
+        } else {
+          Alert.alert(
+            "Extra Items Detected",
+            `Detected ${newDetectionCount} items (${Math.abs(newRemaining)} extra).`,
+            [{ text: "OK" }]
+          );
+        }
       } else if (json.error) {
         Alert.alert("Detection Error", json.error);
       }
     } catch (error) {
       console.log("Detection request error:", error);
       Alert.alert(
-        "Error",
-        "Failed to connect to detection service. Please try again.",
+        "Connection Error",
+        "Failed to connect to detection service. Please check your connection and try again.",
+        [{ text: "OK" }]
       );
     } finally {
       setLoading(false);
@@ -169,55 +218,88 @@ export default function ObjectDetectionScreen() {
   };
 
   const handleCompleteValidation = () => {
-    if (count === 0) {
-      Alert.alert("No Items Detected", "Please scan items first.");
-      return;
+    const currentStatus = getValidationStatus();
+    
+    if (currentStatus === "success") {
+      setValidationComplete(true);
+    } else {
+      Alert.alert(
+        "Validation Result",
+        getStatusMessage(currentStatus),
+        [
+          { 
+            text: "Continue Anyway", 
+            style: "destructive",
+            onPress: () => {
+              navigation.navigate('OrderDetails', {
+                validationResult: {
+                  isValidated: false,
+                  validationMethod: 'object_detection',
+                  validationDate: new Date().toISOString(),
+                  scannedCount: totalExpectedItems - remainingItems,
+                  totalCount: totalExpectedItems,
+                },
+                checkoutCode,
+                checkoutData,
+              });
+            }
+          },
+          { 
+            text: "Scan Again", 
+            onPress: handleRetry 
+          }
+        ]
+      );
     }
-    setValidationComplete(true);
   };
 
   const handleRetry = () => {
     setValidationComplete(false);
+    setScans([]);
+    setRemainingItems(totalExpectedItems);
+    setTotalDetected(0);
   };
 
+  const handleBack = () => {
+    Alert.alert(
+      "Exit Validation",
+      "Are you sure you want to exit? Your validation progress will be lost.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Exit", 
+          onPress: () => {
+            navigation.goBack();
+          }
+        }
+      ]
+    );
+  };
+
+  const currentStatus = getValidationStatus();
+  const statusColor = getStatusColor(currentStatus);
+
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
+    <View style={styles.container}>
+      {/* Camera View - Full Screen */}
+      <CameraView
+        ref={cameraRef}
+        style={styles.camera}
+        facing={cameraFacing}
+      />
 
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Object Detection</Text>
-          <Text style={styles.headerSubtitle}>Checkout: {checkoutCode}</Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.flipButton}
-          onPress={handleToggleCamera}
-        >
-          <MaterialCommunityIcons
-            name="camera-flip"
-            size={24}
-            color="#FFFFFF"
-          />
-        </TouchableOpacity>
-      </View>
-
-      {/* Camera Preview */}
-      <View style={styles.cameraContainer}>
-        <CameraView
-          ref={cameraRef}
-          style={styles.camera}
-          facing={cameraFacing}
-          ratio="16:9"
-        >
-          <View style={styles.cameraOverlay}>
+      {/* Overlay with proper spacing */}
+      <View style={StyleSheet.absoluteFill}>
+        <View style={styles.overlay}>
+          {/* Top area for header space */}
+          <View style={[styles.overlaySection, { height: 60 }]} />
+          
+          {/* Middle area with scan frame cutout */}
+          <View style={styles.scanFrameContainer}>
+            <View style={[styles.overlaySide, { width: (width - SCAN_FRAME_SIZE) / 2 }]} />
+            
             <View style={styles.scanFrame}>
+              {/* Corner markers */}
               <View style={styles.cornerTL} />
               <View style={styles.cornerTR} />
               <View style={styles.cornerBL} />
@@ -230,7 +312,14 @@ export default function ObjectDetectionScreen() {
                 </View>
               )}
             </View>
-
+            
+            <View style={[styles.overlaySide, { width: (width - SCAN_FRAME_SIZE) / 2 }]} />
+          </View>
+          
+          {/* Bottom area */}
+          <View style={[styles.overlayBottom, { 
+            height: RESULTS_PANEL_HEIGHT 
+          }]}>
             <View style={styles.instructionContainer}>
               <Text style={styles.instructionText}>
                 Place items within the frame
@@ -240,15 +329,45 @@ export default function ObjectDetectionScreen() {
               </Text>
             </View>
           </View>
-        </CameraView>
+        </View>
       </View>
 
-      {/* Detection Controls */}
-      <View style={styles.controlsContainer}>
+      {/* Header */}
+      <SafeAreaView style={styles.header}>
+        <View style={styles.headerContent}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBack}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>Object Detection</Text>
+            <Text style={styles.headerSubtitle}>
+              Checkout: #{checkoutCode}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.flipButton}
+            onPress={handleToggleCamera}
+          >
+            <MaterialCommunityIcons
+              name="camera-flip"
+              size={24}
+              color="#FFFFFF"
+            />
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+
+      {/* Detect Button */}
+      <View style={styles.detectButtonContainer}>
         <TouchableOpacity
           style={[styles.detectButton, loading && styles.detectButtonDisabled]}
           onPress={runDetection}
-          disabled={loading}
+          disabled={loading || validationComplete}
           activeOpacity={0.8}
         >
           {loading ? (
@@ -256,160 +375,206 @@ export default function ObjectDetectionScreen() {
           ) : (
             <>
               <MaterialCommunityIcons name="camera" size={22} color="#FFFFFF" />
-              <Text style={styles.detectButtonText}>Detect Items</Text>
+              <Text style={styles.detectButtonText}>
+                {validationComplete ? "Scan Complete" : "Detect Items"}
+              </Text>
             </>
           )}
         </TouchableOpacity>
       </View>
 
       {/* Results Panel */}
-      <ScrollView style={styles.resultsContainer}>
-        {/* Count Summary */}
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryHeader}>
-            <MaterialCommunityIcons name="counter" size={24} color="#64748B" />
-            <Text style={styles.summaryTitle}>Detection Results</Text>
+      <View style={[styles.resultsPanel, { height: RESULTS_PANEL_HEIGHT }]}>
+        <View style={styles.dragHandle}>
+          <View style={styles.dragHandleBar} />
+        </View>
+
+        <ScrollView style={styles.resultsContainer} showsVerticalScrollIndicator={false}>
+          {/* Count Summary */}
+          <View style={[styles.summaryCard, validationComplete && { borderColor: statusColor }]}>
+            <View style={styles.summaryHeader}>
+              <MaterialCommunityIcons 
+                name={validationComplete ? "shield-check" : "counter"} 
+                size={24} 
+                color={validationComplete ? statusColor : "#64748B"} 
+              />
+              <Text style={styles.summaryTitle}>
+                {validationComplete ? "Validation Result" : "Detection Results"}
+              </Text>
+            </View>
+
+            <View style={styles.countRow}>
+              <View style={styles.countItem}>
+                <Text style={styles.countLabel}>Total Expected</Text>
+                <Text style={styles.countValue}>{totalExpectedItems}</Text>
+              </View>
+
+              <View style={styles.countDivider} />
+
+              <View style={styles.countItem}>
+                <Text style={styles.countLabel}>Detected</Text>
+                <Text style={[styles.countValue, { color: "#00A86B" }]}>
+                  {totalDetected}
+                </Text>
+              </View>
+
+              <View style={styles.countDivider} />
+
+              <View style={styles.countItem}>
+                <Text style={styles.countLabel}>Remaining</Text>
+                <Text style={[styles.countValue, { 
+                  color: remainingItems > 0 ? "#EF4444" : 
+                         remainingItems < 0 ? "#FF9800" : "#00A86B" 
+                }]}>
+                  {remainingItems}
+                </Text>
+              </View>
+            </View>
+
+            <View style={[styles.statusMessage, { backgroundColor: `${statusColor}20` }]}>
+              <MaterialCommunityIcons
+                name={
+                  currentStatus === "success" ? "check-circle" : 
+                  currentStatus === "extra" ? "alert-circle" : "close-circle"
+                }
+                size={20}
+                color={statusColor}
+              />
+              <Text style={[styles.statusMessageText, { color: statusColor }]}>
+                {getStatusMessage(currentStatus)}
+              </Text>
+            </View>
+
+            {validationComplete && currentStatus === "success" && (
+              <View style={styles.successConfirmation}>
+                <ActivityIndicator color="#00A86B" size="small" />
+                <Text style={styles.successConfirmationText}>
+                  Returning to order details...
+                </Text>
+              </View>
+            )}
           </View>
 
-          <View style={styles.countRow}>
-            <View style={styles.countItem}>
-              <Text style={styles.countLabel}>Detected</Text>
-              <Text style={styles.countValue}>{count}</Text>
+          {/* Simple Progress Bar */}
+          <View style={styles.progressCard}>
+            <View style={styles.progressHeader}>
+              <MaterialCommunityIcons name="progress-check" size={22} color="#64748B" />
+              <Text style={styles.progressTitle}>Progress</Text>
+              <Text style={styles.progressPercentage}>
+                {totalExpectedItems > 0 ? 
+                  Math.round(((totalExpectedItems - remainingItems) / totalExpectedItems) * 100) : 0}%
+              </Text>
             </View>
-
-            <View style={styles.countDivider} />
-
-            <View style={styles.countItem}>
-              <Text style={styles.countLabel}>Expected</Text>
-              <Text style={styles.countValue}>{totalExpectedItems}</Text>
+            
+            <View style={styles.progressBar}>
+              <View 
+                style={[
+                  styles.progressFill,
+                  { 
+                    width: `${totalExpectedItems > 0 ? 
+                      Math.min(100, ((totalExpectedItems - remainingItems) / totalExpectedItems) * 100) : 0}%`,
+                    backgroundColor: currentStatus === "success" ? "#00A86B" :
+                                    currentStatus === "extra" ? "#FF9800" : "#3B82F6"
+                  }
+                ]} 
+              />
             </View>
-
-            <View style={styles.countDivider} />
-
-            <View style={styles.countItem}>
-              <Text style={styles.countLabel}>Status</Text>
-              <Text style={[styles.statusText, { color: getStatusColor() }]}>
-                {validationStatus.toUpperCase()}
+            
+            <View style={styles.progressLabels}>
+              <Text style={styles.progressLabel}>
+                Detected: {totalExpectedItems - remainingItems}
+              </Text>
+              <Text style={styles.progressLabel}>
+                Remaining: {Math.max(0, remainingItems)}
               </Text>
             </View>
           </View>
 
-          <View
-            style={[
-              styles.statusMessage,
-              { backgroundColor: `${getStatusColor()}20` },
-            ]}
-          >
-            <MaterialCommunityIcons
-              name={
-                validationStatus === "success" ? "check-circle" : "alert-circle"
-              }
-              size={20}
-              color={getStatusColor()}
-            />
-            <Text
-              style={[styles.statusMessageText, { color: getStatusColor() }]}
-            >
-              {getStatusMessage()}
-            </Text>
-          </View>
-        </View>
+          {/* Scan History - Simplified */}
+          {scans.length > 0 && (
+            <View style={styles.historyCard}>
+              <View style={styles.historyHeader}>
+                <MaterialCommunityIcons
+                  name="history"
+                  size={22}
+                  color="#64748B"
+                />
+                <Text style={styles.historyTitle}>Recent Scans</Text>
+              </View>
 
-        {/* Item Breakdown */}
-        {detectedItems.length > 0 && (
-          <View style={styles.itemsCard}>
-            <View style={styles.itemsHeader}>
-              <MaterialCommunityIcons
-                name="format-list-bulleted"
-                size={22}
-                color="#64748B"
-              />
-              <Text style={styles.itemsTitle}>Item Details</Text>
-            </View>
-
-            {detectedItems.map((item, index) => (
-              <View key={index} style={styles.itemRow}>
-                <View style={styles.itemInfo}>
-                  <Text style={styles.itemName} numberOfLines={1}>
-                    {item.name}
+              {scans.map((scan, index) => (
+                <View key={scan.id} style={[
+                  styles.scanItem,
+                  index === 0 && styles.latestScan
+                ]}>
+                  <View style={styles.scanInfo}>
+                    <MaterialCommunityIcons
+                      name="camera"
+                      size={18}
+                      color={index === 0 ? "#00A86B" : "#64748B"}
+                    />
+                    <Text style={styles.scanTime}>{scan.timestamp}</Text>
+                  </View>
+                  <Text style={styles.scanCount}>
+                    {scan.detectedCount} items
                   </Text>
-                  <Text style={styles.itemSku}>SKU: {item.sku}</Text>
                 </View>
-
-                <View style={styles.itemCounts}>
-                  <View style={styles.countBadge}>
-                    <Text style={styles.expectedCount}>
-                      Exp: {item.quantity}
-                    </Text>
-                  </View>
-                  <View style={styles.countBadge}>
-                    <Text style={styles.detectedCount}>
-                      Det: {item.detected}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Scan History */}
-        {scans.length > 0 && (
-          <View style={styles.historyCard}>
-            <View style={styles.historyHeader}>
-              <MaterialCommunityIcons
-                name="history"
-                size={22}
-                color="#64748B"
-              />
-              <Text style={styles.historyTitle}>Recent Scans</Text>
+              ))}
             </View>
+          )}
 
-            {scans.map((scan, index) => (
-              <View key={scan.id} style={styles.scanItem}>
-                <View style={styles.scanInfo}>
-                  <MaterialCommunityIcons
-                    name={scan.matched ? "check-circle" : "alert-circle"}
-                    size={18}
-                    color={scan.matched ? "#00A86B" : "#FF9800"}
-                  />
-                  <Text style={styles.scanTime}>{scan.timestamp}</Text>
-                </View>
-                <Text style={styles.scanCount}>{scan.count} items</Text>
-              </View>
-            ))}
+          {/* Action Buttons */}
+          <View style={styles.actionButtons}>
+            <TouchableOpacity
+              style={[
+                styles.completeButton,
+                scans.length === 0 && styles.completeButtonDisabled,
+                validationComplete && currentStatus === "success" && styles.completeButtonSuccess,
+              ]}
+              onPress={validationComplete ? handleRetry : handleCompleteValidation}
+              disabled={scans.length === 0}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons
+                name={validationComplete ? "refresh" : "check-circle"}
+                size={22}
+                color="#FFFFFF"
+              />
+              <Text style={styles.completeButtonText}>
+                {validationComplete 
+                  ? (currentStatus === "success" ? "Validated ✓" : "Try Again") 
+                  : "Complete Validation"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={handleBack}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.cancelButtonText}>
+                {scans.length > 0 ? "Cancel & Exit" : "Back"}
+              </Text>
+            </TouchableOpacity>
           </View>
-        )}
 
-        {/* Action Button */}
-        <TouchableOpacity
-          style={[
-            styles.completeButton,
-            (count === 0 || validationComplete) &&
-              styles.completeButtonDisabled,
-          ]}
-          onPress={validationComplete ? handleRetry : handleCompleteValidation}
-          // disabled={count === 0 || validationComplete}
-          activeOpacity={0.8}
-        >
-          <MaterialCommunityIcons
-            name={validationComplete ? "refresh" : "check-circle"}
-            size={22}
-            color="#FFFFFF"
-          />
-          <Text style={styles.completeButtonText}>
-            {validationComplete ? "Scan Again" : "Complete Validation"}
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </SafeAreaView>
+          <View style={styles.bottomSpacer} />
+        </ScrollView>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "#000",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
   },
   permissionContainer: {
     flex: 1,
@@ -446,61 +611,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#00A86B",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    height: 60,
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: "center",
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#FFFFFF",
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: "#E8F5EF",
-    marginTop: 2,
-  },
-  flipButton: {
-    padding: 8,
-  },
-  cameraContainer: {
-    flex: 3,
-    backgroundColor: "#000",
-  },
   camera: {
     flex: 1,
   },
-  cameraOverlay: {
+  overlay: {
     flex: 1,
-    backgroundColor: "transparent",
+  },
+  overlaySection: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  scanFrameContainer: {
+    flexDirection: "row",
+    height: SCAN_FRAME_SIZE,
+  },
+  overlaySide: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  overlayBottom: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: "center",
     alignItems: "center",
   },
   scanFrame: {
-    width: 300,
-    height: 300,
-    borderWidth: 2,
-    borderColor: "rgba(255, 255, 255, 0.6)",
-    borderRadius: 12,
+    width: SCAN_FRAME_SIZE,
+    height: SCAN_FRAME_SIZE,
     justifyContent: "center",
     alignItems: "center",
     position: "relative",
   },
   cornerTL: {
     position: "absolute",
-    top: -2,
-    left: -2,
+    top: 0,
+    left: 0,
     width: 30,
     height: 30,
     borderTopWidth: 4,
@@ -510,8 +652,8 @@ const styles = StyleSheet.create({
   },
   cornerTR: {
     position: "absolute",
-    top: -2,
-    right: -2,
+    top: 0,
+    right: 0,
     width: 30,
     height: 30,
     borderTopWidth: 4,
@@ -521,8 +663,8 @@ const styles = StyleSheet.create({
   },
   cornerBL: {
     position: "absolute",
-    bottom: -2,
-    left: -2,
+    bottom: 0,
+    left: 0,
     width: 30,
     height: 30,
     borderBottomWidth: 4,
@@ -532,8 +674,8 @@ const styles = StyleSheet.create({
   },
   cornerBR: {
     position: "absolute",
-    bottom: -2,
-    right: -2,
+    bottom: 0,
+    right: 0,
     width: 30,
     height: 30,
     borderBottomWidth: 4,
@@ -556,8 +698,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   instructionContainer: {
-    position: "absolute",
-    bottom: 40,
     alignItems: "center",
   },
   instructionText: {
@@ -570,11 +710,56 @@ const styles = StyleSheet.create({
     color: "rgba(255, 255, 255, 0.8)",
     fontSize: 14,
   },
-  controlsContainer: {
-    padding: 20,
-    backgroundColor: "#FFFFFF",
-    borderTopWidth: 1,
-    borderTopColor: "#E8F5EF",
+  header: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  headerContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: "center",
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: "rgba(255, 255, 255, 0.8)",
+    marginTop: 2,
+  },
+  flipButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  detectButtonContainer: {
+    position: 'absolute',
+    bottom: RESULTS_PANEL_HEIGHT + 20,
+    left: 20,
+    right: 20,
   },
   detectButton: {
     flexDirection: "row",
@@ -593,22 +778,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+  resultsPanel: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  dragHandle: {
+    paddingTop: 12,
+    paddingBottom: 8,
+    alignItems: "center",
+  },
+  dragHandleBar: {
+    width: 40,
+    height: 4,
+    backgroundColor: "#E8F5EF",
+    borderRadius: 2,
+  },
   resultsContainer: {
     flex: 1,
-    padding: 16,
+    padding: 20,
+    paddingBottom: 30,
   },
   summaryCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: "#E8F5EF",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
   },
   summaryHeader: {
     flexDirection: "row",
@@ -647,11 +848,6 @@ const styles = StyleSheet.create({
     height: 40,
     backgroundColor: "#E8F5EF",
   },
-  statusText: {
-    fontSize: 14,
-    fontWeight: "700",
-    textTransform: "uppercase",
-  },
   statusMessage: {
     flexDirection: "row",
     alignItems: "center",
@@ -664,7 +860,22 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     flex: 1,
   },
-  itemsCard: {
+  successConfirmation: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F0F9F5",
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 12,
+    gap: 8,
+  },
+  successConfirmationText: {
+    fontSize: 14,
+    color: "#00A86B",
+    fontWeight: "600",
+  },
+  progressCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
     padding: 20,
@@ -672,58 +883,41 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E8F5EF",
   },
-  itemsHeader: {
+  progressHeader: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 16,
   },
-  itemsTitle: {
+  progressTitle: {
     fontSize: 16,
     fontWeight: "600",
     color: "#1E293B",
     marginLeft: 10,
-  },
-  itemRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-  },
-  itemInfo: {
     flex: 1,
-    marginRight: 12,
   },
-  itemName: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#1E293B",
-    marginBottom: 4,
+  progressPercentage: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#00A86B",
   },
-  itemSku: {
-    fontSize: 12,
-    color: "#94A3B8",
+  progressBar: {
+    height: 8,
+    backgroundColor: "#E8F5EF",
+    borderRadius: 4,
+    overflow: "hidden",
+    marginBottom: 8,
   },
-  itemCounts: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  countBadge: {
-    backgroundColor: "#F8FAFC",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+  progressFill: {
+    height: '100%',
     borderRadius: 4,
   },
-  expectedCount: {
+  progressLabels: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  progressLabel: {
     fontSize: 12,
     color: "#64748B",
-    fontWeight: "600",
-  },
-  detectedCount: {
-    fontSize: 12,
-    color: "#00A86B",
-    fontWeight: "600",
   },
   historyCard: {
     backgroundColor: "#FFFFFF",
@@ -743,6 +937,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#1E293B",
     marginLeft: 10,
+    flex: 1,
   },
   scanItem: {
     flexDirection: "row",
@@ -752,10 +947,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#F1F5F9",
   },
+  latestScan: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+  },
   scanInfo: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    flex: 1,
   },
   scanTime: {
     fontSize: 14,
@@ -766,6 +967,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#1E293B",
   },
+  actionButtons: {
+    gap: 12,
+    marginBottom: 20,
+  },
   completeButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -773,15 +978,29 @@ const styles = StyleSheet.create({
     backgroundColor: "#00A86B",
     borderRadius: 12,
     paddingVertical: 16,
-    marginBottom: 20,
     gap: 8,
   },
   completeButtonDisabled: {
     backgroundColor: "#CBD5E1",
   },
+  completeButtonSuccess: {
+    backgroundColor: "#00A86B",
+  },
   completeButtonText: {
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
+  },
+  cancelButton: {
+    paddingVertical: 16,
+    alignItems: "center",
+  },
+  cancelButtonText: {
+    color: "#64748B",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  bottomSpacer: {
+    height: 20,
   },
 });

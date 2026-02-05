@@ -1,5 +1,5 @@
 // screens/cashier/OrderDetailsScreen.jsx
-import React, { useState,useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,19 +13,47 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 
 const OrderDetailsScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
 
-  const { checkoutData, checkoutCode  } = route.params || {};
+  const { checkoutData, checkoutCode } = route.params || {};
   
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [order, setOrder] = useState(checkoutData);
   const [showValidationOptions, setShowValidationOptions] = useState(false);
-  const [isValidated, setIsValidated] = useState(false);
+  const [validationStatus, setValidationStatus] = useState({
+    isValidated: false,
+    validationMethod: null,
+    validationDate: null,
+  });
+
+  // Listen for validation result when returning from validation screens
+  useFocusEffect(
+    React.useCallback(() => {
+      // Check if we're returning from validation with a result
+      if (route.params?.validationResult) {
+        const { validationResult } = route.params;
+        
+        if (validationResult.isValidated) {
+          setValidationStatus({
+            isValidated: true,
+            validationMethod: validationResult.validationMethod,
+            validationDate: validationResult.validationDate,
+          });
+          Alert.alert('Success', 'Items validated successfully!');
+        } else {
+          Alert.alert('Validation Incomplete', 'Some items were not validated. You can re-validate or proceed anyway.');
+        }
+        
+        // Clear the params to avoid processing again
+        navigation.setParams({ validationResult: undefined });
+      }
+    }, [route.params?.validationResult])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -45,22 +73,35 @@ const OrderDetailsScreen = () => {
   const handleValidationMethodSelect = (method) => {
     setShowValidationOptions(false);
     
+    // Navigate to validation screens without callback function
     if (method === 'object_detection') {
       navigation.navigate('Detection', {
         checkoutCode,
         orderItems: order.items,
-        orderData: order
+        checkoutData: order, // Use checkoutData instead of orderData for consistency
       });
     } else if (method === 'qr_scan') {
       navigation.navigate('QRScanValidation', {
         checkoutCode,
         orderItems: order.items,
-        orderData: order
+        checkoutData: order, // Use checkoutData instead of orderData for consistency
       });
     }
   };
 
   const handleLockOrder = async () => {
+    if (!validationStatus.isValidated) {
+      Alert.alert(
+        'Validation Required',
+        'You must validate the items before proceeding.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Validate Now', onPress: handleValidation }
+        ]
+      );
+      return;
+    }
+
     setIsLoading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 1500));
@@ -73,7 +114,7 @@ const OrderDetailsScreen = () => {
             text: 'Proceed to Payment',
             onPress: () => navigation.navigate('Payment', {
               checkoutCode,
-              orderData: order
+              checkoutData: order
             })
           }
         ]
@@ -117,6 +158,28 @@ const OrderDetailsScreen = () => {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const getValidationMethodLabel = (method) => {
+    switch (method) {
+      case 'object_detection':
+        return 'Object Detection';
+      case 'qr_scan':
+        return 'QR Code Scan';
+      default:
+        return 'Not Validated';
+    }
   };
 
   const getEligibilityIcon = () => {
@@ -216,27 +279,75 @@ const OrderDetailsScreen = () => {
         </View>
 
         {/* Validation Status */}
-        <View style={[styles.card, styles.validationCard]}>
+        <View style={[styles.card, validationStatus.isValidated ? styles.validationSuccessCard : styles.validationRequiredCard]}>
           <View style={styles.cardHeader}>
-            <MaterialCommunityIcons name="shield-check" size={22} color="#00A86B" />
+            <MaterialCommunityIcons 
+              name={validationStatus.isValidated ? "shield-check" : "shield-alert"} 
+              size={22} 
+              color={validationStatus.isValidated ? "#00A86B" : "#EF4444"} 
+            />
             <Text style={styles.cardTitle}>Item Validation</Text>
-            <View style={styles.validationStatusBadge}>
-              <Text style={styles.validationStatusText}>Required</Text>
+            <View style={[styles.validationStatusBadge, 
+              validationStatus.isValidated ? styles.validationSuccessBadge : styles.validationRequiredBadge
+            ]}>
+              <Text style={[styles.validationStatusText, 
+                validationStatus.isValidated ? styles.validationSuccessText : styles.validationRequiredText
+              ]}>
+                {validationStatus.isValidated ? 'Validated' : 'Required'}
+              </Text>
             </View>
           </View>
           
-          <Text style={styles.validationDescription}>
-            Please validate the physical items against the order before proceeding.
-          </Text>
-          
-          <TouchableOpacity
-            style={styles.validateButton}
-            onPress={handleValidation}
-            activeOpacity={0.8}
-          >
-            <MaterialCommunityIcons name="check-circle" size={22} color="#FFFFFF" />
-            <Text style={styles.validateButtonText}>Validate Items</Text>
-          </TouchableOpacity>
+          {validationStatus.isValidated ? (
+            <>
+              <View style={styles.validationSuccessContent}>
+                <View style={styles.validationSuccessRow}>
+                  <MaterialCommunityIcons name="check-circle" size={18} color="#00A86B" />
+                  <Text style={styles.validationSuccessLabel}>
+                    Validation Complete
+                  </Text>
+                </View>
+                <View style={styles.validationDetails}>
+                  <View style={styles.validationDetailRow}>
+                    <Text style={styles.validationDetailLabel}>Method:</Text>
+                    <Text style={styles.validationDetailValue}>
+                      {getValidationMethodLabel(validationStatus.validationMethod)}
+                    </Text>
+                  </View>
+                  <View style={styles.validationDetailRow}>
+                    <Text style={styles.validationDetailLabel}>Validated At:</Text>
+                    <Text style={styles.validationDetailValue}>
+                      {formatDateTime(validationStatus.validationDate)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={[styles.validateButton, styles.revalidateButton]}
+                onPress={handleValidation}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons name="refresh" size={20} color="#00A86B" />
+                <Text style={styles.revalidateButtonText}>Re-validate Items</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={styles.validationDescription}>
+                You must validate the physical items against the order before proceeding.
+                This ensures all items match and are accounted for.
+              </Text>
+              
+              <TouchableOpacity
+                style={styles.validateButton}
+                onPress={handleValidation}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons name="check-circle" size={22} color="#FFFFFF" />
+                <Text style={styles.validateButtonText}>Validate Items</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
 
         {/* Order Items */}
@@ -334,17 +445,28 @@ const OrderDetailsScreen = () => {
         </TouchableOpacity>
         
         <TouchableOpacity
-          style={[styles.actionButton, styles.lockButton]}
+          style={[styles.actionButton, styles.lockButton, 
+            !validationStatus.isValidated && styles.lockButtonDisabled
+          ]}
           onPress={handleLockOrder}
-          disabled={isLoading || order.status !== 'SCANNED'}
+          disabled={isLoading || order.status !== 'SCANNED' || !validationStatus.isValidated}
           activeOpacity={0.8}
         >
           {isLoading ? (
             <ActivityIndicator color="#FFFFFF" size="small" />
           ) : (
             <>
-              <MaterialCommunityIcons name="lock-check" size={20} color="#FFFFFF" />
-              <Text style={styles.lockButtonText}>Lock & Proceed</Text>
+              <MaterialCommunityIcons 
+                name="lock-check" 
+                size={20} 
+                color={validationStatus.isValidated ? "#FFFFFF" : "#94A3B8"} 
+              />
+              <Text style={[
+                styles.lockButtonText,
+                !validationStatus.isValidated && styles.lockButtonTextDisabled
+              ]}>
+                Lock & Proceed
+              </Text>
             </>
           )}
         </TouchableOpacity>
@@ -482,6 +604,12 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
+  validationRequiredCard: {
+    borderColor: '#FEE2E2',
+  },
+  validationSuccessCard: {
+    borderColor: '#E8F5EF',
+  },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -493,19 +621,28 @@ const styles = StyleSheet.create({
     color: '#1E293B',
     marginLeft: 10,
   },
-  validationCard: {
-    borderColor: '#E8F5EF',
-  },
-  validationStatusBadge: {
-    backgroundColor: '#FFFBEB',
+  validationRequiredBadge: {
+    backgroundColor: '#FEF3F2',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
     marginLeft: 8,
   },
-  validationStatusText: {
+  validationSuccessBadge: {
+    backgroundColor: '#F0F9F5',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  validationRequiredText: {
     fontSize: 12,
-    color: '#D97706',
+    color: '#DC2626',
+    fontWeight: '600',
+  },
+  validationSuccessText: {
+    fontSize: 12,
+    color: '#00A86B',
     fontWeight: '600',
   },
   validationDescription: {
@@ -513,6 +650,40 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginBottom: 20,
     lineHeight: 20,
+  },
+  validationSuccessContent: {
+    marginBottom: 20,
+  },
+  validationSuccessRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  validationSuccessLabel: {
+    fontSize: 15,
+    color: '#00A86B',
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  validationDetails: {
+    backgroundColor: '#F8FAFC',
+    padding: 12,
+    borderRadius: 8,
+  },
+  validationDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  validationDetailLabel: {
+    fontSize: 13,
+    color: '#64748B',
+  },
+  validationDetailValue: {
+    fontSize: 13,
+    color: '#1E293B',
+    fontWeight: '500',
   },
   validateButton: {
     flexDirection: 'row',
@@ -523,6 +694,16 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 24,
     gap: 8,
+  },
+  revalidateButton: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#00A86B',
+  },
+  revalidateButtonText: {
+    color: '#00A86B',
+    fontSize: 16,
+    fontWeight: '600',
   },
   validateButtonText: {
     color: '#FFFFFF',
@@ -705,10 +886,16 @@ const styles = StyleSheet.create({
   lockButton: {
     backgroundColor: '#00A86B',
   },
+  lockButtonDisabled: {
+    backgroundColor: '#E2E8F0',
+  },
   lockButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  lockButtonTextDisabled: {
+    color: '#94A3B8',
   },
   // Modal Styles
   modalOverlay: {

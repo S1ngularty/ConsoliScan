@@ -10,6 +10,7 @@ import {
   Modal,
   Animated,
   Dimensions,
+  StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -57,7 +58,8 @@ const QRScannerScreen = () => {
   if (!permission.granted) {
     return (
       <SafeAreaView style={styles.permissionContainer}>
-        <MaterialCommunityIcons name="camera-off" size={80} color="#666" />
+        <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
+        <MaterialCommunityIcons name="camera-off" size={80} color="#64748B" />
         <Text style={styles.permissionTitle}>Camera Access Required</Text>
         <Text style={styles.permissionText}>
           We need camera access to scan customer QR codes
@@ -84,28 +86,19 @@ const QRScannerScreen = () => {
     try {
       setIsLoading(true);
       setError("");
-      // Extract checkout code from QR data
-      // console.log(checkoutCode)
+      
       if (!checkoutCode) {
         throw new Error("Invalid QR code");
       }
 
-      // Validate format for your example: CHK-206B0097
-      // This format seems to be: CHK- followed by 8 alphanumeric characters
       if (!/^CHK-[A-Z0-9]{8}$/i.test(checkoutCode)) {
         throw new Error("Invalid checkout code format. Expected: CHK-XXXXXXXX");
       }
 
-      // Mock API response - Replace with actual API call
-      // const response = await getCheckoutDetails(checkoutCode)
-
       const OrderDetails = await getCheckoutDetails(checkoutCode);
-
-      // Simulate API delay
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
       const response = OrderDetails;
-      // console.log(response)
 
       if (response.status === "PAID") {
         throw new Error("This order has already been paid");
@@ -147,36 +140,49 @@ const QRScannerScreen = () => {
   const renderCameraOverlay = () => {
     return (
       <View style={StyleSheet.absoluteFill}>
-        {/* Scan Frame */}
-        <View style={styles.scanFrame}>
-          <View style={styles.cornerTL} />
-          <View style={styles.cornerTR} />
-          <View style={styles.cornerBL} />
-          <View style={styles.cornerBR} />
+        {/* Dimmed Top and Bottom Areas */}
+        <View style={[styles.dimmedArea, styles.dimmedTop]} />
+        <View style={[styles.dimmedArea, styles.dimmedBottom]} />
+        <View style={[styles.dimmedArea, styles.dimmedLeft]} />
+        <View style={[styles.dimmedArea, styles.dimmedRight]} />
 
-          {/* Animated Scan Line */}
-          <Animated.View
-            style={[
-              styles.scanLine,
-              {
-                transform: [
-                  {
-                    translateY: scanAnimation.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0, 250],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          />
+        {/* Scan Frame */}
+        <View style={styles.scanFrameContainer}>
+          <View style={styles.scanFrame}>
+            <View style={styles.cornerTL} />
+            <View style={styles.cornerTR} />
+            <View style={styles.cornerBL} />
+            <View style={styles.cornerBR} />
+
+            {/* Animated Scan Line */}
+            <Animated.View
+              style={[
+                styles.scanLine,
+                {
+                  transform: [
+                    {
+                      translateY: scanAnimation.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, 250],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            />
+          </View>
         </View>
 
         {/* Instructions */}
         <View style={styles.instructionsContainer}>
-          <MaterialCommunityIcons name="qrcode-scan" size={24} color="#fff" />
+          <View style={styles.instructionsIconContainer}>
+            <MaterialCommunityIcons name="qrcode-scan" size={24} color="#FFFFFF" />
+          </View>
           <Text style={styles.instructionsText}>
             Align customer's QR code within the frame
+          </Text>
+          <Text style={styles.instructionsSubtext}>
+            Ensure the QR code is well-lit and fully visible
           </Text>
         </View>
 
@@ -190,17 +196,27 @@ const QRScannerScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar backgroundColor="#000000" barStyle="light-content" />
+      
       {/* Header */}
       <View style={styles.header}>
-        <View>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+        
+        <View style={styles.headerCenter}>
           <Text style={styles.title}>Scan Customer QR</Text>
           <Text style={styles.subtitle}>Position QR code within frame</Text>
         </View>
+        
         <TouchableOpacity
           style={styles.cameraToggle}
           onPress={toggleCameraFacing}
         >
-          <MaterialCommunityIcons name="camera-flip" size={24} color="#fff" />
+          <MaterialCommunityIcons name="camera-flip" size={24} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
 
@@ -223,18 +239,23 @@ const QRScannerScreen = () => {
       {/* Loading Overlay */}
       {isLoading && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#fff" />
-          <Text style={styles.loadingText}>Validating order...</Text>
+          <View style={styles.loadingContent}>
+            <ActivityIndicator size="large" color="#FFFFFF" />
+            <Text style={styles.loadingText}>Validating order...</Text>
+          </View>
         </View>
       )}
 
-      {/* Manual Entry Option */}
+      {/* Footer */}
       <View style={styles.footer}>
         <TouchableOpacity
           style={styles.manualEntryButton}
           onPress={() => navigation.navigate("ManualEntry")}
+          activeOpacity={0.8}
         >
-          <MaterialCommunityIcons name="keyboard" size={20} color="#fff" />
+          <View style={styles.manualEntryIcon}>
+            <MaterialCommunityIcons name="keyboard-outline" size={22} color="#64748B" />
+          </View>
           <Text style={styles.manualEntryText}>Enter Code Manually</Text>
         </TouchableOpacity>
 
@@ -258,7 +279,9 @@ const QRScannerScreen = () => {
             <Text style={styles.successText}>
               Redirecting to order details...
             </Text>
-            <ActivityIndicator color="#00A86B" style={styles.modalSpinner} />
+            <View style={styles.successSpinner}>
+              <ActivityIndicator color="#00A86B" size="small" />
+            </View>
           </View>
         </View>
       </Modal>
@@ -269,243 +292,317 @@ const QRScannerScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: "#000000",
   },
   permissionContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
-    backgroundColor: "#fff",
+    padding: 40,
+    backgroundColor: "#FFFFFF",
   },
   permissionTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "700",
-    color: "#000",
-    marginTop: 20,
-    marginBottom: 10,
+    color: "#1E293B",
+    marginTop: 24,
+    marginBottom: 12,
+    textAlign: "center",
   },
   permissionText: {
-    fontSize: 16,
-    color: "#666",
+    fontSize: 15,
+    color: "#64748B",
     textAlign: "center",
-    marginBottom: 30,
+    marginBottom: 32,
     lineHeight: 22,
   },
   permissionButton: {
     backgroundColor: "#00A86B",
-    paddingHorizontal: 30,
-    paddingVertical: 14,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
     borderRadius: 12,
+    minWidth: 200,
+    alignItems: "center",
   },
   permissionButtonText: {
-    color: "#fff",
+    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
   },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 20,
-    backgroundColor: "#000",
+    backgroundColor: "#000000",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255, 255, 255, 0.1)",
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: "center",
   },
   title: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#fff",
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
   subtitle: {
-    fontSize: 14,
-    color: "#aaa",
-    marginTop: 4,
+    fontSize: 12,
+    color: "#94A3B8",
+    marginTop: 2,
   },
   cameraToggle: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
     justifyContent: "center",
     alignItems: "center",
+    padding: 10,
   },
   cameraContainer: {
     flex: 1,
-    marginHorizontal: 20,
-    borderRadius: 20,
-    overflow: "hidden",
     position: "relative",
   },
   camera: {
     flex: 1,
   },
-  scanFrame: {
+  dimmedArea: {
     position: "absolute",
-    top: (height - 400) / 2, // Centered vertically
-    left: (width - 250) / 2 - 20, // Centered horizontally (minus margin)
-    width: 250,
-    height: 250,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.3)",
-    borderRadius: 12,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+  },
+  dimmedTop: {
+    top: 0,
+    left: 0,
+    right: 0,
+    height: (height - 320) / 2 - 60, // Adjust based on header
+  },
+  dimmedBottom: {
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 140, // Footer area
+  },
+  dimmedLeft: {
+    top: (height - 320) / 2 - 60,
+    left: 0,
+    width: (width - 280) / 2,
+    height: 320,
+  },
+  dimmedRight: {
+    top: (height - 320) / 2 - 60,
+    right: 0,
+    width: (width - 280) / 2,
+    height: 320,
+  },
+  scanFrameContainer: {
+    position: "absolute",
+    top: (height - 320) / 2 - 60,
+    left: (width - 280) / 2,
+    width: 280,
+    height: 320,
     justifyContent: "center",
     alignItems: "center",
+  },
+  scanFrame: {
+    width: 280,
+    height: 280,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: 12,
+    position: "relative",
+    backgroundColor: "rgba(0, 168, 107, 0.05)",
   },
   cornerTL: {
     position: "absolute",
     top: -2,
     left: -2,
-    width: 40,
-    height: 40,
-    borderTopWidth: 4,
-    borderLeftWidth: 4,
+    width: 30,
+    height: 30,
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
     borderColor: "#00A86B",
-    borderTopLeftRadius: 12,
+    borderTopLeftRadius: 8,
   },
   cornerTR: {
     position: "absolute",
     top: -2,
     right: -2,
-    width: 40,
-    height: 40,
-    borderTopWidth: 4,
-    borderRightWidth: 4,
+    width: 30,
+    height: 30,
+    borderTopWidth: 3,
+    borderRightWidth: 3,
     borderColor: "#00A86B",
-    borderTopRightRadius: 12,
+    borderTopRightRadius: 8,
   },
   cornerBL: {
     position: "absolute",
     bottom: -2,
     left: -2,
-    width: 40,
-    height: 40,
-    borderBottomWidth: 4,
-    borderLeftWidth: 4,
+    width: 30,
+    height: 30,
+    borderBottomWidth: 3,
+    borderLeftWidth: 3,
     borderColor: "#00A86B",
-    borderBottomLeftRadius: 12,
+    borderBottomLeftRadius: 8,
   },
   cornerBR: {
     position: "absolute",
     bottom: -2,
     right: -2,
-    width: 40,
-    height: 40,
-    borderBottomWidth: 4,
-    borderRightWidth: 4,
+    width: 30,
+    height: 30,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
     borderColor: "#00A86B",
-    borderBottomRightRadius: 12,
+    borderBottomRightRadius: 8,
   },
   scanLine: {
-    width: 250,
+    width: 280,
     height: 2,
     backgroundColor: "#00A86B",
     position: "absolute",
     top: 0,
+    opacity: 0.8,
   },
   instructionsContainer: {
     position: "absolute",
-    bottom: 100,
+    bottom: 180,
     left: 0,
     right: 0,
     alignItems: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
+  },
+  instructionsIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
   },
   instructionsText: {
     fontSize: 16,
-    color: "#fff",
-    marginTop: 10,
+    color: "#FFFFFF",
     textAlign: "center",
-    fontWeight: "500",
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  instructionsSubtext: {
+    fontSize: 14,
+    color: "#94A3B8",
+    textAlign: "center",
   },
   exampleContainer: {
     position: "absolute",
-    top: (height - 400) / 2 + 270,
+    top: (height - 320) / 2 + 240,
     left: 0,
     right: 0,
     alignItems: "center",
   },
   exampleText: {
     fontSize: 14,
-    color: "#aaa",
+    color: "#94A3B8",
     fontStyle: "italic",
-    backgroundColor: "rgba(0,0,0,0.5)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    overflow: "hidden",
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.8)",
+    backgroundColor: "rgba(0, 0, 0, 0.85)",
     justifyContent: "center",
     alignItems: "center",
     zIndex: 10,
   },
+  loadingContent: {
+    alignItems: "center",
+  },
   loadingText: {
-    color: "#fff",
+    color: "#FFFFFF",
     fontSize: 16,
     marginTop: 16,
     fontWeight: "500",
   },
   footer: {
-    padding: 20,
-    backgroundColor: "#000",
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    backgroundColor: "#000000",
     alignItems: "center",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255, 255, 255, 0.1)",
   },
   manualEntryButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: 12,
     marginBottom: 16,
+    width: "100%",
+    justifyContent: "center",
+  },
+  manualEntryIcon: {
+    marginRight: 12,
   },
   manualEntryText: {
-    color: "#fff",
+    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "500",
   },
   footerNote: {
-    fontSize: 14,
-    color: "#aaa",
+    fontSize: 13,
+    color: "#94A3B8",
     textAlign: "center",
-    lineHeight: 20,
+    lineHeight: 18,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.8)",
+    backgroundColor: "rgba(0, 0, 0, 0.9)",
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    padding: 24,
   },
   successModal: {
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
     borderRadius: 20,
-    padding: 30,
+    padding: 32,
     alignItems: "center",
     width: "100%",
-    maxWidth: 300,
+    maxWidth: 320,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
   },
   successIcon: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   successTitle: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#000",
-    marginBottom: 8,
+    color: "#1E293B",
+    marginBottom: 12,
+    textAlign: "center",
   },
   successText: {
     fontSize: 16,
-    color: "#666",
+    color: "#64748B",
     textAlign: "center",
-    marginBottom: 20,
+    marginBottom: 24,
     lineHeight: 22,
   },
-  modalSpinner: {
-    marginTop: 10,
+  successSpinner: {
+    marginTop: 8,
   },
 });
 

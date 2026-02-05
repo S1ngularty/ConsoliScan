@@ -41,7 +41,10 @@ exports.getOrder = async (request) => {
       scannedAt: Date.now(),
     },
     { new: true },
-  );
+  ).populate({
+    path:"items.product",
+    select:"barcode barcodeType"
+  })
 
   if (!order) throw new Error("order not found");
 
