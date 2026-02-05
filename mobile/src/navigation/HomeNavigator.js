@@ -1,18 +1,15 @@
 import React from "react";
 import { Text, TouchableOpacity } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import { View } from "react-native";
-import { NavigationContainer } from "@react-navigation/native"; // Added import
-// import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import HomeScreen from "../screens/customer/HomeScreen";
 import TransactionsScreen from "../screens/customer/TransactionScreen";
-import ProfileScreen from "../screens/customer/ProfileScreen";
+import MenuScreen from "../screens/customer/MenuScreen"; // Changed from ProfileScreen
 import CartScreen from "../screens/customer/CartScreen";
-// import ScanningScreen from "../screens/customer/ScanningScreen";
+
 const Tab = createBottomTabNavigator();
-// const Stack = createNativeStackNavigator()
 
 // Custom Tab Bar Component
 const CustomTabBar = ({ state, descriptors, navigation }) => {
@@ -43,12 +40,23 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
               return isFocused ? "receipt" : "receipt-outline";
             case "Cart":
               return isFocused ? "cart" : "cart-outline";
-            case "Profile":
-              return isFocused ? "account" : "account-outline";
+            case "Menu": // Changed from Profile
+              return isFocused ? "menu" : "menu"; // Hamburger menu icon
             default:
               return "home";
           }
         };
+
+        const getIconComponent = (routeName) => {
+          if (routeName === "Menu") {
+            // Use Ionicons for better menu icon
+            return Ionicons;
+          }
+          return MaterialCommunityIcons;
+        };
+
+        const IconComponent = getIconComponent(route.name);
+        const iconName = getIconName(route.name);
 
         return (
           <View key={route.key} style={styles.tabItem}>
@@ -57,15 +65,15 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
               onPress={onPress}
               activeOpacity={0.8}
             >
-              <MaterialCommunityIcons
-                name={getIconName(route.name)}
-                size={24}
+              <IconComponent
+                name={iconName}
+                size={route.name === "Menu" ? 26 : 24}
                 color={isFocused ? "#00A86B" : "#666"}
               />
               <Text
                 style={[styles.tabLabel, isFocused && styles.tabLabelActive]}
               >
-                {options.title || route.name}
+                {route.name === "Menu" ? "More" : options.title || route.name}
               </Text>
             </TouchableOpacity>
           </View>
@@ -81,10 +89,26 @@ export default function HomeNavigator() {
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Cart" component={CartScreen} />
-      <Tab.Screen name="Transactions" component={TransactionsScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{ title: "Home" }}
+      />
+      <Tab.Screen
+        name="Cart"
+        component={CartScreen}
+        options={{ title: "Cart" }}
+      />
+      <Tab.Screen
+        name="Transactions"
+        component={TransactionsScreen}
+        options={{ title: "History" }}
+      />
+      <Tab.Screen
+        name="Menu" // Changed from Profile
+        component={MenuScreen} // Changed from ProfileScreen
+        options={{ title: "More" }}
+      />
     </Tab.Navigator>
   );
 }

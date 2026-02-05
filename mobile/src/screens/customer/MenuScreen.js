@@ -17,10 +17,11 @@ import { useDispatch, useSelector } from "react-redux";
 import { debounceCartSync } from "../../features/slices/cart/cartDebounce";
 import { logout } from "../../features/slices/auth/authThunks";
 
-const ProfileScreen = ({ navigation }) => {
+const MenuScreen = ({ navigation }) => {
+  const userState = useSelector((state) => state.auth.user);
   const [user, setUser] = useState({
-    name: "John Doe",
-    email: "john.doe@example.com",
+    name: userState.name,
+    email: userState.email,
     phone: "+1 (555) 123-4567",
     memberSince: "January 2024",
   });
@@ -72,14 +73,28 @@ const ProfileScreen = ({ navigation }) => {
   );
 
   const menuItems = [
-    { id: 1, title: "Personal Information", icon: "account-outline" },
-    { id: 2, title: "Payment Methods", icon: "credit-card-outline" },
-    { id: 3, title: "Address Book", icon: "map-marker-outline" },
-    { id: 4, title: "Order History", icon: "history" },
-    { id: 5, title: "Saved Items", icon: "heart-outline" },
-    { id: 6, title: "Security", icon: "shield-lock-outline" },
-    { id: 7, title: "Help & Support", icon: "help-circle-outline" },
-    { id: 8, title: "About App", icon: "information-outline" },
+    {
+      id: 1,
+      title: "Personal Information",
+      icon: "account-outline",
+      path: "Profile",
+    },
+    {
+      id: 2,
+      title: "Eligibilty Discount",
+      icon: "tag-outline",
+      path: "EligibilityIntro",
+    },
+    { id: 4, title: "Order History", icon: "history", path: "History" },
+    { id: 5, title: "Saved Items", icon: "heart-outline", path: "Saved" },
+    { id: 6, title: "Security", icon: "shield-lock-outline", path: "Security" },
+    {
+      id: 7,
+      title: "Help & Support",
+      icon: "help-circle-outline",
+      path: "Help",
+    },
+    { id: 8, title: "About App", icon: "information-outline", path: "About" },
   ];
 
   async function handleLogout() {
@@ -256,7 +271,7 @@ const ProfileScreen = ({ navigation }) => {
               title={item.title}
               icon={item.icon}
               isLast={index === menuItems.length - 1}
-              onPress={() => console.log(item.title)}
+              onPress={() => navigation.navigate(item.path)}
             />
           ))}
         </View>
@@ -533,4 +548,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ProfileScreen;
+export default MenuScreen;

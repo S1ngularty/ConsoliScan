@@ -103,6 +103,7 @@ userSchema.methods.getToken = function () {
       role: this.role,
       status: this.status,
       email: this.email,
+      createdAt:this.createdAt
     },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXP },

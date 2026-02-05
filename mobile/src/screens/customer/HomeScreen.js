@@ -20,6 +20,13 @@ const HomeScreen = ({ navigation }) => {
   const userState = useSelector((state) => state.auth);
   const dispatch = useDispatch();
 
+  // Mock weekly savings data
+  const [weeklyStats, setWeeklyStats] = useState({
+    bnpcSaved: 85,
+    totalSavings: 210,
+    itemsScanned: 24,
+  });
+
   useEffect(() => {
     (async () => {
       if (!userState.isLoggedIn) return
@@ -52,37 +59,58 @@ const HomeScreen = ({ navigation }) => {
   );
 
   // Local sub-component for Activity Rows
-  const TransactionItem = ({ store, date, amount, pts }) => (
+  const TransactionItem = ({ product, store, date, amount, saved }) => (
     <View style={styles.transRow}>
       <View style={styles.transIcon}>
         <MaterialCommunityIcons
-          name="store-outline"
+          name={saved ? "tag-outline" : "shopping-outline"}
           size={20}
           color="#0f172a"
         />
       </View>
       <View style={{ flex: 1, marginLeft: 12 }}>
-        <Text style={styles.transStore}>{store}</Text>
-        <Text style={styles.transDate}>{date}</Text>
+        <Text style={styles.transStore}>{product}</Text>
+        <View style={styles.transDetails}>
+          <Text style={styles.transDate}>{store}</Text>
+          <Text style={styles.transSeparator}>•</Text>
+          <Text style={styles.transDate}>{date}</Text>
+        </View>
       </View>
       <View style={{ alignItems: "flex-end" }}>
         <Text style={styles.transAmount}>{amount}</Text>
-        <Text style={styles.transPoints}>+{pts} pts</Text>
+        {saved > 0 && (
+          <Text style={styles.transSaved}>Saved ₱{saved}</Text>
+        )}
       </View>
     </View>
   );
 
   // Local sub-component for Special Offer Card
-  const OfferCard = ({ title, description, color }) => (
-    <View style={[styles.offerCard, { backgroundColor: color }]}>
+  const OfferCard = ({ title, description, icon, color }) => (
+    <TouchableOpacity 
+      style={[styles.offerCard, { backgroundColor: color }]}
+      activeOpacity={0.8}
+    >
+      <View style={styles.offerIconContainer}>
+        <MaterialCommunityIcons name={icon} size={24} color="#fff" />
+      </View>
       <View style={styles.offerContent}>
         <Text style={styles.offerTitle}>{title}</Text>
         <Text style={styles.offerDesc}>{description}</Text>
       </View>
-      <TouchableOpacity style={styles.offerButton}>
-        <Text style={styles.offerButtonText}>Claim</Text>
-        <MaterialCommunityIcons name="chevron-right" size={16} color="#fff" />
-      </TouchableOpacity>
+    </TouchableOpacity>
+  );
+
+  // Local sub-component for Stats Card
+  const StatCard = ({ title, value, icon, color }) => (
+    <View style={styles.statCard}>
+      <View style={[styles.statIconContainer, { backgroundColor: color }]}>
+        <MaterialCommunityIcons name={icon} size={20} color="#fff" />
+      </View>
+      <View style={{ flex: 1, marginLeft: 12 }}>
+        <Text style={styles.statValue}>{value}</Text>
+        <Text style={styles.statTitle}>{title}</Text>
+      </View>
     </View>
   );
 
@@ -95,13 +123,26 @@ const HomeScreen = ({ navigation }) => {
         <View>
           <Text style={styles.greetingText}>Good Day,</Text>
           <Text style={styles.userNameText}>
-            {userState.user?.name || "Welcome back"}
+            {userState.user?.name?.split(" ")[0] || "Welcome back"}
           </Text>
         </View>
-        <TouchableOpacity style={styles.notifCircle}>
-          <Ionicons name="notifications-outline" size={22} color="#0f172a" />
-          <View style={styles.notifDot} />
-        </TouchableOpacity>
+        <View style={styles.navActions}>
+          <TouchableOpacity style={styles.notifCircle}>
+            <Ionicons name="notifications-outline" size={22} color="#0f172a" />
+            <View style={styles.notifDot} />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.profileCircle}
+            onPress={() => navigation.navigate("Profile", { user: userState.user })}
+          >
+            <Text style={styles.profileInitials}>
+              {userState.user?.name ? 
+                userState.user.name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2) : 
+                "U"
+              }
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -110,14 +151,17 @@ const HomeScreen = ({ navigation }) => {
       >
         {/* --- POINTS BALANCE (HERO) --- */}
         <View style={styles.heroSection}>
-          <Text style={styles.heroLabel}>Total Balance</Text>
+          <Text style={styles.heroLabel}>Your Points Balance</Text>
           <View style={styles.pointsRow}>
             <Text style={styles.pointsValue}>{points.toLocaleString()}</Text>
             <Text style={styles.pointsCurrency}>pts</Text>
           </View>
-          <TouchableOpacity style={styles.rewardPill}>
-            <MaterialCommunityIcons name="auto-fix" size={16} color="#00A86B" />
-            <Text style={styles.rewardText}>2 rewards ready to redeem</Text>
+          <TouchableOpacity 
+            style={styles.rewardPill}
+            onPress={() => navigation.navigate("Rewards")}
+          >
+            <MaterialCommunityIcons name="gift-outline" size={16} color="#00A86B" />
+            <Text style={styles.rewardText}>3 rewards available</Text>
             <MaterialCommunityIcons
               name="chevron-right"
               size={16}
@@ -127,6 +171,9 @@ const HomeScreen = ({ navigation }) => {
         </View>
 
         {/* --- ACTION GRID --- */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+        </View>
         <View style={styles.gridContainer}>
           <ActionCard
             title="Scan Product"
@@ -140,21 +187,21 @@ const HomeScreen = ({ navigation }) => {
             onPress={() => navigation.navigate("Cart")}
           />
           <ActionCard
-            title="Nearby Stores"
-            icon="map-marker-outline"
-            onPress={() => navigation.navigate("Stores")}
+            title="BNPC Guide"
+            icon="book-information-variant"
+            onPress={() => navigation.navigate("BNPCGuide")}
           />
           <ActionCard
-            title="Activity"
-            icon="script-text-outline"
-            onPress={() => navigation.navigate("Transactions")}
+            title="My Orders"
+            icon="clipboard-list-outline"
+            onPress={() => navigation.navigate("Orders")}
           />
         </View>
 
         {/* --- SPECIAL OFFERS --- */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Special Offers</Text>
-          <TouchableOpacity>
+          <Text style={styles.sectionTitle}>Exclusive Offers</Text>
+          <TouchableOpacity onPress={() => navigation.navigate("Offers")}>
             <Text style={styles.seeAll}>View all</Text>
           </TouchableOpacity>
         </View>
@@ -166,63 +213,74 @@ const HomeScreen = ({ navigation }) => {
           contentContainerStyle={styles.offersContainer}
         >
           <OfferCard
-            title="Double Points"
-            description="Earn 2x points on all purchases today"
-            color="#0f172a"
-          />
-          <OfferCard
-            title="Weekend Special"
-            description="20% off fresh vegetables"
+            title="Senior/PWD Special"
+            description="Get extra 5% off BNPC items"
+            icon="account-heart-outline"
             color="#00A86B"
           />
           <OfferCard
-            title="Free Delivery"
-            description="On orders above ₱500"
+            title="Scan & Earn"
+            description="Double points on all scans today"
+            icon="qrcode-scan"
+            color="#0f172a"
+          />
+          <OfferCard
+            title="Weekly Cap Tracker"
+            description="Track your ₱125 discount limit"
+            icon="chart-line"
             color="#3b82f6"
           />
         </ScrollView>
 
         {/* --- RECENT ACTIVITY SECTION --- */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-          <TouchableOpacity onPress={() => navigation.navigate("Transactions")}>
-            <Text style={styles.seeAll}>See history</Text>
+          <Text style={styles.sectionTitle}>Recent Scans</Text>
+          <TouchableOpacity onPress={() => navigation.navigate("ScanHistory")}>
+            <Text style={styles.seeAll}>See all</Text>
           </TouchableOpacity>
         </View>
 
         <TransactionItem
+          product="Premium Rice 5kg"
           store="FreshMart"
           date="2 hours ago"
           amount="₱240.00"
-          pts="24"
+          saved={12.00}
         />
         <TransactionItem
+          product="Fresh Eggs (30 pcs)"
           store="SuperGrocer"
           date="Yesterday"
-          amount="₱1,120.50"
-          pts="112"
+          amount="₱180.00"
+          saved={9.00}
         />
         <TransactionItem
-          store="QuickMart Express"
+          product="Cooking Oil 1L"
+          store="QuickMart"
           date="Dec 28, 2024"
-          amount="₱45.99"
-          pts="45"
+          amount="₱120.00"
+          saved={6.00}
         />
 
         {/* --- TIPS CARD --- */}
-        <View style={styles.tipsCard}>
+        <TouchableOpacity 
+          style={styles.tipsCard}
+          onPress={() => navigation.navigate("Tips")}
+          activeOpacity={0.7}
+        >
           <MaterialCommunityIcons
-            name="shield-check-outline"
+            name="lightbulb-on-outline"
             size={24}
-            color="#0f172a"
+            color="#00A86B"
           />
           <View style={{ flex: 1, marginLeft: 16 }}>
-            <Text style={styles.tipsTitle}>Secure & Fast Checkout</Text>
+            <Text style={styles.tipsTitle}>Maximize Your Savings</Text>
             <Text style={styles.tipsText}>
-              Blockchain-verified transactions for maximum security
+              Scan all eligible BNPC items to reach your ₱125 weekly discount cap
             </Text>
           </View>
-        </View>
+          <MaterialCommunityIcons name="chevron-right" size={20} color="#94a3b8" />
+        </TouchableOpacity>
       </ScrollView>
 
       {/* --- FLOATING SCAN BUTTON --- */}
@@ -232,7 +290,7 @@ const HomeScreen = ({ navigation }) => {
         activeOpacity={0.9}
       >
         <MaterialCommunityIcons name="qrcode-scan" size={22} color="#fff" />
-        <Text style={styles.floatingText}>Start Shopping</Text>
+        <Text style={styles.floatingText}>Scan Product</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );
@@ -249,6 +307,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 24,
     paddingVertical: 15,
+  },
+  navActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
   greetingText: {
     fontSize: 14,
@@ -269,6 +332,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#f1f5f9",
+    position: "relative",
   },
   notifDot: {
     position: "absolute",
@@ -280,6 +344,21 @@ const styles = StyleSheet.create({
     backgroundColor: "#FF6B6B",
     borderWidth: 2,
     borderColor: "#fff",
+  },
+  profileCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: "#00A86B",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(0, 168, 107, 0.2)",
+  },
+  profileInitials: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#fff",
   },
   scrollContent: {
     paddingBottom: 140, // Space for floating button + Tab bar
@@ -330,11 +409,47 @@ const styles = StyleSheet.create({
     marginHorizontal: 6,
   },
 
+  // Stats Cards
+  statsContainer: {
+    flexDirection: "row",
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 16,
+    marginHorizontal: 6,
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  statIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#0f172a",
+  },
+  statTitle: {
+    fontSize: 12,
+    color: "#94a3b8",
+    marginTop: 2,
+  },
+
   gridContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
     paddingHorizontal: 20,
     justifyContent: "space-between",
+    marginBottom: 20,
   },
   card: {
     width: "48%",
@@ -382,32 +497,31 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 24,
     marginRight: 16,
-    justifyContent: "space-between",
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  offerIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
   },
   offerContent: {
-    marginBottom: 20,
+    flex: 1,
   },
   offerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "800",
     color: "#fff",
-    marginBottom: 8,
+    marginBottom: 4,
   },
   offerDesc: {
     fontSize: 14,
     color: "rgba(255,255,255,0.9)",
     lineHeight: 20,
-  },
-  offerButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-  },
-  offerButtonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "800",
-    marginRight: 4,
   },
 
   sectionHeader: {
@@ -453,17 +567,26 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#0f172a",
   },
+  transDetails: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 2,
+  },
   transDate: {
     fontSize: 12,
     color: "#94a3b8",
-    marginTop: 2,
+  },
+  transSeparator: {
+    fontSize: 12,
+    color: "#cbd5e1",
+    marginHorizontal: 6,
   },
   transAmount: {
     fontSize: 15,
     fontWeight: "700",
     color: "#0f172a",
   },
-  transPoints: {
+  transSaved: {
     fontSize: 12,
     color: "#00A86B",
     fontWeight: "800",
