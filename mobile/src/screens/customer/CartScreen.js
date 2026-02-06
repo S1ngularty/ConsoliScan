@@ -1516,7 +1516,7 @@ const styles = StyleSheet.create({
   pointsCard: {
     backgroundColor: "#fff",
     marginHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 100,
     padding: 16,
     borderRadius: 16,
     borderWidth: 1,

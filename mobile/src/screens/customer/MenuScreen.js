@@ -127,7 +127,7 @@ const MenuScreen = ({ navigation }) => {
       {/* --- HEADER --- */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Profile</Text>
+          <Text style={styles.headerTitle}>Menu</Text>
           <Text style={styles.headerSubtitle}>Account & preferences</Text>
         </View>
         <TouchableOpacity style={styles.settingsIcon}>
@@ -161,7 +161,9 @@ const MenuScreen = ({ navigation }) => {
                 Member since {user.memberSince}
               </Text>
             </View>
-            <TouchableOpacity style={styles.editButton}>
+            <TouchableOpacity style={styles.editButton} onPress={()=>{
+              navigation.navigate("Profile")
+            }}>
               <MaterialCommunityIcons
                 name="pencil-outline"
                 size={16}

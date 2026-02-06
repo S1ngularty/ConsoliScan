@@ -7,6 +7,8 @@ import UserProfileScreen from "../screens/customer/UserProfileScreen";
 import EligibilityIntroScreen from "../screens/customer/EligibilityIntroScreen";
 import EligibilityStatusScreen from "../screens/customer/EligibilityStatusScreen";
 import EligibilityApplyScreen from "../screens/customer/EligibilityApplyScreen";
+import OrderHistoryScreen from "../screens/customer/OrderHistory";
+import SavedItemsScreen from "../screens/customer/SaveItemsScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -29,6 +31,9 @@ export default function CustomerStackNavigator() {
         name="EligibilityStatus"
         component={EligibilityStatusScreen}
       />
+      <Stack.Screen name="History" component={OrderHistoryScreen} />
+          <Stack.Screen name="Saved" component={SavedItemsScreen} />
+
     </Stack.Navigator>
   );
 }
