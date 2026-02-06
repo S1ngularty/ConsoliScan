@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { PersonalInfo, UpdateProfile } from "../../api/user.api";
+import { PersonalInfo, updateProfile } from "../../api/user.api";
 import { useSelector, useDispatch } from "react-redux";
 import * as ImagePicker from "expo-image-picker";
 
@@ -108,10 +108,10 @@ const UserProfileScreen = ({ navigation, route }) => {
         country: editedUser.country,
       };
 
-      const result = await UpdateProfile(userState.userId, updatedData);
-      
-      if (result.success) {
-        setUser(result.user);
+      const result = await updateProfile(userState.userId, updatedData);
+
+      if (result?.data?.success) {
+        setUser(result.data.result);
         setIsEditing(false);
         Alert.alert("Success", "Profile updated successfully");
       } else {
@@ -127,10 +127,14 @@ const UserProfileScreen = ({ navigation, route }) => {
 
   const handleChangeProfileImage = async () => {
     try {
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
+      const permissionResult =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+
       if (!permissionResult.granted) {
-        Alert.alert("Permission Required", "Please grant permission to access photos");
+        Alert.alert(
+          "Permission Required",
+          "Please grant permission to access photos",
+        );
         return;
       }
 
@@ -142,9 +146,22 @@ const UserProfileScreen = ({ navigation, route }) => {
       });
 
       if (!result.canceled) {
+        const response = await updateProfile(userState.userId, {
+          avatar: {
+            uri: result.assets[0].uri,
+            name: result.assets[0].fileName,
+            type: result.assets[0].type,
+          },
+        });
+
+        if (!response)
+          throw new Error("Failed to update profile image");
         setProfileImage(result.assets[0].uri);
-        // Here you would upload the image to your server
-        Alert.alert("Profile Picture", "Profile picture selected. Save changes to update.");
+
+        Alert.alert(
+          "Profile Picture",
+          "Profile picture selected. Save changes to update.",
+        );
       }
     } catch (error) {
       console.error(error);
@@ -179,14 +196,20 @@ const UserProfileScreen = ({ navigation, route }) => {
     ]);
   };
 
-  const renderEditableField = (label, value, fieldName, placeholder, keyboardType = "default") => {
+  const renderEditableField = (
+    label,
+    value,
+    fieldName,
+    placeholder,
+    keyboardType = "default",
+  ) => {
     return (
       <View style={styles.infoItem}>
         <View style={styles.infoIconContainer}>
-          <MaterialCommunityIcons 
-            name={getIconForField(fieldName)} 
-            size={20} 
-            color="#64748b" 
+          <MaterialCommunityIcons
+            name={getIconForField(fieldName)}
+            size={20}
+            color="#64748b"
           />
         </View>
         <View style={styles.infoContent}>
@@ -195,7 +218,9 @@ const UserProfileScreen = ({ navigation, route }) => {
             <TextInput
               style={styles.input}
               value={editedUser[fieldName] || ""}
-              onChangeText={(text) => setEditedUser({...editedUser, [fieldName]: text})}
+              onChangeText={(text) =>
+                setEditedUser({ ...editedUser, [fieldName]: text })
+              }
               placeholder={placeholder}
               keyboardType={keyboardType}
             />
@@ -225,10 +250,16 @@ const UserProfileScreen = ({ navigation, route }) => {
 
   const isConstantField = (fieldName) => {
     // Email and user ID are constant fields
-    return ['email', '_id', 'userId', 'role', 'status'].includes(fieldName);
+    return ["email", "_id", "userId", "role", "status"].includes(fieldName);
   };
 
-  const renderInfoItem = (icon, label, value, isEmail = false, isLoading = false) => {
+  const renderInfoItem = (
+    icon,
+    label,
+    value,
+    isEmail = false,
+    isLoading = false,
+  ) => {
     if (isLoading) {
       return (
         <View style={styles.infoItem}>
@@ -309,7 +340,11 @@ const UserProfileScreen = ({ navigation, route }) => {
             thumbColor={value ? "#00A86B" : "#94A3B8"}
           />
         ) : (
-          <MaterialCommunityIcons name="chevron-right" size={24} color="#CBD5E1" />
+          <MaterialCommunityIcons
+            name="chevron-right"
+            size={24}
+            color="#CBD5E1"
+          />
         )}
       </TouchableOpacity>
     );
@@ -321,7 +356,11 @@ const UserProfileScreen = ({ navigation, route }) => {
         <View style={styles.actionItem}>
           <View style={styles.skeletonIcon} />
           <Text style={styles.skeletonText}></Text>
-          <MaterialCommunityIcons name="chevron-right" size={24} color="#E2E8F0" />
+          <MaterialCommunityIcons
+            name="chevron-right"
+            size={24}
+            color="#E2E8F0"
+          />
         </View>
       );
     }
@@ -332,11 +371,20 @@ const UserProfileScreen = ({ navigation, route }) => {
         onPress={onPress}
         activeOpacity={0.7}
       >
-        <View style={[styles.actionIconContainer, { backgroundColor: color + "15" }]}>
+        <View
+          style={[
+            styles.actionIconContainer,
+            { backgroundColor: color + "15" },
+          ]}
+        >
           <MaterialCommunityIcons name={icon} size={22} color={color} />
         </View>
         <Text style={styles.actionLabel}>{label}</Text>
-        <MaterialCommunityIcons name="chevron-right" size={24} color="#CBD5E1" />
+        <MaterialCommunityIcons
+          name="chevron-right"
+          size={24}
+          color="#CBD5E1"
+        />
       </TouchableOpacity>
     );
   };
@@ -368,15 +416,18 @@ const UserProfileScreen = ({ navigation, route }) => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
           <MaterialCommunityIcons name="chevron-left" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile</Text>
         <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
-          <MaterialCommunityIcons 
-            name={isEditing ? "check" : "pencil"} 
-            size={20} 
-            color="#00A86B" 
+          <MaterialCommunityIcons
+            name={isEditing ? "check" : "pencil"}
+            size={20}
+            color="#00A86B"
           />
         </TouchableOpacity>
       </View>
@@ -389,14 +440,26 @@ const UserProfileScreen = ({ navigation, route }) => {
             <TouchableOpacity onPress={handleChangeProfileImage}>
               <View style={styles.avatarContainer}>
                 {profileImage ? (
-                  <Image source={{ uri: profileImage }} style={styles.avatarImage} />
+                  <Image
+                    source={{ uri: profileImage }}
+                    style={styles.avatarImage}
+                  />
                 ) : user?.profileImage ? (
-                  <Image source={{ uri: user.profileImage }} style={styles.avatarImage} />
+                  <Image
+                    source={{ uri: user.profileImage }}
+                    style={styles.avatarImage}
+                  />
                 ) : (
-                  <Text style={styles.avatarText}>{getInitials(user?.name)}</Text>
+                  <Text style={styles.avatarText}>
+                    {getInitials(user?.name)}
+                  </Text>
                 )}
                 <View style={styles.cameraIcon}>
-                  <MaterialCommunityIcons name="camera" size={16} color="#fff" />
+                  <MaterialCommunityIcons
+                    name="camera"
+                    size={16}
+                    color="#fff"
+                  />
                 </View>
               </View>
             </TouchableOpacity>
@@ -405,7 +468,9 @@ const UserProfileScreen = ({ navigation, route }) => {
                 <TextInput
                   style={styles.nameInput}
                   value={editedUser?.name || ""}
-                  onChangeText={(text) => setEditedUser({...editedUser, name: text})}
+                  onChangeText={(text) =>
+                    setEditedUser({ ...editedUser, name: text })
+                  }
                   placeholder="Full Name"
                 />
               ) : (
@@ -418,17 +483,29 @@ const UserProfileScreen = ({ navigation, route }) => {
           </View>
 
           {/* Change Profile Button */}
-          <TouchableOpacity 
-            style={styles.changeProfileButton} 
+          <TouchableOpacity
+            style={styles.changeProfileButton}
             onPress={handleChangeProfileImage}
           >
-            <MaterialCommunityIcons name="image-edit" size={18} color="#00A86B" />
+            <MaterialCommunityIcons
+              name="image-edit"
+              size={18}
+              color="#00A86B"
+            />
             <Text style={styles.changeProfileText}>Change Profile Picture</Text>
           </TouchableOpacity>
 
           {/* Status Badge */}
           <View style={styles.statusBadge}>
-            <View style={[styles.statusDot, { backgroundColor: user?.status === "active" ? "#00A86B" : "#FF6B6B" }]} />
+            <View
+              style={[
+                styles.statusDot,
+                {
+                  backgroundColor:
+                    user?.status === "active" ? "#00A86B" : "#FF6B6B",
+                },
+              ]}
+            />
             <Text style={styles.statusText}>
               {user?.status === "active" ? "Active Account" : "Inactive"}
             </Text>
@@ -437,8 +514,14 @@ const UserProfileScreen = ({ navigation, route }) => {
           {/* Edit Mode Notice */}
           {isEditing && (
             <View style={styles.editNotice}>
-              <MaterialCommunityIcons name="information" size={16} color="#00A86B" />
-              <Text style={styles.editNoticeText}>Editing mode enabled. Tap check to save.</Text>
+              <MaterialCommunityIcons
+                name="information"
+                size={16}
+                color="#00A86B"
+              />
+              <Text style={styles.editNoticeText}>
+                Editing mode enabled. Tap check to save.
+              </Text>
             </View>
           )}
         </View>
@@ -449,39 +532,77 @@ const UserProfileScreen = ({ navigation, route }) => {
 
           {/* Constant Fields (Non-editable) */}
           {renderInfoItem("email", "Email", user?.email, true, false)}
-          
+
           {/* Editable Fields */}
-          {renderEditableField("Phone", editedUser?.contactNumber, "contactNumber", "Enter phone number", "phone-pad")}
-          {renderEditableField("Age", editedUser?.age ? `${editedUser.age} years old` : null, "age", "Enter age", "numeric")}
-          
+          {renderEditableField(
+            "Phone",
+            editedUser?.contactNumber,
+            "contactNumber",
+            "Enter phone number",
+            "phone-pad",
+          )}
+          {renderEditableField(
+            "Age",
+            editedUser?.age ? `${editedUser.age} years old` : null,
+            "age",
+            "Enter age",
+            "numeric",
+          )}
+
           {/* Gender Selection */}
           <View style={styles.infoItem}>
             <View style={styles.infoIconContainer}>
-              <MaterialCommunityIcons name="gender-male-female" size={20} color="#64748b" />
+              <MaterialCommunityIcons
+                name="gender-male-female"
+                size={20}
+                color="#64748b"
+              />
             </View>
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>Gender</Text>
               {isEditing ? (
                 <View style={styles.genderContainer}>
                   <TouchableOpacity
-                    style={[styles.genderButton, editedUser?.sex === 'male' && styles.genderButtonActive]}
-                    onPress={() => setEditedUser({...editedUser, sex: 'male'})}
+                    style={[
+                      styles.genderButton,
+                      editedUser?.sex === "male" && styles.genderButtonActive,
+                    ]}
+                    onPress={() =>
+                      setEditedUser({ ...editedUser, sex: "male" })
+                    }
                   >
-                    <Text style={[styles.genderText, editedUser?.sex === 'male' && styles.genderTextActive]}>
+                    <Text
+                      style={[
+                        styles.genderText,
+                        editedUser?.sex === "male" && styles.genderTextActive,
+                      ]}
+                    >
                       Male
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.genderButton, editedUser?.sex === 'female' && styles.genderButtonActive]}
-                    onPress={() => setEditedUser({...editedUser, sex: 'female'})}
+                    style={[
+                      styles.genderButton,
+                      editedUser?.sex === "female" && styles.genderButtonActive,
+                    ]}
+                    onPress={() =>
+                      setEditedUser({ ...editedUser, sex: "female" })
+                    }
                   >
-                    <Text style={[styles.genderText, editedUser?.sex === 'female' && styles.genderTextActive]}>
+                    <Text
+                      style={[
+                        styles.genderText,
+                        editedUser?.sex === "female" && styles.genderTextActive,
+                      ]}
+                    >
                       Female
                     </Text>
                   </TouchableOpacity>
                 </View>
               ) : (
-                <Text style={styles.infoValue}>{user?.sex === "male" ? "Male" : "Female"}</Text>
+                <Text style={styles.infoValue}>
+                  {user?.sex === "male" ? "Male" : "Female"}
+                </Text>
               )}
             </View>
           </View>
@@ -489,19 +610,58 @@ const UserProfileScreen = ({ navigation, route }) => {
           <View style={styles.divider} />
 
           {/* Address Fields */}
-          {renderEditableField("Street", editedUser?.street, "street", "Enter street address")}
+          {renderEditableField(
+            "Street",
+            editedUser?.street,
+            "street",
+            "Enter street address",
+          )}
           {renderEditableField("City", editedUser?.city, "city", "Enter city")}
-          {renderEditableField("State", editedUser?.state, "state", "Enter state")}
-          {renderEditableField("Zip Code", editedUser?.zipCode, "zipCode", "Enter zip code", "numeric")}
-          {renderEditableField("Country", editedUser?.country, "country", "Enter country")}
+          {renderEditableField(
+            "State",
+            editedUser?.state,
+            "state",
+            "Enter state",
+          )}
+          {renderEditableField(
+            "Zip Code",
+            editedUser?.zipCode,
+            "zipCode",
+            "Enter zip code",
+            "numeric",
+          )}
+          {renderEditableField(
+            "Country",
+            editedUser?.country,
+            "country",
+            "Enter country",
+          )}
         </View>
 
         {/* Account Information Card */}
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Account Information</Text>
-          {renderInfoItem("calendar", "Member Since", formatDate(user?.createdAt), false, false)}
-          {renderInfoItem("clock-outline", "Last Active", getLastActive(), false, false)}
-          {renderInfoItem("shield-check", "Status", user?.status === "active" ? "Verified" : "Pending", false, false)}
+          {renderInfoItem(
+            "calendar",
+            "Member Since",
+            formatDate(user?.createdAt),
+            false,
+            false,
+          )}
+          {renderInfoItem(
+            "clock-outline",
+            "Last Active",
+            getLastActive(),
+            false,
+            false,
+          )}
+          {renderInfoItem(
+            "shield-check",
+            "Status",
+            user?.status === "active" ? "Verified" : "Pending",
+            false,
+            false,
+          )}
         </View>
 
         {/* Settings Card */}
@@ -523,17 +683,27 @@ const UserProfileScreen = ({ navigation, route }) => {
         {/* Cancel/Save Buttons in Edit Mode */}
         {isEditing && (
           <View style={styles.editActions}>
-            <TouchableOpacity style={styles.cancelButton} onPress={handleCancelEdit}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={handleCancelEdit}
+            >
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.saveButton} onPress={handleEditProfile}>
+            <TouchableOpacity
+              style={styles.saveButton}
+              onPress={handleEditProfile}
+            >
               <Text style={styles.saveButtonText}>Save Changes</Text>
             </TouchableOpacity>
           </View>
         )}
 
         {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={handleLogout}
+          activeOpacity={0.7}
+        >
           <MaterialCommunityIcons name="logout" size={20} color="#f44336" />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>

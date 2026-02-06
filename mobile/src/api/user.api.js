@@ -18,3 +18,33 @@ export const PersonalInfo = async (userId) => {
 
   return respose.data.result;
 };
+
+export const updateProfile = async (id, data) => {
+  const token = await getToken();
+  if (!token) throw new Error("no token");
+  let formData = new FormData();
+
+  for (const [key, value] of Object.entries(data)) {
+    if (typeof value === "object" || value.uri) {
+      formData.append(key, {
+        uri: value.uri,
+        name: value.name || "upload.jpg",
+        type: "image/jpeg",
+      });
+    } else {
+      formData.append(`${key}`, `${value}`);
+    }
+  }
+
+  const result = await fetch(`${API_URL}api/v1/profile/user/${id}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  if (!result.ok) throw new Error("failed to update your profile");
+  let responseData = await result.json();
+  return responseData;
+};
