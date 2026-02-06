@@ -32,8 +32,9 @@ const UserProfileScreen = ({ navigation, route }) => {
 
   // Fetch user data
   useEffect(() => {
+    if (!userState.userId) return;
     fetchUserData();
-  }, []);
+  }, [userState]);
 
   const fetchUserData = async () => {
     try {
@@ -110,8 +111,7 @@ const UserProfileScreen = ({ navigation, route }) => {
 
       const result = await updateProfile(userState.userId, updatedData);
 
-      if (result?.data?.success) {
-        setUser(result.data.result);
+      if (result) {
         setIsEditing(false);
         Alert.alert("Success", "Profile updated successfully");
       } else {
@@ -154,8 +154,7 @@ const UserProfileScreen = ({ navigation, route }) => {
           },
         });
 
-        if (!response)
-          throw new Error("Failed to update profile image");
+        if (!response) throw new Error("Failed to update profile image");
         setProfileImage(result.assets[0].uri);
 
         Alert.alert(
@@ -444,9 +443,9 @@ const UserProfileScreen = ({ navigation, route }) => {
                     source={{ uri: profileImage }}
                     style={styles.avatarImage}
                   />
-                ) : user?.profileImage ? (
+                ) : user?.avatar ? (
                   <Image
-                    source={{ uri: user.profileImage }}
+                    source={{ uri: user.avatar.url }}
                     style={styles.avatarImage}
                   />
                 ) : (

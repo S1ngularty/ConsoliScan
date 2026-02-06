@@ -43,8 +43,37 @@ export const updateProfile = async (id, data) => {
     },
     body: formData,
   });
-
   if (!result.ok) throw new Error("failed to update your profile");
   let responseData = await result.json();
   return responseData;
+};
+
+export const ApplyEligibility = async (id, data) => {
+  if (!id || !data) return;
+  let formData = new FormData();
+  const token = await getToken();
+  if (!token) throw new Error("unauthorized request");
+
+  for (const [key, value] of Object.entries(data)) {
+    if ((typeof value === "object" && key !== "dateIssued" && key !== "expiryDate") || value.uri) {
+      formData.append(key, {
+        uri: value.uri,
+        name: value.name,
+        type: "image/jpeg",
+      });
+    } else {
+      formData.append(`${key}`, `${value}`);
+    }
+  }
+  const response = await fetch(`${API_URL}api/v1/eligible/${id}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) throw new Error("failed to sent the request");
+  let responseData = await response.json();
+  return response;
 };

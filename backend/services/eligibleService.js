@@ -20,7 +20,7 @@ exports.create = async (request) => {
   let uploadedUserPhoto = await uploadImage(userPhoto, path);
 
   // console.log(uploadedIdFront, uploadedIdBack, uploadedUserPhoto);
-
+  request.body.user = userId
   request.body.idImage = {
     front: uploadedIdFront,
     back: uploadedIdBack,
