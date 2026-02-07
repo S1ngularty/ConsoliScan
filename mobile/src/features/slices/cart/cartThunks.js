@@ -21,9 +21,8 @@ export const syncCartToServer = createAsyncThunk(
     const formattedData = cart.cart.map((item) => ({
       product: item._id,
       qty: item.qty,
-      dateAdded: item.addedAt,
+      dateAdded: item.dateAdded,
     }));
-
     const data = {
       items: formattedData,
       itemCount,

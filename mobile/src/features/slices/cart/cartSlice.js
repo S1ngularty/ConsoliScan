@@ -19,6 +19,7 @@ const cartSlice = createSlice({
     },
     addToCart: (state, action) => {
       const addedItem = action.payload;
+      console.log(addedItem.name);
       const existingItem = state.cart.find((i) => i._id === addedItem._id);
 
       if (existingItem) {
@@ -38,6 +39,7 @@ const cartSlice = createSlice({
       const adjustProductQty = state.cart.find((i) => i._id === _id);
       if (adjustProductQty) {
         adjustProductQty.qty = selectedQuantity;
+        adjustProductQty.selectedQuantity = selectedQuantity
         recalcTotal(state);
       }
     },
@@ -53,23 +55,21 @@ const cartSlice = createSlice({
       state.totalPrice = 0;
       state.itemCount = 0;
     },
-
-  
   },
 
   extraReducers: (builder) => {
     builder.addCase(getCartFromServer.fulfilled, (state, action) => {
-      
-      state.cart = action.payload.items;
+      state.cart = action.payload || [];
       recalcTotal(state);
     });
-  },  
+  },
 });
 
 const recalcTotal = (state) => {
   const newCart = state.cart;
   state.totalPrice = newCart.reduce(
-    (acc, curr) => acc + (curr.price || 0) * (curr.qty || 0),
+    (acc, curr) =>
+      acc + (curr.price || 0) * (curr.qty || 0),
     0,
   );
   state.itemCount = newCart.reduce((acc, curr) => acc + (curr.qty || 0), 0);

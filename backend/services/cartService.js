@@ -19,14 +19,26 @@ exports.updateCart = async (request) => {
 exports.getById = async (request) => {
   const { userId } = request.user;
 
-  const result = Cart.findOne({ user: userId }).populate("items.product");
+  const cart = await Cart.findOne({ user: userId }).populate("items.product");
 
-  return result;
+  if (!cart) return [];
+
+  const formattedItems = cart.items.map((item) => {
+    const product = item.product.toObject();
+
+    return {
+      ...product,
+      qty: item.qty,
+      selectedQuantity: item.qty,
+      addedAt: item.addedAt,
+    };
+  });
+
+  return formattedItems;
 };
 
 exports.clearCart = async (request) => {
   const { userId } = request.user;
-  const result = await Cart.findOneAndDelete({ user: userId },{new:true});
-  console.log(result)
+  const result = await Cart.findOneAndDelete({ user: userId }, { new: true });
   return result;
 };
