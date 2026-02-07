@@ -14,10 +14,11 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import BarcodeScanner from "../../components/BarcodeScanner";
 import ProductDetailSheet from "../../components/ProductDetailSheet";
 import { scanProduct } from "../../api/product.api";
-import { addToCart } from "../../features/cart/cartSlice";
+import { addToCart } from "../../features/slices/cart/cartSlice";
 import { useDispatch, useSelector } from "react-redux";
-import { saveLocally } from "../../features/cart/cartThunks";
-import { debounceCartSync } from "../../features/cart/cartDebounce";
+import { saveLocally } from "../../features/slices/cart/cartThunks";
+import { debounceCartSync } from "../../features/slices/cart/cartDebounce";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -27,6 +28,35 @@ const ScanningScreen = ({ navigation }) => {
   const sheetPosition = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const dispatch = useDispatch();
   const cartState = useSelector((state) => state.cart);
+
+  const handleScanHistory = async (product) => {
+    const scanHistory = await AsyncStorage.getItem("scanHistory");
+    if (!scanHistory) {
+      AsyncStorage.setItem(
+        "scanHistory",
+        JSON.stringify([
+          {
+            name: product.name,
+            price: product.price,
+            scannedAt: Date.now(),
+          },
+        ]),
+      );
+    } else {
+      const currScanned = JSON.parse(scanHistory);
+      if (currScanned.length >= 4) currScanned.shift();
+      currScanned.push({
+        name: product.name,
+        price: product.price,
+        scannedAt: Date.now(),
+      });
+
+      AsyncStorage.setItem("scanHistory", JSON.stringify(currScanned));
+    }
+
+    return
+  };
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -60,6 +90,7 @@ const ScanningScreen = ({ navigation }) => {
       if (response) {
         setScannedProduct(response);
         openSheet();
+        handleScanHistory(response)
       }
     } catch (err) {
       console.log("Product not found or API error:", err);
@@ -74,7 +105,8 @@ const ScanningScreen = ({ navigation }) => {
     };
 
     dispatch(addToCart(newItem));
-    dispatch(saveLocally())
+    debounceCartSync(dispatch);
+    // dispatch(saveLocally())
     closeSheet();
   };
 

@@ -15,7 +15,7 @@ import Loader from "../../components/Loader";
 import * as Haptics from "expo-haptics";
 import { getToken } from "../../utils/authUtil";
 import { useDispatch, useSelector } from "react-redux";
-import { login, verifyToken } from "../../features/auth/authThunks";
+import { login, verifyToken } from "../../features/slices/auth/authThunks";
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");
@@ -28,13 +28,12 @@ const LoginScreen = ({ navigation }) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     try {
       const result = await dispatch(login({ email, password }));
-      console.log(result);
+      // console.log(result);
       if (login.fulfilled.match(result)) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        navigation.navigate("HomeTabs");
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
   };
@@ -48,7 +47,7 @@ const LoginScreen = ({ navigation }) => {
         }
         const result = await dispatch(verifyToken(token));
         if (verifyToken.fulfilled.match(result))
-          navigation.navigate("HomeTabs");
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } catch (error) {
         console.log(error);
       }

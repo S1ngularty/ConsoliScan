@@ -21,24 +21,32 @@ exports.register = async (request) => {
 
 exports.login = async (request) => {
   const { email, password } = request.body;
-  let user = await User.findOne({ email }).select(
+  let userData = await User.findOne({ email }).select(
     "+password role email name status",
   );
-  if (!user) throw new Error("account does not exist");
-  if (user.status === "inactive") throw new Error("user is inactive");
+  if (!userData) throw new Error("account does not exist");
+  if (userData.status === "inactive") throw new Error("user is inactive");
 
-  let eligibiltyStatus = null;
+  let eligibilityStatus = null;
 
-  if (user.role === "user") {
-    eligibiltyStatus = await Eligible.findOne({ user: user._id });
+  if (userData.role === "user") {
+    eligibilityStatus = await Eligible.findOne({ user: userData._id });
   }
 
-  const isMatched = await bcrypt.compare(password, user.password);
+  const isMatched = await bcrypt.compare(password, userData.password);
   if (!isMatched) throw new Error("password does not match");
-  const jwtToken = await user.getToken();
+  const jwtToken = await userData.getToken();
   if (!jwtToken) throw new Error("failed to generate user token");
-  delete user.password;
-  return { user, eligibiltyStatus, token: jwtToken };
+
+  const user = {
+    userId: String(userData._id),
+    name: userData.name,
+    email: userData.email,
+    role: userData.role,
+    status: userData.status,
+  };
+  console.log(user);
+  return { user, eligibilityStatus, token: jwtToken };
 };
 
 exports.verifyToken = async (request) => {

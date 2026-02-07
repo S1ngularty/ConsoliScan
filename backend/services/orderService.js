@@ -1,4 +1,5 @@
 const Order = require("../models/orderModel");
+const Product = require("../models/productModel")
 const blockchainService = require("./blockchainService");
 const CheckoutQueue = require("../models/checkoutQueueModel");
 
@@ -6,7 +7,7 @@ async function confirmOrder(request) {
   if (!request.body) throw new Error("empty content request");
   const { orderId } = request.params;
   const { userId } = request.user;
-  const orderData = { ...request.body, cashier: userId };
+  const orderData = { ...request.body.transaction, cashier: userId };
 
   // 1 Save order (operational truth)
   const order = await Order.create(orderData);
@@ -21,6 +22,20 @@ async function confirmOrder(request) {
   await order.save();
 
   CheckoutQueue.findByIdAndDelete(orderId);
+
+  const bulkOps = order.items.map((item)=>({
+    updateOne:{
+      filter:{
+        _id: item.product,
+      },
+      update:{
+        $inc:{stockQuantity: -item.quantity}
+      }
+
+    }
+  }))
+
+  Product.bulkWrite(bulkOps)
 
   return order;
 }

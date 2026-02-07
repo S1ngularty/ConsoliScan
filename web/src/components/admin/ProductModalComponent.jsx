@@ -10,7 +10,6 @@ import {
   Tag,
   AlertCircle,
   Scale,
-  Shield,
   Percent,
   Users,
 } from "lucide-react";
@@ -37,13 +36,9 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
           unit: "pc",
           category: "",
           description: "",
-          isBNPC: false,
-          bnpcCategory: "",
-          priceControlled: false,
           excludedFromDiscount: false,
-          discountScopes: [],
           images: [],
-        },
+        }
   );
   const [uploading, setUploading] = React.useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = React.useState(0);
@@ -55,32 +50,11 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
 
   const fileInputRef = React.useRef(null);
 
-  // BNPC Categories from your Schema
-  const bnpcCategories = [
-    "RICE",
-    "CORN",
-    "FRESH_MEAT",
-    "FRESH_POULTRY",
-    "FRESH_FISH",
-    "VEGETABLES",
-    "FRUITS",
-    "EGGS",
-    "COOKING_OIL",
-    "SUGAR",
-    "MILK",
-    "COFFEE",
-    "NOODLES",
-    "SOAP",
-    "DETERGENT",
-    "CANNED_GOODS",
-    "OTHERS",
-  ];
-
   // Unit options from your Schema
   const unitOptions = ["kg", "g", "pc", "liter", "ml", "pack"];
 
   // Discount scopes
-  const discountScopeOptions = ["PWD", "SENIOR", "PROMO"];
+  // const discountScopeOptions = ["PWD", "SENIOR", "PROMO"];
 
   // Barcode Types from your Schema Enum
   const barcodeTypes = [
@@ -110,8 +84,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
   useEffect(() => {
     if (isOpen && data) {
       setProductInfo({ 
-        ...data,
-        discountScopes: data.discountScopes || [],
+        ...data
       });
       setSelectedImageIndex(0);
       setErrors({});
@@ -128,11 +101,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
         unit: "pc",
         category: "",
         description: "",
-        isBNPC: false,
-        bnpcCategory: "",
-        priceControlled: false,
         excludedFromDiscount: false,
-        discountScopes: [],
         images: [],
       });
       setSelectedImageIndex(0);
@@ -221,10 +190,6 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
         if (!value) error = "Unit is required";
         break;
 
-      case "bnpcCategory":
-        if (productInfo.isBNPC && !value) error = "BNPC category is required when BNPC is enabled";
-        break;
-
       default:
         break;
     }
@@ -243,7 +208,6 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
     newErrors.barcode = validateField("barcode", productInfo.barcode);
     newErrors.category = validateField("category", productInfo.category);
     newErrors.unit = validateField("unit", productInfo.unit);
-    newErrors.bnpcCategory = validateField("bnpcCategory", productInfo.bnpcCategory);
 
     // Validate at least one image for new products
     if (!data && (!productInfo.images || productInfo.images.length === 0)) {
@@ -254,7 +218,6 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
   };
 
   const handleInput = (field, value) => {
-    // console.log(value)
     setProductInfo((prev) => ({ ...prev, [field]: value }));
 
     // Validate on change if field has been touched
@@ -262,29 +225,24 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
       const error = validateField(field, value);
       setErrors((prev) => ({ ...prev, [field]: error }));
     }
-
-    // If BNPC is disabled, clear BNPC category
-    if (field === "isBNPC" && !value) {
-      setProductInfo(prev => ({ ...prev, bnpcCategory: "" }));
-    }
   };
 
   const handleCheckbox = (field) => {
     setProductInfo((prev) => ({ ...prev, [field]: !prev[field] }));
   };
 
-  const handleDiscountScope = (scope) => {
-    const currentScopes = productInfo.discountScopes || [];
-    let newScopes;
+  // const handleDiscountScope = (scope) => {
+  //   const currentScopes = productInfo.discountScopes || [];
+  //   let newScopes;
     
-    if (currentScopes.includes(scope)) {
-      newScopes = currentScopes.filter(s => s !== scope);
-    } else {
-      newScopes = [...currentScopes, scope];
-    }
+  //   if (currentScopes.includes(scope)) {
+  //     newScopes = currentScopes.filter(s => s !== scope);
+  //   } else {
+  //     newScopes = [...currentScopes, scope];
+  //   }
     
-    setProductInfo((prev) => ({ ...prev, discountScopes: newScopes }));
-  };
+  //   setProductInfo((prev) => ({ ...prev, discountScopes: newScopes }));
+  // };
 
   const handleBlur = (field) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
@@ -422,9 +380,6 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
     allFields.forEach((field) => {
       newTouched[field] = true;
     });
-    if (productInfo.isBNPC) {
-      newTouched.bnpcCategory = true;
-    }
     setTouched(newTouched);
 
     // Validate entire form
@@ -822,48 +777,8 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
               </div>
 
               <div>
-                <div className="section-label">
+                {/* <div className="section-label">
                   <Scale size={14} /> Product Classification
-                </div>
-
-                <div className="checkbox-group">
-                  <label className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={productInfo.isBNPC || false}
-                      onChange={() => handleCheckbox("isBNPC")}
-                    />
-                    <span className="checkmark"></span>
-                    <span className="checkbox-text">
-                      <Shield size={14} />
-                      BNPC (Basic Necessities & Prime Commodities)
-                    </span>
-                  </label>
-
-                  {productInfo.isBNPC && (
-                    <div className="input-group" data-field="bnpcCategory">
-                      <label>BNPC Category *</label>
-                      <select
-                        value={productInfo.bnpcCategory || ""}
-                        onChange={(e) => handleInput("bnpcCategory", e.target.value)}
-                        onBlur={() => handleBlur("bnpcCategory")}
-                        className={errors.bnpcCategory ? "input-error" : ""}
-                      >
-                        <option value="">Select BNPC Category</option>
-                        {bnpcCategories.map((category) => (
-                          <option key={category} value={category}>
-                            {category.replace(/_/g, ' ')}
-                          </option>
-                        ))}
-                      </select>
-                      {errors.bnpcCategory && (
-                        <div className="error-message">
-                          <AlertCircle size={12} />
-                          <span>{errors.bnpcCategory}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
 
                 <div className="checkbox-group">
@@ -878,7 +793,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
                       Price Controlled (DTI Regulated)
                     </span>
                   </label>
-                </div>
+                </div> */}
 
                 <div className="checkbox-group">
                   <label className="checkbox-label">
@@ -895,7 +810,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
                 </div>
               </div>
 
-              <div>
+              {/* <div>
                 <div className="section-label">
                   <Percent size={14} /> Discount Eligibility
                 </div>
@@ -919,7 +834,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
                     </label>
                   ))}
                 </div>
-              </div>
+              </div> */}
 
               <div>
                 <div className="section-label">

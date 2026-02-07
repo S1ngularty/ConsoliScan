@@ -14,6 +14,9 @@ exports.list = async () => {
     {
       $project: {
         categoryName: 1,
+        isBNPC:1,
+        bnpcCategory:1,
+        applicableTo:1,
         count: { $size: "$products" },
       },
     },
@@ -21,7 +24,6 @@ exports.list = async () => {
       $sort: { categoryName: 1 },
     },
   ]);
-
   return categories;
 };
 
@@ -52,7 +54,7 @@ exports.update = async (request) => {
   if (!request.body) throw new Error("undefined request body");
   const updateCategory = await Category.findByIdAndUpdate(
     categoryId,
-    request.body,
+    request.body.categoryData,
     { new: true },
   );
 

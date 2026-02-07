@@ -15,9 +15,33 @@ export const syncCartApi = async (cart) => {
       },
     })
     .catch((error) => {
-        console.error(error)
+      console.error(error);
       throw new Error(error);
     });
 
-    return result.data.success
+  return result.data.success;
+};
+
+export const getCart = async () => {
+  const token = await AsyncStorage.getItem("token");
+  if (!token) return;
+
+  const result = await axios.get(`${API_URL}api/v1/cart`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  // console.log(result.data.result);
+  return result.data.result;
+};
+
+export const clearCart = async () => {
+  const token = await AsyncStorage.getItem("token");
+  if (!token) throw new Error("unauthorize request");
+  const result = await axios.delete(`${API_URL}api/v1/cart`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return
 };

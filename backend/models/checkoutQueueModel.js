@@ -10,7 +10,7 @@ const checkoutQueueSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
-      index: true
+      index: true,
     },
 
     /* ======================
@@ -20,13 +20,19 @@ const checkoutQueueSchema = new mongoose.Schema(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true
+      required: true,
     },
 
     cashier: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      default: null
+      cashierId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
+      name: {
+        type: String,
+        default: "",
+      },
     },
 
     /* ======================
@@ -38,26 +44,26 @@ const checkoutQueueSchema = new mongoose.Schema(
         product: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "Product",
-          required: true
+          required: true,
         },
 
-        name: String,       // POS display
+        name: String, // POS display
         sku: String,
 
         quantity: {
           type: Number,
-          required: true
+          required: true,
         },
 
         unitPrice: {
           type: Number,
-          required: true
+          required: true,
         },
 
         categoryType: String,
 
-        isBNPCEligible: Boolean
-      }
+        isBNPCEligible: Boolean,
+      },
     ],
 
     /* ======================
@@ -67,18 +73,18 @@ const checkoutQueueSchema = new mongoose.Schema(
     totals: {
       subtotal: {
         type: Number,
-        required: true
+        required: true,
       },
 
       discountTotal: {
         type: Number,
-        required: true
+        required: true,
       },
 
       finalTotal: {
         type: Number,
-        required: true
-      }
+        required: true,
+      },
     },
 
     /* ======================
@@ -98,7 +104,7 @@ const checkoutQueueSchema = new mongoose.Schema(
       weeklyPurchaseUsed: Number,
 
       remainingDiscountCap: Number,
-      remainingPurchaseCap: Number
+      remainingPurchaseCap: Number,
     },
 
     /* ======================
@@ -107,7 +113,7 @@ const checkoutQueueSchema = new mongoose.Schema(
 
     userEligibility: {
       isPWD: Boolean,
-      isSenior: Boolean
+      isSenior: Boolean,
     },
 
     /* ======================
@@ -116,7 +122,7 @@ const checkoutQueueSchema = new mongoose.Schema(
 
     voucher: {
       code: String,
-      discountAmount: Number
+      discountAmount: Number,
     },
 
     /* ======================
@@ -125,7 +131,7 @@ const checkoutQueueSchema = new mongoose.Schema(
 
     weeklyUsageSnapshot: {
       bnpcAmountUsed: Number,
-      discountUsed: Number
+      discountUsed: Number,
     },
 
     /* ======================
@@ -135,14 +141,14 @@ const checkoutQueueSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: [
-        "PENDING",    // created, QR shown
-        "SCANNED",    // POS scanned
-        "LOCKED",     // cashier confirmed
-        "PAID",       // payment success
+        "PENDING", // created, QR shown
+        "SCANNED", // POS scanned
+        "LOCKED", // cashier confirmed
+        "PAID", // payment success
         "CANCELLED",
-        "EXPIRED"
+        "EXPIRED",
       ],
-      default: "PENDING"
+      default: "PENDING",
     },
 
     scannedAt: Date,
@@ -156,10 +162,10 @@ const checkoutQueueSchema = new mongoose.Schema(
     expiresAt: {
       type: Date,
       required: true,
-      index: { expireAfterSeconds: 0 }
-    }
+      index: { expireAfterSeconds: 0 },
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 module.exports = mongoose.model("CheckoutQueue", checkoutQueueSchema);
