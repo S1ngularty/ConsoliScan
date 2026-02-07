@@ -879,7 +879,7 @@ const CartScreen = ({ navigation, route }) => {
             {discountDetails.eligible && discountDetails.bnpcSubtotal > 0 && (
               <>
                 <View style={styles.sectionDivider} />
-                <Text style={styles.discountSectionTitle}>BNPC Discount</Text>
+                <Text style={styles.discountSectionTitle}>{isEligibleUser && "Estimated"}  BNPC Discount</Text>
 
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Eligible BNPC items</Text>
@@ -945,7 +945,7 @@ const CartScreen = ({ navigation, route }) => {
 
                 <View style={styles.summaryRow}>
                   <Text style={[styles.summaryLabel, styles.bnpcDiscountLabel]}>
-                    Total BNPC Discount
+                    {isEligibleUser && "Estimated"}  Total BNPC Discount
                   </Text>
                   <Text style={[styles.summaryValue, styles.bnpcDiscountValue]}>
                     -₱{discountDetails.discountApplied.toFixed(2)}
@@ -1019,7 +1019,7 @@ const CartScreen = ({ navigation, route }) => {
 
             {/* Final Total */}
             <View style={styles.summaryRow}>
-              <Text style={styles.totalLabel}>Total Amount</Text>
+              <Text style={styles.totalLabel}>{isEligibleUser &&   "Estimated"} Total Amount</Text>
               <Text style={styles.totalValue}>
                 ₱{totals.finalTotal.toFixed(2)}
               </Text>

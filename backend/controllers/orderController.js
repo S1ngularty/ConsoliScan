@@ -2,7 +2,7 @@ const orderService = require("../services/orderService")
 
 async function confirmOrder(req, res) {
   try {
-    const order = await orderService.confirmOrder(req.body);
+    const order = await orderService.confirmOrder(req);
 
     res.status(201).json({
       success: true,
