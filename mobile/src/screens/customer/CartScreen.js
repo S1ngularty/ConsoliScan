@@ -89,14 +89,17 @@ const CartScreen = ({ navigation, route }) => {
   ];
 
   // =========================
-  // HELPER FUNCTIONS FOR DATA SYNC
+  // HELPER FUNCTIONS FOR DATA SYNC - UPDATED
   // =========================
 
-  // Normalize cart item for consistent data structure
+  // Normalize cart item for consistent data structure - UPDATED for new category structure
   const normalizeCartItem = (item) => {
     // Check if item is from server (has product nested) or local (flat)
     const product = item.product || item;
     const quantity = item.selectedQuantity || item.qty || 1;
+    
+    // Get BNPC fields from category object
+    const category = product.category || {};
     
     // Extract all necessary fields
     return {
@@ -108,17 +111,20 @@ const CartScreen = ({ navigation, route }) => {
       qty: Number(quantity),
       dateAdded: item.dateAdded || new Date().toISOString(),
       
-      // Product details for discount calculations
+      // Product details for discount calculations - UPDATED
       product: {
         _id: product._id,
         name: product.name,
         price: Number(product.price || 0),
-        isBNPC: product.isBNPC || false,
+        // BNPC fields now come from category object
+        isBNPC: category.isBNPC || false,
         excludedFromDiscount: product.excludedFromDiscount || false,
-        discountScopes: product.discountScopes || [],
-        bnpcCategory: product.bnpcCategory || "",
+        discountScopes: category.applicableTo || [],
+        bnpcCategory: category.bnpcCategory || "",
         unit: product.unit || "pc",
-        images: product.images || []
+        images: product.images || [],
+        // Keep reference to category for debugging
+        category: category
       }
     };
   };
@@ -150,40 +156,71 @@ const CartScreen = ({ navigation, route }) => {
   };
 
   // =========================
-  // BNPC DISCOUNT CALCULATION
+  // BNPC DISCOUNT CALCULATION - UPDATED
   // =========================
 
-  // Step 1: Filter Eligible BNPC Items
+  // Get user discount scope based on eligibility
+  const getUserDiscountScope = () => {
+    if (userEligibility.isPWD) return "PWD";
+    if (userEligibility.isSenior) return "SENIOR";
+    return null;
+  };
+
+  // Step 1: Filter Eligible BNPC Items - FIXED
   const getEligibleBNPCItems = () => {
     if (!isEligibleUser) return [];
 
-    const userType = userEligibility.isPWD ? "PWD" : "SENIOR";
+    const userScope = getUserDiscountScope();
+    if (!userScope) return [];
 
+    // console.log("Checking BNPC eligibility for user scope:", userScope);
+    
     return cart.filter((item) => {
       const normalizedItem = normalizeCartItem(item);
       const product = normalizedItem.product;
       
-      return (
+      // Debug log
+      // console.log(`Item: ${product.name}`);
+      // console.log(`  - isBNPC: ${product.isBNPC}`);
+      // console.log(`  - excludedFromDiscount: ${product.excludedFromDiscount}`);
+      // console.log(`  - discountScopes: ${JSON.stringify(product.discountScopes)}`);
+      // console.log(`  - userScope: ${userScope}`);
+      // console.log(`  - includes user scope: ${product.discountScopes?.includes(userScope)}`);
+      
+      const isEligible = (
         product.isBNPC &&
         !product.excludedFromDiscount &&
-        product.discountScopes?.includes(userType)
+        product.discountScopes?.includes(userScope)
       );
+      
+      // console.log(`  - Final eligibility: ${isEligible}`);
+      
+      return isEligible;
     });
   };
 
   // Step 2: Compute BNPC Subtotal safely
   const calculateBNPCSubtotal = (eligibleItems) => {
-    return eligibleItems.reduce((sum, item) => {
+    const subtotal = eligibleItems.reduce((sum, item) => {
       const normalizedItem = normalizeCartItem(item);
       const price = Number(normalizedItem.price) || 0;
       const quantity = Number(normalizedItem.selectedQuantity) || 1;
       return sum + (price * quantity);
     }, 0);
+    
+    // console.log("BNPC Subtotal calculated:", subtotal);
+    return subtotal;
   };
 
   // Step 3 & 4: Apply Weekly Caps
   const calculateDiscountDetails = () => {
+    // console.log("\n=== Calculating Discount Details ===");
+    // console.log("User eligible:", isEligibleUser);
+    // console.log("User eligibility status:", userEligibility);
+    // console.log("Weekly usage:", weeklyUsage);
+    
     if (!isEligibleUser) {
+      // console.log("User not eligible for BNPC discounts");
       return {
         eligible: false,
         discountApplied: 0,
@@ -194,8 +231,10 @@ const CartScreen = ({ navigation, route }) => {
     }
 
     const eligibleItems = getEligibleBNPCItems();
+    // console.log("Eligible BNPC items found:", eligibleItems.length);
 
     if (eligibleItems.length === 0) {
+      // console.log("No eligible BNPC items in cart");
       return {
         eligible: false,
         discountApplied: 0,
@@ -206,11 +245,14 @@ const CartScreen = ({ navigation, route }) => {
     }
 
     const bnpcSubtotal = calculateBNPCSubtotal(eligibleItems);
+    // console.log("BNPC subtotal:", bnpcSubtotal);
 
     // Weekly Purchase Cap: ₱2,500
     const remainingPurchaseCap = Math.max(2500 - weeklyUsage.bnpcAmountUsed, 0);
+    // console.log("Remaining purchase cap:", remainingPurchaseCap);
 
     if (remainingPurchaseCap === 0) {
+      // console.log("Weekly purchase cap reached");
       return {
         eligible: false,
         discountApplied: 0,
@@ -221,14 +263,18 @@ const CartScreen = ({ navigation, route }) => {
     }
 
     const cappedBNPCAmount = Math.min(bnpcSubtotal, remainingPurchaseCap);
+    // console.log("Capped BNPC amount:", cappedBNPCAmount);
 
     // Compute Raw 5% Discount
     const rawDiscount = cappedBNPCAmount * 0.05;
+    // console.log("Raw 5% discount:", rawDiscount);
 
     // Weekly Discount Cap: ₱125
     const remainingDiscountCap = Math.max(125 - weeklyUsage.discountUsed, 0);
+    // console.log("Remaining discount cap:", remainingDiscountCap);
 
     if (remainingDiscountCap === 0) {
+      // console.log("Weekly discount cap reached");
       return {
         eligible: false,
         discountApplied: 0,
@@ -239,6 +285,7 @@ const CartScreen = ({ navigation, route }) => {
     }
 
     const discountApplied = Math.min(rawDiscount, remainingDiscountCap);
+    // console.log("Final discount applied:", discountApplied);
 
     return {
       eligible: true,
@@ -277,6 +324,12 @@ const CartScreen = ({ navigation, route }) => {
       0,
       subtotal - discountDetails.discountApplied - voucherDiscount,
     );
+
+    // console.log("\n=== Final Totals ===");
+    // console.log("Subtotal:", subtotal);
+    // console.log("BNPC Discount:", discountDetails.discountApplied);
+    // console.log("Voucher Discount:", voucherDiscount);
+    // console.log("Final Total:", finalTotal);
 
     return {
       subtotal,
@@ -402,7 +455,7 @@ const CartScreen = ({ navigation, route }) => {
     const discountDetails = totals.discountDetails;
 
     /* ======================
-     SANITIZE CART ITEMS
+     SANITIZE CART ITEMS - UPDATED
     ====================== */
 
     const items = cart.map((item) => {
@@ -425,6 +478,8 @@ const CartScreen = ({ navigation, route }) => {
         unitPrice: normalizedItem.price,
         categoryType: product.bnpcCategory || null,
         isBNPCEligible,
+        // Include category data for reference
+        category: product.category
       };
     });
 
@@ -455,7 +510,7 @@ const CartScreen = ({ navigation, route }) => {
     };
 
     /* ======================
-     FINAL CHECKOUT PAYLOAD
+     FINAL CHECKOUT PAYLOAD - UPDATED
     ====================== */
 
     const checkoutData = {
@@ -478,7 +533,7 @@ const CartScreen = ({ navigation, route }) => {
       },
     };
 
-    console.log("Checkout payload:", checkoutData);
+    // console.log("Checkout payload:", JSON.stringify(checkoutData, null, 2));
 
     try {
       const token = await getToken();
@@ -511,15 +566,21 @@ const CartScreen = ({ navigation, route }) => {
     const totals = calculateTotals();
     
     // Check if item is BNPC eligible
+    const userScope = getUserDiscountScope();
     const isBNPCEligible =
       totals.discountDetails.eligible &&
       product.isBNPC &&
       !product.excludedFromDiscount &&
-      product.discountScopes?.includes(
-        userEligibility.isPWD ? "PWD" : "SENIOR",
-      );
+      product.discountScopes?.includes(userScope);
 
     const bnpcItemDiscount = isBNPCEligible ? itemTotal * 0.05 : 0;
+
+    // Debug display
+    // console.log(`Rendering item: ${product.name}`);
+    // console.log(`  - isBNPC: ${product.isBNPC}`);
+    // console.log(`  - discountScopes: ${JSON.stringify(product.discountScopes)}`);
+    // console.log(`  - userScope: ${userScope}`);
+    // console.log(`  - isEligible: ${isBNPCEligible}`);
 
     return (
       <View key={normalizedItem._id} style={styles.cartItem}>
@@ -632,6 +693,15 @@ const CartScreen = ({ navigation, route }) => {
   const discountDetails = totals.discountDetails;
   const { itemCount: displayItemCount } = calculateCartTotals();
 
+  // Debug summary
+  // console.log("\n=== CART SUMMARY ===");
+  // console.log("Cart items:", cart.length);
+  // console.log("User eligible for BNPC:", isEligibleUser);
+  // console.log("User scope:", getUserDiscountScope());
+  // console.log("BNPC discount eligible:", discountDetails.eligible);
+  // console.log("BNPC discount reason:", discountDetails.reason);
+  // console.log("BNPC discount amount:", discountDetails.discountApplied);
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -702,6 +772,11 @@ const CartScreen = ({ navigation, route }) => {
                 ? `As a ${userEligibility.isPWD ? "PWD" : "Senior Citizen"}, you get 5% off on eligible BNPC items (up to ₱125/week)`
                 : "Sign up for PWD/Senior benefits to get discounts on BNPC items"}
             </Text>
+            {isEligibleUser && (
+              <Text style={styles.eligibilityDebug}>
+                User scope: {getUserDiscountScope() || "None"}
+              </Text>
+            )}
           </View>
         )}
 
@@ -1014,7 +1089,6 @@ const CartScreen = ({ navigation, route }) => {
   );
 };
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -1088,6 +1162,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
     lineHeight: 20,
+  },
+  eligibilityDebug: {
+    fontSize: 12,
+    color: "#888",
+    fontStyle: "italic",
+    marginTop: 4,
   },
   // Cart Items
   cartItemsContainer: {

@@ -60,10 +60,6 @@ const productSchema = new mongoose.Schema(
       min: 0,
       default: null, // For DTI / price-controlled goods
     },
-    priceControlled: {
-      type: Boolean,
-      default: false,
-    },
 
     // =========================
     // INVENTORY
@@ -78,47 +74,10 @@ const productSchema = new mongoose.Schema(
       enum: ["kg", "g", "pc", "liter", "ml", "pack"],
       required: true,
     },
-
-    // =========================
-    // BNPC / DISCOUNT LOGIC
-    // =========================
-    isBNPC: {
-      type: Boolean,
-      default: false,
-    },
-    bnpcCategory: {
-      type: String,
-      enum: [
-        "RICE",
-        "CORN",
-        "FRESH_MEAT",
-        "FRESH_POULTRY",
-        "FRESH_FISH",
-        "VEGETABLES",
-        "FRUITS",
-        "EGGS",
-        "COOKING_OIL",
-        "SUGAR",
-        "MILK",
-        "COFFEE",
-        "NOODLES",
-        "SOAP",
-        "DETERGENT",
-        "CANNED_GOODS",
-        "OTHERS",
-      ],
-      default: null,
-    },
     excludedFromDiscount: {
       type: Boolean,
       default: false,
     },
-    discountScopes: {
-      type: [String],
-      enum: ["PWD", "SENIOR", "PROMO"],
-      default: [],
-    },
-
     // =========================
     // MEDIA
     // =========================

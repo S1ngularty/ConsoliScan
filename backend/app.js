@@ -20,6 +20,7 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
   "http://localhost:8081",
+  "http://192.168.1.11:5173",
   "https://your-backend-name.onrender.com",
 ];
 

@@ -132,6 +132,7 @@ function CategoryPage() {
 
   const fetchData = async () => {
     const result = await fetchCategories();
+    console.log(result)
     setCategories(result);
     return;
   };

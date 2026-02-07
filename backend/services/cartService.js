@@ -19,7 +19,12 @@ exports.updateCart = async (request) => {
 exports.getById = async (request) => {
   const { userId } = request.user;
 
-  const cart = await Cart.findOne({ user: userId }).populate("items.product");
+  const cart = await Cart.findOne({ user: userId }).populate({
+    path: "items.product",
+    populate: {
+      path: "category"
+    }
+  });
 
   if (!cart) return [];
 
