@@ -1,0 +1,14 @@
+services:
+  bigchaindb:
+    image: bigchaindb/bigchaindb:all-in-one
+    container_name: bigchaindb
+    ports:
+      - "9984:9984"
+      - "9985:9985"
+      - "27017:27017"
+      - "26657:26657"
+    volumes:
+      - bigchaindb_data:/data
+
+volumes:
+  bigchaindb_data:

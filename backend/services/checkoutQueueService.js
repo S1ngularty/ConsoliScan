@@ -72,13 +72,12 @@ exports.lockedOrder = async (request) => {
     select: "checkoutCode",
   });
 
-  if (!order)throw new Error("failed to update checkout status");
+  if (!order) throw new Error("failed to update checkout status");
 
-  checkoutEmitter.emitCheckout(checkoutCode,"checkout:LOCKED",{
-     status: order.status,
+  checkoutEmitter.emitCheckout(checkoutCode, "checkout:LOCKED", {
+    status: order.status,
     totals: order.totals,
     cashier: order.name,
-  })
+  });
   return result;
 };
-

@@ -33,3 +33,21 @@ export const getCheckoutDetails = async (checkoutCode) => {
 
   return result.data.result;
 };
+
+export const lockedOrder = async (checkoutCode) => {
+  const token = await getToken();
+  if (!token) throw new Error("missing token");
+  const response = await fetch(`${API_URL}api/v1/checkout/${checkoutCode}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) throw new Error("Failed to locked the order");
+
+  const result = await response.json();
+  return result;
+};
