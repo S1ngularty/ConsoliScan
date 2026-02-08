@@ -60,9 +60,9 @@ exports.getOrder = async (request) => {
 exports.lockedOrder = async (request) => {
   const { userId } = request.user;
   if (!request.body) throw new Error("empty request content");
-  const { checkoutCode } = request.body;
+  const { checkoutCode } = request.params;
   const order = await Queue.findOneAndUpdate(
-    { checkoutCode, cashier: userId },
+    { checkoutCode, "cashier.cashierId":userId, status:"SCANNED" },
     {
       status: "LOCKED",
     },
@@ -72,13 +72,40 @@ exports.lockedOrder = async (request) => {
     select: "checkoutCode",
   });
 
-  if (!order)throw new Error("failed to update checkout status");
+  if (!order) throw new Error("failed to update checkout status");
 
-  checkoutEmitter.emitCheckout(checkoutCode,"checkout:LOCKED",{
-     status: order.status,
+  checkoutEmitter.emitCheckout(checkoutCode, "checkout:locked", {
+    status: order.status,
     totals: order.totals,
     cashier: order.name,
-  })
-  return result;
+  });
+  return order;
 };
 
+exports.payOrder = async (request) => {
+  if (!request.body) throw new Error("undefined content request");
+  const { checkoutCode } = request.params;
+  const { userId } = request.user;
+
+  const queue = await Queue.findOneAndUpdate(
+    {
+      checkoutCode:checkoutCode,
+      "cashier.cashierId": userId,
+      status: "LOCKED",
+    },
+    {
+      status: "PAID",
+      paidAt: Date.now(),
+    },
+  ).populate({
+    path: "items.product",
+    select: "checkoutCode",
+  });
+
+  if (!queue) throw new Error("failed to update checkout status");
+
+  checkoutEmitter.emitCheckout(checkoutCode, "checkout:paid", {
+    status: queue.status,
+  });
+  return queue;
+};

@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-
+import { payOrder } from '../../api/checkout.api';
 const WEEKLY_CAP = 125;
 const PURCHASE_CAP = 2500;
 
@@ -116,8 +116,9 @@ const PaymentScreen = ({ route, navigation }) => {
     );
   };
 
-  const handleFinalize = () => {
-    if (cashReceived < finalTotal) {
+  const handleFinalize =async () => {
+   try {
+     if (cashReceived < finalTotal) {
       Alert.alert('Insufficient Cash', 'Cash received is less than total amount.');
       return;
     }
@@ -164,12 +165,18 @@ const PaymentScreen = ({ route, navigation }) => {
     };
 
     console.log('TRANSACTION COMPLETED:', transactionLog);
+
+    const result = await payOrder(checkoutCode)
     
     // Navigate to receipt
     navigation.navigate('OrderSummary', {
       transactionData: transactionLog,
       orderDetails: checkoutData,
     });
+
+   } catch (error) {
+    console.error(error)
+   }
   };
 
   // Auto-focus cash input on mount

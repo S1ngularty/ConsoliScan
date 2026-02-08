@@ -1,5 +1,11 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Alert, Dimensions } from "react-native";
+import React, { useEffect, useState, useRef } from "react";
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  Alert,
+  Animated
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import QRCode from "react-native-qrcode-svg";
 import { io } from "socket.io-client";
@@ -8,21 +14,60 @@ import { SOCKET_API } from "../../constants/config";
 export default function CheckoutQRScreen({ route, navigation }) {
   const { checkoutCode, expiresAt, token } = route.params;
   const [timeLeft, setTimeLeft] = useState("");
-  const [status, setStatus] = useState("PENDING"); // PENDING, SCANNED, LOCKED, PAID
+  const [status, setStatus] = useState("PROCESSING");
   const [totals, setTotals] = useState(null);
+  const [orderId, setOrderId] = useState(null);
+  const [orderData, setOrderData] = useState({})
+  const [cashier, setCashier] = useState("")
 
+  // Animation for smooth progress bar
+  const progressAnim = useRef(new Animated.Value(0)).current;
+
+  // Steps progress visual
   const steps = [
-    { key: "PENDING", label: "PENDING" },
+    { key: "PROCESSING", label: "Processing" },
     { key: "SCANNED", label: "Scanned" },
-    { key: "LOCKED", label: "Locked" },
-    { key: "PAID", label: "Paid" },
+    { key: "LOCKED", label: "Validating" },
+    { key: "PAID", label: "Payment" },
+    { key: "COMPLETE", label: "Complete" },
   ];
 
-  const getStepIndex = () => {
-    return steps.findIndex((step) => step.key === status);
+  // Calculate progress percentage based on status
+  const getProgressPercentage = () => {
+    switch(status) {
+      case "PROCESSING": return 20; // 1 out of 5 steps (20%)
+      case "SCANNED": return 40;    // 2 out of 5 steps (40%)
+      case "LOCKED": return 60;     // 3 out of 5 steps (60%)
+      case "PAID": return 80;       // 4 out of 5 steps (80%)
+      case "COMPLETE": return 100;  // 5 out of 5 steps (100%)
+      default: return 20;
+    }
   };
 
-  const currentStepIndex = getStepIndex();
+  // Animate progress bar when status changes
+  useEffect(() => {
+    const targetProgress = getProgressPercentage();
+    
+    Animated.timing(progressAnim, {
+      toValue: targetProgress,
+      duration: 500,
+      useNativeDriver: false,
+    }).start();
+  }, [status]);
+
+  // Get step index for visual indicators
+  const getCompletedSteps = () => {
+    switch(status) {
+      case "PROCESSING": return 1;
+      case "SCANNED": return 2;
+      case "LOCKED": return 3;
+      case "PAID": return 4;
+      case "COMPLETE": return 5;
+      default: return 1;
+    }
+  };
+
+  const completedSteps = getCompletedSteps();
 
   useEffect(() => {
     const socket = io(SOCKET_API, {
@@ -37,27 +82,56 @@ export default function CheckoutQRScreen({ route, navigation }) {
     });
 
     socket.on("checkout:state", (data) => {
-      console.log(data)
-      setStatus(data.status || "PENDING");
+      console.log("checkout:state", data);
+      setStatus(data.status || "PROCESSING");
       setTotals(data.totals);
     });
 
-    socket.on("checkout:scanned", ({ cashier,status,totals }) => {
-      console.log(cashier,status,totals)
-      console.log(cashier);
+    socket.on("checkout:scanned", ({ cashier, status, totals }) => {
+      console.log("checkout:scanned", cashier, status, totals);
       setStatus("SCANNED");
+      setCashier(cashier)
+      if (totals) setTotals(totals);
     });
 
-    socket.on("checkout:locked", ({ finalTotals }) => {
-      setTotals(finalTotals);
+    socket.on("checkout:locked", ({ checkoutData }) => {
+      console.log("checkout:locked", checkoutData);
       setStatus("LOCKED");
+      if (checkoutData?.totals) setTotals(checkoutData.totals);
     });
 
-    socket.on("checkout:paid", ({ orderId }) => {
-      setStatus("PAID");
+    socket.on("checkout:paid",({})=>{
+      setStatus("PAID")
+    })
+
+    socket.on("checkout:complete", ({ orderId, orderData }) => {
+      setOrderId(orderId);
+      setStatus("COMPLETE");
+      
       setTimeout(() => {
-        navigation.replace("OrderComplete", { orderId });
-      }, 2000);
+        navigation.navigate("Reciept", { 
+          orderId, 
+          checkoutCode,
+          orderData,
+          cashier
+        });
+      }, 1500);
+    });
+
+    socket.on("checkout:cancelled", ({ reason }) => {
+      Alert.alert(
+        "Checkout Cancelled",
+        reason || "The checkout was cancelled by the cashier.",
+        [{ text: "OK", onPress: () => navigation.goBack() }]
+      );
+    });
+
+    socket.on("checkout:expired", () => {
+      Alert.alert(
+        "Checkout Expired",
+        "Your checkout session has expired. Please try again.",
+        [{ text: "OK", onPress: () => navigation.goBack() }]
+      );
     });
 
     return () => {
@@ -85,81 +159,43 @@ export default function CheckoutQRScreen({ route, navigation }) {
     return () => clearInterval(interval);
   }, [expiresAt, status]);
 
-  const renderStep = (step, index) => {
-    const isCompleted = index < currentStepIndex;
-    const isCurrent = index === currentStepIndex;
-    const isUpcoming = index > currentStepIndex;
-
-    return (
-      <View key={step.key} style={styles.stepContainer}>
-        {/* Step Circle */}
-        <View
-          style={[
-            styles.stepCircle,
-            isCompleted && styles.stepCircleCompleted,
-            isCurrent && styles.stepCircleCurrent,
-            isUpcoming && styles.stepCircleUpcoming,
-          ]}
-        >
-          {isCompleted ? (
-            <Text style={styles.stepCheck}>✓</Text>
-          ) : (
-            <Text
-              style={[
-                styles.stepNumber,
-                isCurrent && styles.stepNumberCurrent,
-                isUpcoming && styles.stepNumberUpcoming,
-              ]}
-            >
-              {index + 1}
-            </Text>
-          )}
-        </View>
-
-        {/* Step Label */}
-        <Text
-          style={[
-            styles.stepLabel,
-            isCompleted && styles.stepLabelCompleted,
-            isCurrent && styles.stepLabelCurrent,
-            isUpcoming && styles.stepLabelUpcoming,
-          ]}
-        >
-          {step.label}
-        </Text>
-      </View>
-    );
-  };
-
   const renderStatusMessage = () => {
     switch (status) {
-      case "PENDING":
-        return "Show QR to cashier";
+      case "PROCESSING":
+        return "Show QR code to cashier";
       case "SCANNED":
-        return "Scanning items...";
+        return "QR code scanned";
       case "LOCKED":
-        return "Confirm totals";
+        return "Cashier is validating items";
       case "PAID":
-        return "Payment complete!";
+        return "Processing payment";
+      case "COMPLETE":
+        return "Payment successful!";
       default:
         return "Processing...";
     }
   };
 
   const renderTotals = () => {
-    if (!totals || status === "PENDING") return null;
+    if (!totals) return null;
 
     return (
       <View style={styles.totalsContainer}>
         <Text style={styles.totalsTitle}>Order Total</Text>
         <View style={styles.totalsRow}>
           <Text style={styles.finalTotalValue}>
-            ₱{totals.finalTotal?.toFixed(2) || "0.00"}
+            ₱{totals.finalTotal?.toFixed(2) || totals.subtotal?.toFixed(2) || "0.00"}
           </Text>
         </View>
       </View>
     );
   };
+
+  // Interpolate the animated value for width
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0%', '100%']
+  });
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
@@ -175,14 +211,14 @@ export default function CheckoutQRScreen({ route, navigation }) {
           <View style={styles.qrWrapper}>
             <QRCode
               value={checkoutCode}
-              size={status === "PAID" ? 180 : 220}
+              size={220}
               backgroundColor="white"
-              color={status === "PAID" ? "#00A86B" : "#000000"}
+              color="#000000"
             />
           </View>
           <Text style={styles.codeText}>{checkoutCode}</Text>
 
-          {status !== "PAID" && (
+          {status !== "COMPLETE" && (
             <Text style={styles.timer}>
               Expires in <Text style={styles.bold}>{timeLeft}</Text>
             </Text>
@@ -195,26 +231,39 @@ export default function CheckoutQRScreen({ route, navigation }) {
         {/* Spacer */}
         <View style={{ flex: 1 }} />
 
-        {/* Status Bar - Fixed at Bottom */}
-        <View style={styles.statusBar}>
-          {/* Progress Line */}
-          <View style={styles.progressLineBackground}>
-            <View
+        {/* Progress Bar */}
+        <View style={styles.progressContainer}>
+          {/* Smooth Animated Progress Bar */}
+          <View style={styles.progressBarBackground}>
+            <Animated.View 
               style={[
-                styles.progressLineFill,
-                {
-                  width: `${((currentStepIndex + 1) / steps.length) * 100}%`,
-                },
-              ]}
+                styles.progressBarFill,
+                { width: progressWidth }
+              ]} 
             />
           </View>
 
-          {/* Steps */}
-          <View style={styles.stepsContainer}>{steps.map(renderStep)}</View>
+          {/* Step Indicators */}
+          <View style={styles.stepsContainer}>
+            {steps.map((step, index) => (
+              <View key={step.key} style={styles.stepIndicator}>
+                <View style={[
+                  styles.stepDot,
+                  index < completedSteps ? styles.stepDotCompleted : styles.stepDotPending
+                ]} />
+                <Text style={[
+                  styles.stepLabel,
+                  index < completedSteps ? styles.stepLabelCompleted : styles.stepLabelPending
+                ]}>
+                  {step.label}
+                </Text>
+              </View>
+            ))}
+          </View>
         </View>
 
         {/* Success Message */}
-        {status === "PAID" && (
+        {status === "COMPLETE" && (
           <View style={styles.successOverlay}>
             <Text style={styles.successText}>✓ Payment Successful</Text>
           </View>
@@ -258,12 +307,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#fff",
     borderRadius: 12,
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
   },
   codeText: {
     fontSize: 14,
@@ -303,91 +349,55 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#00A86B",
   },
-  // Status Bar at Bottom
-  statusBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: "#f0f0f0",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingBottom: 30,
+  // Progress Container
+  progressContainer: {
+    marginBottom: 30,
+    width: "100%",
+    alignItems: "center",
   },
-  progressLineBackground: {
-    height: 4,
+  progressBarBackground: {
+    height: 8,
     backgroundColor: "#E2E8F0",
-    borderRadius: 2,
-    overflow: "hidden",
+    borderRadius: 4,
+    width: "100%",
     marginBottom: 20,
+    overflow: "hidden",
   },
-  progressLineFill: {
+  progressBarFill: {
     height: "100%",
     backgroundColor: "#00A86B",
-    borderRadius: 2,
+    borderRadius: 4,
   },
   stepsContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     width: "100%",
   },
-  stepContainer: {
+  stepIndicator: {
     alignItems: "center",
     flex: 1,
   },
-  stepCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 8,
+  stepDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginBottom: 6,
+  },
+  stepDotCompleted: {
+    backgroundColor: "#00A86B",
+  },
+  stepDotPending: {
     backgroundColor: "#E2E8F0",
-    borderWidth: 2,
-    borderColor: "#CBD5E1",
-  },
-  stepCircleCompleted: {
-    backgroundColor: "#00A86B",
-    borderColor: "#00A86B",
-  },
-  stepCircleCurrent: {
-    backgroundColor: "#00A86B",
-    borderColor: "#00A86B",
-  },
-  stepCircleUpcoming: {
-    backgroundColor: "#fff",
-    borderColor: "#CBD5E1",
-  },
-  stepNumber: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#94A3B8",
-  },
-  stepNumberCurrent: {
-    color: "#FFFFFF",
-  },
-  stepNumberUpcoming: {
-    color: "#94A3B8",
-  },
-  stepCheck: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "bold",
   },
   stepLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
-    color: "#94A3B8",
+    textAlign: "center",
   },
   stepLabelCompleted: {
     color: "#00A86B",
   },
-  stepLabelCurrent: {
-    color: "#00A86B",
-  },
-  stepLabelUpcoming: {
+  stepLabelPending: {
     color: "#94A3B8",
   },
   successOverlay: {

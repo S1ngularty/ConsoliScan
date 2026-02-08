@@ -37,31 +37,105 @@ const OrderSummaryScreen = ({ route, navigation }) => {
 
   const handleComplete = async () => {
     try {
-      // Prepare order data for MongoDB
+      // Prepare order data for MongoDB with all transaction log details
       const orderData = {
+        // Core relationships
         user: orderDetails.user,
-        cashier: orderDetails.cashier?.cashierId || orderDetails.cashier,
+        cashier:
+          orderDetails.cashier?._id ||
+          orderDetails.cashier?.cashierId ||
+          orderDetails.cashier,
+
+        // Order metadata
+        checkoutCode: transactionData.checkoutCode,
+        customerType: transactionData.customerType,
+        verificationSource: transactionData.verificationSource,
+
+        // Items with full details
         items: orderDetails.items.map((item) => ({
           product: item.product?._id || item.product,
+          name: item.name || item.product?.name || "Product",
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           categoryType: item.categoryType,
-          isGroceryDiscountEligible:
-            item.isBNPCEligible || item.isGroceryDiscountEligible,
+          isGroceryDiscountEligible: item.isBNPCEligible || false,
           promoApplied: item.promoApplied || false,
+          sku: item.sku || item.product?.sku,
         })),
+
+        // Amounts & discounts
         baseAmount: transactionData.amounts.subtotal,
         groceryEligibleSubtotal: transactionData.amounts.eligibleSubtotal,
-        weeklyCapRemainingAtCheckout: transactionData.caps.remainingDiscountCap,
+
+        // BNPC discount breakdown
+        bnpcDiscount: {
+          autoCalculated: transactionData.amounts.autoDiscount || 0,
+          additionalApplied: transactionData.amounts.additionalDiscount || 0,
+          total: transactionData.amounts.totalDiscount,
+        },
+
+        // Legacy field (for backward compatibility)
         seniorPwdDiscountAmount: transactionData.amounts.totalDiscount,
+
+        // Voucher discount
+        voucherDiscount: transactionData.amounts.voucherDiscount || 0,
+
+        // Loyalty points
         pointsUsed: orderDetails.voucher?.pointsUsed || 0,
         finalAmountPaid: transactionData.amounts.finalTotal,
-        pointsEarned: Math.floor(transactionData.amounts.finalTotal / 100) * 10, // Example: 10 points per ₱100
+        pointsEarned: Math.floor(transactionData.amounts.finalTotal / 100) * 10,
+
+        // Cash transaction
+        cashTransaction: {
+          cashReceived: transactionData.amounts.cashReceived,
+          changeDue: transactionData.amounts.changeDue,
+        },
+
+        // BNPC caps & compliance
+        bnpcCaps: {
+          discountCap: {
+            weeklyCap: 125,
+            usedBefore: transactionData.caps.bookletUsedBefore,
+            remainingAtCheckout: transactionData.caps.remainingDiscountCap,
+            usedAfter: transactionData.caps.bookletUsedAfter,
+          },
+          purchaseCap: {
+            weeklyCap: 2500,
+            usedBefore: transactionData.caps.purchaseUsedBefore,
+            remainingAtCheckout: transactionData.caps.remainingPurchaseCap,
+            usedAfter: transactionData.caps.purchaseUsedAfter,
+          },
+          weeklyCapRemainingAtCheckout:
+            transactionData.caps.remainingDiscountCap,
+        },
+
+        // Item statistics
+        itemStats: {
+          totalItems: orderDetails.items?.length || 0,
+          totalQuantity:
+            orderDetails.items?.reduce(
+              (sum, item) => sum + (item.quantity || 0),
+              0,
+            ) || 0,
+          bnpcEligibleItems:
+            orderDetails.items?.filter((i) => i.isBNPCEligible).length || 0,
+          bnpcEligibleQuantity:
+            orderDetails.items
+              ?.filter((i) => i.isBNPCEligible)
+              .reduce((sum, item) => sum + (item.quantity || 0), 0) || 0,
+        },
+
+        // Order state
         status: "CONFIRMED",
-        confirmedAt: new Date(),
+        confirmedAt: new Date().toISOString(),
+
+        // Booklet compliance
+        bookletUpdated: false,
+        bookletUpdateReminder:
+          "Physical booklet must be updated with new total",
       };
 
-      // console.log('Submitting order to MongoDB:', JSON.stringify(orderData, null, 2));
+      console.log("Submitting complete order data:", orderData);
 
       const result = await confirmOrder(orderData);
 
@@ -72,7 +146,6 @@ const OrderSummaryScreen = ({ route, navigation }) => {
           {
             text: "OK",
             onPress: () => {
-              // Navigate to home or receipt print screen
               navigation.navigate("DrawTabs");
             },
           },
@@ -80,7 +153,10 @@ const OrderSummaryScreen = ({ route, navigation }) => {
       );
     } catch (error) {
       console.error("Failed to complete order:", error);
-      Alert.alert("Error", "Failed to complete transaction. Please try again.");
+      Alert.alert(
+        "Error",
+        error.message || "Failed to complete transaction. Please try again.",
+      );
     }
   };
 
