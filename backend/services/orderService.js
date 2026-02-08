@@ -37,7 +37,8 @@ async function confirmOrder(request) {
 
   Product.bulkWrite(bulkOps);
 
-  emitCheckout(order.checkoutCode, "checkout:COMPLETE", {
+  emitCheckout(order.checkoutCode, "checkout:complete", {
+    orderId:order._id,
     status: "COMPLETE",
   });
 

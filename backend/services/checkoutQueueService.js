@@ -60,9 +60,9 @@ exports.getOrder = async (request) => {
 exports.lockedOrder = async (request) => {
   const { userId } = request.user;
   if (!request.body) throw new Error("empty request content");
-  const { checkoutCode } = request.body;
+  const { checkoutCode } = request.params;
   const order = await Queue.findOneAndUpdate(
-    { checkoutCode, cashier: userId },
+    { checkoutCode, "cashier.cashierId":userId, status:"SCANNED" },
     {
       status: "LOCKED",
     },
@@ -74,12 +74,12 @@ exports.lockedOrder = async (request) => {
 
   if (!order) throw new Error("failed to update checkout status");
 
-  checkoutEmitter.emitCheckout(checkoutCode, "checkout:LOCKED", {
+  checkoutEmitter.emitCheckout(checkoutCode, "checkout:locked", {
     status: order.status,
     totals: order.totals,
     cashier: order.name,
   });
-  return result;
+  return order;
 };
 
 exports.payOrder = async (request) => {
@@ -89,8 +89,8 @@ exports.payOrder = async (request) => {
 
   const queue = await Queue.findOneAndUpdate(
     {
-      checkoutCode,
-      cashier: userId,
+      checkoutCode:checkoutCode,
+      "cashier.cashierId": userId,
       status: "LOCKED",
     },
     {
@@ -104,10 +104,8 @@ exports.payOrder = async (request) => {
 
   if (!queue) throw new Error("failed to update checkout status");
 
-  checkoutEmitter.emitCheckout(checkoutCode, "checkout:PAID", {
+  checkoutEmitter.emitCheckout(checkoutCode, "checkout:paid", {
     status: queue.status,
-    totals: queue.totals,
-    cashier: queue.name,
   });
-  return result;
+  return queue;
 };

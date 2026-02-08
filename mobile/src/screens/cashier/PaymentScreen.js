@@ -11,8 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { payOrder } from '../../../../backend/services/checkoutQueueService';
-
+import { payOrder } from '../../api/checkout.api';
 const WEEKLY_CAP = 125;
 const PURCHASE_CAP = 2500;
 

@@ -6,19 +6,7 @@ const keys = require("../utils/bigchainKey");
 
 
 async function logConfirmedOrder(order) {
-  const hashPayload = {
-    orderId: order._id.toString(),
-    user: order.user,
-    items: order.items,
-    baseAmount: order.baseAmount,
-    groceryEligibleSubtotal: order.groceryEligibleSubtotal,
-    weeklyCapRemainingAtCheckout: order.weeklyCapRemainingAtCheckout,
-    seniorPwdDiscountAmount: order.seniorPwdDiscountAmount,
-    pointsUsed: order.pointsUsed,
-    finalAmountPaid: order.finalAmountPaid,
-    pointsEarned: order.pointsEarned,
-    confirmedAt: order.confirmedAt
-  };
+  const hashPayload = order;
 
   const hash = crypto
     .createHash("sha256")
