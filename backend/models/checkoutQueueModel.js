@@ -20,7 +20,13 @@ const checkoutQueueSchema = new mongoose.Schema(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      default:null
+    },
+
+    userType:{
+      type:String,
+      enum:['guest','user'],
+      default:"guest"
     },
 
     cashier: {

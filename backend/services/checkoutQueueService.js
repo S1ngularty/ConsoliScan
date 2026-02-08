@@ -4,11 +4,12 @@ const crypto = require("crypto");
 
 exports.checkout = async (request) => {
   if (!request.body) throw new Error("empty request content");
-  const { userId } = request.user;
+  const { userId } = request.body;
   const data = { ...request.body };
   const checkoutCode = `CHK-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
   const expiresAt = Date.now() + 10 * 60 * 1000;
-  data.user = userId;
+  
+  data.userType = !userId ? 'user' : 'guest';
   data.checkoutCode = checkoutCode;
   data.expiresAt = expiresAt;
 

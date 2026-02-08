@@ -6,11 +6,9 @@ export const checkout = async (data) => {
   if (!data) throw new Error("empty cart");
   // console.log("CHECKOUT SNAPSHOT:", data);
   // console.log(`${API_URL}api/v1/checkout`);
-  const token = await getToken();
   const result = await axios.post(`${API_URL}api/v1/checkout`, data, {
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
     },
   });
 
