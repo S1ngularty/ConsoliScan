@@ -28,6 +28,7 @@ const ScanningScreen = ({ navigation }) => {
   const sheetPosition = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const dispatch = useDispatch();
   const cartState = useSelector((state) => state.cart);
+  const userState = useSelector((state) => state.auth);
 
   const handleScanHistory = async (product) => {
     const scanHistory = await AsyncStorage.getItem("scanHistory");
@@ -54,7 +55,7 @@ const ScanningScreen = ({ navigation }) => {
       AsyncStorage.setItem("scanHistory", JSON.stringify(currScanned));
     }
 
-    return
+    return;
   };
 
   const panResponder = useRef(
@@ -90,7 +91,7 @@ const ScanningScreen = ({ navigation }) => {
       if (response) {
         setScannedProduct(response);
         openSheet();
-        handleScanHistory(response)
+        handleScanHistory(response);
       }
     } catch (err) {
       console.log("Product not found or API error:", err);
@@ -157,11 +158,16 @@ const ScanningScreen = ({ navigation }) => {
           <TouchableOpacity
             style={styles.cartButton}
             activeOpacity={0.7}
-            onPress={() =>
-              navigation.navigate("HomeTabs", {
-                screen: "Cart",
-              })
-            }
+            onPress={() => {
+              console.log(userState.role);
+              if (userState.role === "guest") {
+                navigation.navigate("Cart");
+              } else {
+                navigation.navigate("HomeTabs", {
+                  screen: "Cart",
+                });
+              }
+            }}
           >
             <MaterialCommunityIcons
               name="cart-outline"

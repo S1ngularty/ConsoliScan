@@ -6,10 +6,13 @@ import AuthNavigation from "./AuthNavigator";
 import CustomerStackNavigator from "./CustomerStackNavigator";
 import CashierStackNavigator from "./CashierStackNavigator";
 import SplashScreen from "../screens/SplashScreen";
+import SharedNavigation from "./SharedNavigation";
+import GuestNavigator from "./GuestNavigator";
 
 const ROLES = {
   Customer: "user",
   Cashier: "checker",
+  Guest: "guest",
 };
 
 const Stack = createNativeStackNavigator();
@@ -19,7 +22,7 @@ export default function RootNavigator() {
 
   const [appIsReady, setAppIsReady] = useState(false);
   if (!appIsReady) {
-    return <SplashScreen onReady={()=> setAppIsReady(true)} />;
+    return <SplashScreen onReady={() => setAppIsReady(true)} />;
   }
 
   // useEffect(() => {
@@ -28,12 +31,18 @@ export default function RootNavigator() {
 
   return (
     <Stack.Navigator id="RootStack" screenOptions={{ headerShown: false }}>
-      {!isLoggedIn ? (
-        <Stack.Screen name="Auth" component={AuthNavigation} />
-      ) : role === ROLES.Customer ? (
-        <Stack.Screen name="Customer" component={CustomerStackNavigator} />
+      {role === ROLES.Customer ? (
+        <>
+          <Stack.Screen name="Customer" component={CustomerStackNavigator} />
+          <Stack.Screen name="Shared" component={SharedNavigation} />
+        </>
       ) : role === ROLES.Cashier ? (
         <Stack.Screen name="Cashier" component={CashierStackNavigator} />
+      ) : role === ROLES.Guest ? (
+        <>
+          <Stack.Screen name="Guest" component={GuestNavigator} />
+          <Stack.Screen name="Shared" component={SharedNavigation} />
+        </>
       ) : (
         <Stack.Screen name="Auth" component={AuthNavigation} />
       )}

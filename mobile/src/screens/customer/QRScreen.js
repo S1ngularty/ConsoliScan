@@ -1,15 +1,10 @@
 import React, { useEffect, useState, useRef } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  Alert,
-  Animated
-} from "react-native";
+import { View, Text, StyleSheet, Alert, Animated } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import QRCode from "react-native-qrcode-svg";
 import { io } from "socket.io-client";
 import { SOCKET_API } from "../../constants/config";
+import { useSelector } from "react-redux";
 
 export default function CheckoutQRScreen({ route, navigation }) {
   const { checkoutCode, expiresAt, token } = route.params;
@@ -17,8 +12,9 @@ export default function CheckoutQRScreen({ route, navigation }) {
   const [status, setStatus] = useState("PROCESSING");
   const [totals, setTotals] = useState(null);
   const [orderId, setOrderId] = useState(null);
-  const [orderData, setOrderData] = useState({})
-  const [cashier, setCashier] = useState("")
+  const [orderData, setOrderData] = useState({});
+  const [cashier, setCashier] = useState("");
+  const userState = useSelector((state) => state.auth);
 
   // Animation for smooth progress bar
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -34,20 +30,26 @@ export default function CheckoutQRScreen({ route, navigation }) {
 
   // Calculate progress percentage based on status
   const getProgressPercentage = () => {
-    switch(status) {
-      case "PROCESSING": return 20; // 1 out of 5 steps (20%)
-      case "SCANNED": return 40;    // 2 out of 5 steps (40%)
-      case "LOCKED": return 60;     // 3 out of 5 steps (60%)
-      case "PAID": return 80;       // 4 out of 5 steps (80%)
-      case "COMPLETE": return 100;  // 5 out of 5 steps (100%)
-      default: return 20;
+    switch (status) {
+      case "PROCESSING":
+        return 20; // 1 out of 5 steps (20%)
+      case "SCANNED":
+        return 40; // 2 out of 5 steps (40%)
+      case "LOCKED":
+        return 60; // 3 out of 5 steps (60%)
+      case "PAID":
+        return 80; // 4 out of 5 steps (80%)
+      case "COMPLETE":
+        return 100; // 5 out of 5 steps (100%)
+      default:
+        return 20;
     }
   };
 
   // Animate progress bar when status changes
   useEffect(() => {
     const targetProgress = getProgressPercentage();
-    
+
     Animated.timing(progressAnim, {
       toValue: targetProgress,
       duration: 500,
@@ -57,13 +59,19 @@ export default function CheckoutQRScreen({ route, navigation }) {
 
   // Get step index for visual indicators
   const getCompletedSteps = () => {
-    switch(status) {
-      case "PROCESSING": return 1;
-      case "SCANNED": return 2;
-      case "LOCKED": return 3;
-      case "PAID": return 4;
-      case "COMPLETE": return 5;
-      default: return 1;
+    switch (status) {
+      case "PROCESSING":
+        return 1;
+      case "SCANNED":
+        return 2;
+      case "LOCKED":
+        return 3;
+      case "PAID":
+        return 4;
+      case "COMPLETE":
+        return 5;
+      default:
+        return 1;
     }
   };
 
@@ -90,7 +98,7 @@ export default function CheckoutQRScreen({ route, navigation }) {
     socket.on("checkout:scanned", ({ cashier, status, totals }) => {
       console.log("checkout:scanned", cashier, status, totals);
       setStatus("SCANNED");
-      setCashier(cashier)
+      setCashier(cashier);
       if (totals) setTotals(totals);
     });
 
@@ -100,20 +108,18 @@ export default function CheckoutQRScreen({ route, navigation }) {
       if (checkoutData?.totals) setTotals(checkoutData.totals);
     });
 
-    socket.on("checkout:paid",({})=>{
-      setStatus("PAID")
-    })
+    socket.on("checkout:paid", ({}) => {
+      setStatus("PAID");
+    });
 
     socket.on("checkout:complete", ({ orderId, orderData }) => {
       setOrderId(orderId);
       setStatus("COMPLETE");
-      
+
       setTimeout(() => {
-        navigation.navigate("Reciept", { 
-          orderId, 
-          checkoutCode,
-          orderData,
-          cashier
+        navigation.navigate("Shared", {
+          screen: "Reciept",
+          params: { orderId, checkoutCode, orderData, cashier },
         });
       }, 1500);
     });
@@ -122,7 +128,7 @@ export default function CheckoutQRScreen({ route, navigation }) {
       Alert.alert(
         "Checkout Cancelled",
         reason || "The checkout was cancelled by the cashier.",
-        [{ text: "OK", onPress: () => navigation.goBack() }]
+        [{ text: "OK", onPress: () => navigation.goBack() }],
       );
     });
 
@@ -130,7 +136,7 @@ export default function CheckoutQRScreen({ route, navigation }) {
       Alert.alert(
         "Checkout Expired",
         "Your checkout session has expired. Please try again.",
-        [{ text: "OK", onPress: () => navigation.goBack() }]
+        [{ text: "OK", onPress: () => navigation.goBack() }],
       );
     });
 
@@ -184,7 +190,10 @@ export default function CheckoutQRScreen({ route, navigation }) {
         <Text style={styles.totalsTitle}>Order Total</Text>
         <View style={styles.totalsRow}>
           <Text style={styles.finalTotalValue}>
-            ₱{totals.finalTotal?.toFixed(2) || totals.subtotal?.toFixed(2) || "0.00"}
+            ₱
+            {totals.finalTotal?.toFixed(2) ||
+              totals.subtotal?.toFixed(2) ||
+              "0.00"}
           </Text>
         </View>
       </View>
@@ -194,7 +203,7 @@ export default function CheckoutQRScreen({ route, navigation }) {
   // Interpolate the animated value for width
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, 100],
-    outputRange: ['0%', '100%']
+    outputRange: ["0%", "100%"],
   });
 
   return (
@@ -235,11 +244,8 @@ export default function CheckoutQRScreen({ route, navigation }) {
         <View style={styles.progressContainer}>
           {/* Smooth Animated Progress Bar */}
           <View style={styles.progressBarBackground}>
-            <Animated.View 
-              style={[
-                styles.progressBarFill,
-                { width: progressWidth }
-              ]} 
+            <Animated.View
+              style={[styles.progressBarFill, { width: progressWidth }]}
             />
           </View>
 
@@ -247,14 +253,22 @@ export default function CheckoutQRScreen({ route, navigation }) {
           <View style={styles.stepsContainer}>
             {steps.map((step, index) => (
               <View key={step.key} style={styles.stepIndicator}>
-                <View style={[
-                  styles.stepDot,
-                  index < completedSteps ? styles.stepDotCompleted : styles.stepDotPending
-                ]} />
-                <Text style={[
-                  styles.stepLabel,
-                  index < completedSteps ? styles.stepLabelCompleted : styles.stepLabelPending
-                ]}>
+                <View
+                  style={[
+                    styles.stepDot,
+                    index < completedSteps
+                      ? styles.stepDotCompleted
+                      : styles.stepDotPending,
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.stepLabel,
+                    index < completedSteps
+                      ? styles.stepLabelCompleted
+                      : styles.stepLabelPending,
+                  ]}
+                >
                   {step.label}
                 </Text>
               </View>

@@ -25,7 +25,7 @@ const HomeScreen = ({ navigation }) => {
     used: 65,
     total: 125,
   });
-  
+
   const userState = useSelector((state) => state.auth);
   const dispatch = useDispatch();
 
@@ -38,7 +38,7 @@ const HomeScreen = ({ navigation }) => {
     try {
       if (userState.isLoggedIn) {
         dispatch(getCartFromServer());
-        
+
         // Load scan history
         const scanHistory = await AsyncStorage.getItem("scanHistory");
         if (scanHistory) {
@@ -46,7 +46,7 @@ const HomeScreen = ({ navigation }) => {
           // Get last 3 scans
           setRecentScans(parsedHistory.slice(0, 3));
         }
-        
+
         // Mock API call for points and cap
         setTimeout(() => {
           setPoints(1420);
@@ -108,10 +108,7 @@ const HomeScreen = ({ navigation }) => {
   // Local sub-component for Recent Scan Items
   const TransactionItem = ({ product, price, date, isEligible }) => (
     <TouchableOpacity style={styles.transRow} activeOpacity={0.8}>
-      <View style={[
-        styles.transIcon,
-        isEligible && styles.eligibleIcon
-      ]}>
+      <View style={[styles.transIcon, isEligible && styles.eligibleIcon]}>
         <MaterialCommunityIcons
           name="barcode-scan"
           size={20}
@@ -124,9 +121,7 @@ const HomeScreen = ({ navigation }) => {
       </View>
       <View style={{ alignItems: "flex-end" }}>
         <Text style={styles.transPrice}>₱{price}</Text>
-        {isEligible && (
-          <Text style={styles.eligibleBadge}>Eligible</Text>
-        )}
+        {isEligible && <Text style={styles.eligibleBadge}>Eligible</Text>}
       </View>
     </TouchableOpacity>
   );
@@ -161,26 +156,26 @@ const HomeScreen = ({ navigation }) => {
           ₱{weeklyCap.used}/{weeklyCap.total}
         </Text>
       </View>
-      
+
       <View style={styles.progressContainer}>
         <View style={styles.progressBar}>
-          <View 
+          <View
             style={[
-              styles.progressFill, 
-              { 
+              styles.progressFill,
+              {
                 width: `${calculateCapPercentage()}%`,
-                backgroundColor: getCapColor()
-              }
-            ]} 
+                backgroundColor: getCapColor(),
+              },
+            ]}
           />
         </View>
         <View style={styles.capInfo}>
-          <Text style={[
-            styles.capStatus,
-            { color: getCapColor() }
-          ]}>
-            {calculateCapPercentage() >= 100 ? 'Cap Reached' : 
-             calculateCapPercentage() >= 80 ? 'Almost Full' : 'Good Progress'}
+          <Text style={[styles.capStatus, { color: getCapColor() }]}>
+            {calculateCapPercentage() >= 100
+              ? "Cap Reached"
+              : calculateCapPercentage() >= 80
+                ? "Almost Full"
+                : "Good Progress"}
           </Text>
           <Text style={styles.capRemaining}>
             ₱{weeklyCap.total - weeklyCap.used} remaining
@@ -197,7 +192,7 @@ const HomeScreen = ({ navigation }) => {
         <MaterialCommunityIcons name="lightbulb-on" size={20} color="#FF9800" />
         <Text style={styles.quickTipsTitle}>How to Use Our App</Text>
       </View>
-      
+
       <View style={styles.tipsContainer}>
         <View style={styles.tipItem}>
           <View style={styles.tipNumber}>
@@ -207,7 +202,7 @@ const HomeScreen = ({ navigation }) => {
             Scan product barcodes to check prices and eligibility
           </Text>
         </View>
-        
+
         <View style={styles.tipItem}>
           <View style={styles.tipNumber}>
             <Text style={styles.tipNumberText}>2</Text>
@@ -216,7 +211,7 @@ const HomeScreen = ({ navigation }) => {
             Apply for PWD/Senior discounts in your profile
           </Text>
         </View>
-        
+
         <View style={styles.tipItem}>
           <View style={styles.tipNumber}>
             <Text style={styles.tipNumberText}>3</Text>
@@ -225,7 +220,7 @@ const HomeScreen = ({ navigation }) => {
             Track your weekly ₱125 discount cap progress
           </Text>
         </View>
-        
+
         <View style={styles.tipItem}>
           <View style={styles.tipNumber}>
             <Text style={styles.tipNumberText}>4</Text>
@@ -246,9 +241,13 @@ const HomeScreen = ({ navigation }) => {
       <Text style={styles.emptyScansText}>
         Start scanning products to build your history
       </Text>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.emptyScanButton}
-        onPress={() => navigation.navigate("Scan")}
+        onPress={() =>
+          navigation.navigate("Shared", {
+            screen: "Scan",
+          })
+        }
       >
         <MaterialCommunityIcons name="qrcode-scan" size={18} color="#fff" />
         <Text style={styles.emptyScanButtonText}>Scan Your First Product</Text>
@@ -276,15 +275,19 @@ const HomeScreen = ({ navigation }) => {
       <View style={styles.navBar}>
         <View>
           <Text style={styles.greetingText}>
-            {new Date().getHours() < 12 ? 'Good Morning' : 
-             new Date().getHours() < 18 ? 'Good Afternoon' : 'Good Evening'},
+            {new Date().getHours() < 12
+              ? "Good Morning"
+              : new Date().getHours() < 18
+                ? "Good Afternoon"
+                : "Good Evening"}
+            ,
           </Text>
           <Text style={styles.userNameText}>
             {userState.user?.name?.split(" ")[0] || "Welcome back"}
           </Text>
         </View>
         <View style={styles.navActions}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.notifCircle}
             onPress={() => navigation.navigate("Notifications")}
           >
@@ -315,9 +318,9 @@ const HomeScreen = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
-            onRefresh={onRefresh} 
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
             colors={["#00A86B"]}
             tintColor="#00A86B"
           />
@@ -356,14 +359,22 @@ const HomeScreen = ({ navigation }) => {
           <ActionCard
             title="Scan Product"
             icon="barcode-scan"
-            onPress={() => navigation.navigate("Scan")}
+            onPress={() =>
+              navigation.navigate("Shared", {
+                screen: "Scan",
+              })
+            }
             isPrimary
             badge="New"
           />
           <ActionCard
             title="My Cart"
             icon="basket-outline"
-            onPress={() => navigation.navigate("Cart")}
+            onPress={() =>
+              navigation.navigate("Shared", {
+                screen: "Cart",
+              })
+            }
             badge="3"
           />
           <ActionCard
@@ -421,7 +432,11 @@ const HomeScreen = ({ navigation }) => {
             description="Track all your grocery scans"
             icon="qrcode-scan"
             color="#0f172a"
-            onPress={() => navigation.navigate("Scan")}
+            onPress={() =>
+              navigation.navigate("Shared", {
+                screen: "Scan",
+              })
+            }
           />
           <OfferCard
             title="Weekly Cap Alert"
@@ -446,7 +461,11 @@ const HomeScreen = ({ navigation }) => {
               key={index}
               product={scan.name || "Scanned Product"}
               price={scan.price || "0.00"}
-              date={scan.scannedAt ? new Date(scan.scannedAt).toLocaleDateString() : "Recent"}
+              date={
+                scan.scannedAt
+                  ? new Date(scan.scannedAt).toLocaleDateString()
+                  : "Recent"
+              }
               isEligible={scan.isEligible || false}
             />
           ))
@@ -457,7 +476,11 @@ const HomeScreen = ({ navigation }) => {
         {/* --- TIPS CARD --- */}
         <TouchableOpacity
           style={styles.tipsCard}
-          onPress={() => navigation.navigate("Help")}
+          onPress={() =>
+            navigation.navigate("Shared", {
+              screen: "Scan",
+            })
+          }
           activeOpacity={0.7}
         >
           <MaterialCommunityIcons
@@ -482,7 +505,11 @@ const HomeScreen = ({ navigation }) => {
       {/* --- FLOATING SCAN BUTTON --- */}
       <TouchableOpacity
         style={styles.floatingScan}
-        onPress={() => navigation.navigate("Scan")}
+        onPress={() =>
+          navigation.navigate("Shared", {
+            screen: "Scan",
+          })
+        }
         activeOpacity={0.9}
       >
         <MaterialCommunityIcons name="qrcode-scan" size={22} color="#fff" />
