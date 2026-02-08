@@ -1,7 +1,8 @@
 const Order = require("../models/orderModel");
-const Product = require("../models/productModel")
+const Product = require("../models/productModel");
 const blockchainService = require("./blockchainService");
 const CheckoutQueue = require("../models/checkoutQueueModel");
+const { emitCheckout } = require("../helper/socketEmitter");
 
 async function confirmOrder(request) {
   if (!request.body) throw new Error("empty content request");
@@ -23,19 +24,22 @@ async function confirmOrder(request) {
 
   CheckoutQueue.findByIdAndDelete(orderId);
 
-  const bulkOps = order.items.map((item)=>({
-    updateOne:{
-      filter:{
+  const bulkOps = order.items.map((item) => ({
+    updateOne: {
+      filter: {
         _id: item.product,
       },
-      update:{
-        $inc:{stockQuantity: -item.quantity}
-      }
+      update: {
+        $inc: { stockQuantity: -item.quantity },
+      },
+    },
+  }));
 
-    }
-  }))
+  Product.bulkWrite(bulkOps);
 
-  Product.bulkWrite(bulkOps)
+  emitCheckout(order.checkoutCode, "checkout:COMPLETE", {
+    status: "COMPLETE",
+  });
 
   return order;
 }

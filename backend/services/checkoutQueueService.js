@@ -81,3 +81,33 @@ exports.lockedOrder = async (request) => {
   });
   return result;
 };
+
+exports.payOrder = async (request) => {
+  if (!request.body) throw new Error("undefined content request");
+  const { checkoutCode } = request.params;
+  const { userId } = request.user;
+
+  const queue = await Queue.findOneAndUpdate(
+    {
+      checkoutCode,
+      cashier: userId,
+      status: "LOCKED",
+    },
+    {
+      status: "PAID",
+      paidAt: Date.now(),
+    },
+  ).populate({
+    path: "items.product",
+    select: "checkoutCode",
+  });
+
+  if (!queue) throw new Error("failed to update checkout status");
+
+  checkoutEmitter.emitCheckout(checkoutCode, "checkout:PAID", {
+    status: queue.status,
+    totals: queue.totals,
+    cashier: queue.name,
+  });
+  return result;
+};

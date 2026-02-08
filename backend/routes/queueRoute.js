@@ -8,5 +8,7 @@ router.route("/checkout/:checkoutCode")
 .get(authMiddlware.verifyToken, queueController.getCustomerOrder)
 .put(authMiddlware.verifyToken,queueController.lockCustomerOrder)
 
+router.route("/checkout/paid/:checkoutCode").put(authMiddlware.verifyToken,queueController.payCustomerOrder)
+
 
 module.exports = router
