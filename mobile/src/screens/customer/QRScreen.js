@@ -17,7 +17,9 @@ export default function CheckoutQRScreen({ route, navigation }) {
   const [status, setStatus] = useState("PROCESSING");
   const [totals, setTotals] = useState(null);
   const [orderId, setOrderId] = useState(null);
-  
+  const [orderData, setOrderData] = useState({})
+  const [cashier, setCashier] = useState("")
+
   // Animation for smooth progress bar
   const progressAnim = useRef(new Animated.Value(0)).current;
 
@@ -88,6 +90,7 @@ export default function CheckoutQRScreen({ route, navigation }) {
     socket.on("checkout:scanned", ({ cashier, status, totals }) => {
       console.log("checkout:scanned", cashier, status, totals);
       setStatus("SCANNED");
+      setCashier(cashier)
       if (totals) setTotals(totals);
     });
 
@@ -101,15 +104,16 @@ export default function CheckoutQRScreen({ route, navigation }) {
       setStatus("PAID")
     })
 
-    socket.on("checkout:complete", ({ orderId, paymentResult }) => {
+    socket.on("checkout:complete", ({ orderId, orderData }) => {
       setOrderId(orderId);
       setStatus("COMPLETE");
       
       setTimeout(() => {
-        navigation.replace("OrderComplete", { 
+        navigation.navigate("Reciept", { 
           orderId, 
           checkoutCode,
-          paymentResult 
+          orderData,
+          cashier
         });
       }, 1500);
     });

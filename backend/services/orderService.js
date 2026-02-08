@@ -39,6 +39,7 @@ async function confirmOrder(request) {
 
   emitCheckout(order.checkoutCode, "checkout:complete", {
     orderId:order._id,
+    orderData:order,
     status: "COMPLETE",
   });
 

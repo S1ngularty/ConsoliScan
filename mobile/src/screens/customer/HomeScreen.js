@@ -962,7 +962,7 @@ const styles = StyleSheet.create({
   // Floating Button
   floatingScan: {
     position: "absolute",
-    bottom: Platform.OS === "ios" ? 100 : 80,
+    bottom: Platform.OS === "ios" ? 50 : 20,
     left: 24,
     right: 24,
     height: 56,
