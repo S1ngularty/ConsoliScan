@@ -30,7 +30,7 @@ export const promoService = {
   getPromos: async (params = {}) => {
     try {
       const response = await axiosInstance.get("/promos", { params });
-      return response.data;
+      return response.data?.result;
     } catch (error) {
       throw error.response?.data || error;
     }
@@ -40,7 +40,7 @@ export const promoService = {
   getPromoById: async (id) => {
     try {
       const response = await axiosInstance.get(`/promos/${id}`);
-      return response.data;
+      return response.data?.result;
     } catch (error) {
       throw error.response?.data || error;
     }
@@ -50,7 +50,7 @@ export const promoService = {
   createPromo: async (promoData) => {
     try {
       const response = await axiosInstance.post("/promos", promoData);
-      return response.data;
+      return response.data?.result;
     } catch (error) {
       throw error.response?.data || error;
     }
@@ -60,7 +60,7 @@ export const promoService = {
   updatePromo: async (id, promoData) => {
     try {
       const response = await axiosInstance.put(`/promos/${id}`, promoData);
-      return response.data;
+      return response.data?.result;
     } catch (error) {
       throw error.response?.data || error;
     }
@@ -72,7 +72,7 @@ export const promoService = {
       const response = await axiosInstance.delete(`/promos/${id}`);
       return response.data;
     } catch (error) {
-      throw error.response?.data || error;
+      throw error.response?.data?.result || error;
     }
   },
 
@@ -82,7 +82,7 @@ export const promoService = {
       const response = await axiosInstance.patch(`/promos/${id}/status`, {
         active,
       });
-      return response.data;
+      return response.data?.result;
     } catch (error) {
       throw error.response?.data || error;
     }
@@ -97,7 +97,7 @@ export const promoService = {
       });
       return response.data;
     } catch (error) {
-      throw error.response?.data || error;
+      throw error.response?.data?.result || error;
     }
   },
 
@@ -108,7 +108,7 @@ export const promoService = {
         code,
         cartId,
       });
-      return response.data;
+      return response.data?.result;
     } catch (error) {
       throw error.response?.data || error;
     }
