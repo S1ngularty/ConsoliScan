@@ -187,7 +187,7 @@ const Sidebar = ({ breadcrumb }) => {
              {
               name: "Loyalty Points",
               icon: <Coins size={18} />,
-              navigate: "/admin/loyalty",
+              navigate: "/admin/discount/loyalty",
               location: "Admin / Discount / Loyalty Points ",
             },
           ],

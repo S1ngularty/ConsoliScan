@@ -37,4 +37,4 @@ const promoSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-module.eports = mongoose.Model("Promo", promoSchema);
+module.eports = mongoose.model("Promo", promoSchema);

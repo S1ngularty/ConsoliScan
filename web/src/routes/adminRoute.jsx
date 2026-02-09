@@ -8,6 +8,7 @@ import ProductPage from "../pages/admin/product/ProductPage"
 import CategoryPage from "../pages/admin/category/CategoryPage"
 import BeneficiaryManagement from "../pages/admin/user/UserBeneficiaryPage";
 import PromoListPage from "../pages/admin/discount/PromoPage";
+import LoyaltyConfigPage from "../pages/admin/discount/LoyaltyConfigPage";
 
 function adminRoute() {
   return [
@@ -54,6 +55,11 @@ function adminRoute() {
     {
       component: <PromoListPage></PromoListPage>,
       path: "/admin/discount/promo",
+      index: false,
+    },
+     {
+      component: <LoyaltyConfigPage></LoyaltyConfigPage>,
+      path: "/admin/discount/loyalty",
       index: false,
     },
   ];
