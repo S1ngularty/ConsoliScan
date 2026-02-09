@@ -12,6 +12,8 @@ import {
   Scale,
   Percent,
   Users,
+  Zap,
+  TrendingDown,
 } from "lucide-react";
 import "../../styles/admin/product/ProductModalStyle.css";
 import {
@@ -30,6 +32,8 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
           sku: "",
           price: "",
           srp: "",
+          salePrice: "",
+          saleActive: false,
           barcode: "",
           barcodeType: "UPC",
           stockQuantity: "",
@@ -52,9 +56,6 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
 
   // Unit options from your Schema
   const unitOptions = ["kg", "g", "pc", "liter", "ml", "pack"];
-
-  // Discount scopes
-  // const discountScopeOptions = ["PWD", "SENIOR", "PROMO"];
 
   // Barcode Types from your Schema Enum
   const barcodeTypes = [
@@ -84,7 +85,9 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
   useEffect(() => {
     if (isOpen && data) {
       setProductInfo({ 
-        ...data
+        ...data,
+        salePrice: data.salePrice || "",
+        saleActive: data.saleActive || false,
       });
       setSelectedImageIndex(0);
       setErrors({});
@@ -95,6 +98,8 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
         sku: "",
         price: "",
         srp: "",
+        salePrice: "",
+        saleActive: false,
         barcode: "",
         barcodeType: "UPC",
         stockQuantity: "",
@@ -167,6 +172,13 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
         else if (value && parseFloat(value) < 0) error = "SRP cannot be negative";
         break;
 
+      case "salePrice":
+        if (value && isNaN(value)) error = "Sale price must be a number";
+        else if (value && parseFloat(value) < 0) error = "Sale price cannot be negative";
+        else if (value && parseFloat(value) > parseFloat(productInfo.price || 0)) 
+          error = "Sale price cannot be higher than regular price";
+        break;
+
       case "stockQuantity":
         if (!value && value !== 0) error = "Stock quantity is required";
         else if (isNaN(value)) error = "Stock quantity must be a number";
@@ -209,6 +221,11 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
     newErrors.category = validateField("category", productInfo.category);
     newErrors.unit = validateField("unit", productInfo.unit);
 
+    // Validate sale price if sale is active
+    if (productInfo.saleActive) {
+      newErrors.salePrice = validateField("salePrice", productInfo.salePrice);
+    }
+
     // Validate at least one image for new products
     if (!data && (!productInfo.images || productInfo.images.length === 0)) {
       newErrors.images = "At least one product image is required";
@@ -230,19 +247,6 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
   const handleCheckbox = (field) => {
     setProductInfo((prev) => ({ ...prev, [field]: !prev[field] }));
   };
-
-  // const handleDiscountScope = (scope) => {
-  //   const currentScopes = productInfo.discountScopes || [];
-  //   let newScopes;
-    
-  //   if (currentScopes.includes(scope)) {
-  //     newScopes = currentScopes.filter(s => s !== scope);
-  //   } else {
-  //     newScopes = [...currentScopes, scope];
-  //   }
-    
-  //   setProductInfo((prev) => ({ ...prev, discountScopes: newScopes }));
-  // };
 
   const handleBlur = (field) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
@@ -440,6 +444,18 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
     }
   };
 
+  // Calculate discount percentage
+  const calculateDiscountPercentage = () => {
+    if (productInfo.saleActive && productInfo.salePrice && productInfo.price) {
+      const regularPrice = parseFloat(productInfo.price);
+      const salePrice = parseFloat(productInfo.salePrice);
+      if (regularPrice > 0 && salePrice < regularPrice) {
+        return Math.round(((regularPrice - salePrice) / regularPrice) * 100);
+      }
+    }
+    return 0;
+  };
+
   return (
     <div className="modal-overlay" onClick={handleOverlayClick}>
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
@@ -603,6 +619,55 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
                     )}
                   </div>
                 </div>
+              </div>
+
+              <div>
+                <div className="section-label">
+                  <Zap size={14} /> Sale Settings
+                </div>
+                <div className="checkbox-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={productInfo.saleActive || false}
+                      onChange={() => handleCheckbox("saleActive")}
+                    />
+                    <span className="checkmark"></span>
+                    <span className="checkbox-text">
+                      Activate Sale Price
+                    </span>
+                  </label>
+                </div>
+
+                {productInfo.saleActive && (
+                  <div className="input-group" data-field="salePrice">
+                    <label>Sale Price ($)</label>
+                    <div className="input-with-icon">
+                      <TrendingDown size={14} className="input-icon" />
+                      <input
+                        type="number"
+                        value={productInfo.salePrice || ""}
+                        placeholder="0.00"
+                        step="0.01"
+                        min="0"
+                        onChange={(e) => handleInput("salePrice", e.target.value)}
+                        onBlur={() => handleBlur("salePrice")}
+                        className={errors.salePrice ? "input-error" : ""}
+                      />
+                    </div>
+                    {errors.salePrice && (
+                      <div className="error-message">
+                        <AlertCircle size={12} />
+                        <span>{errors.salePrice}</span>
+                      </div>
+                    )}
+                    {productInfo.salePrice && productInfo.price && parseFloat(productInfo.salePrice) < parseFloat(productInfo.price) && (
+                      <div className="discount-badge">
+                        <span>{calculateDiscountPercentage()}% OFF</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -777,24 +842,6 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
               </div>
 
               <div>
-                {/* <div className="section-label">
-                  <Scale size={14} /> Product Classification
-                </div>
-
-                <div className="checkbox-group">
-                  <label className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={productInfo.priceControlled || false}
-                      onChange={() => handleCheckbox("priceControlled")}
-                    />
-                    <span className="checkmark"></span>
-                    <span className="checkbox-text">
-                      Price Controlled (DTI Regulated)
-                    </span>
-                  </label>
-                </div> */}
-
                 <div className="checkbox-group">
                   <label className="checkbox-label">
                     <input
@@ -809,32 +856,6 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
                   </label>
                 </div>
               </div>
-
-              {/* <div>
-                <div className="section-label">
-                  <Percent size={14} /> Discount Eligibility
-                </div>
-                <div className="checkbox-group">
-                  <div className="checkbox-text">
-                    <Users size={14} />
-                    Applicable Discounts:
-                  </div>
-                  {discountScopeOptions.map((scope) => (
-                    <label key={scope} className="checkbox-label">
-                      <input
-                        type="checkbox"
-                        checked={productInfo.discountScopes?.includes(scope) || false}
-                        onChange={() => handleDiscountScope(scope)}
-                        disabled={productInfo.excludedFromDiscount}
-                      />
-                      <span className="checkmark"></span>
-                      <span className="checkbox-text">
-                        {scope}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div> */}
 
               <div>
                 <div className="section-label">

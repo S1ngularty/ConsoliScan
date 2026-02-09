@@ -61,6 +61,15 @@ const productSchema = new mongoose.Schema(
       default: null, // For DTI / price-controlled goods
     },
 
+    salePrice: {
+      type: Number,
+      default: null,
+    },
+    saleActive: {
+      type: Boolean,
+      default: false,
+    },
+
     // =========================
     // INVENTORY
     // =========================
@@ -96,7 +105,7 @@ const productSchema = new mongoose.Schema(
       default: null,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // =========================
