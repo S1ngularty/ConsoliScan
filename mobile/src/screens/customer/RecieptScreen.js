@@ -119,7 +119,9 @@ const ReceiptScreen = ({ route, navigation }) => {
   };
 
   const handleDone = () => {
-    navigation.navigate("HomeTabs");
+    navigation.navigate("HomeTabs",{
+      screen:"Home"
+    });
   };
 
   return (

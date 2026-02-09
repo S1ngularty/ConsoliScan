@@ -16,98 +16,102 @@ const WEEKLY_CAP = 125;
 const PURCHASE_CAP = 2500;
 
 const PaymentScreen = ({ route, navigation }) => {
-  const { checkoutData, checkoutCode } = route.params;
+  const { checkoutData, checkoutCode, appUser } = route.params;
+  console.log("PaymentScreen checkoutData:", checkoutData);
+  console.log(appUser)
+  // Extract user eligibility and verification from the scanned data
+  const userEligibility = checkoutData?.userEligibility || {};
+  const { isSenior = false, isPWD = false, verified = false } = userEligibility;
+  const systemVerified = verified || checkoutData?.customerVerification?.verified || false;
+  const systemVerificationType = checkoutData?.customerVerification?.type || null;
   
-  // Extract user eligibility from the scanned data
-  const { isSenior = false, isPWD = false } = checkoutData?.userEligibility || {};
-  const userIsEligible = isSenior || isPWD;
+  // Get pre-calculated discount data
+  const discountSnapshot = checkoutData?.discountSnapshot || {};
+  const systemDiscountApplied = discountSnapshot.discountApplied || 0;
+  const systemBnpcSubtotal = discountSnapshot.bnpcSubtotal || 0;
+  const systemEligible = discountSnapshot.eligible || false;
   
-  // Check if system has already verified and calculated BNPC
-  const hasSystemVerification = checkoutData?.discountSnapshot?.eligible !== undefined;
-  const systemVerifiedEligible = checkoutData?.discountSnapshot?.eligible || false;
+  // Get weekly usage from system
+  const weeklyUsageSnapshot = checkoutData?.weeklyUsageSnapshot || {};
+  const systemBookletUsedBefore = weeklyUsageSnapshot.discountUsed || 0;
   
-  // Use pre-calculated data if available
-  const preCalculated = checkoutData?.discountSnapshot || {};
-  
+  // Get totals
   const subtotal = checkoutData?.totals?.subtotal || 0;
+  const bnpcSubtotal = checkoutData?.totals?.bnpcSubtotal || checkoutData?.items
+    ?.filter(item => item.isBNPCProduct)
+    .reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0) || 0;
   const voucher = checkoutData?.voucher?.discountAmount || 0;
   
-  // Calculate eligible subtotal
-  const eligibleSubtotal = useMemo(() => {
-    if (systemVerifiedEligible && preCalculated.bnpcSubtotal !== undefined) {
-      return preCalculated.bnpcSubtotal;
-    }
-    return checkoutData?.items
-      ?.filter(i => i.isBNPCEligible)
-      .reduce(( sum, i) => sum + i.unitPrice * i.quantity, 0) || 0;
-  }, [checkoutData?.items, preCalculated.bnpcSubtotal, systemVerifiedEligible]);
+  // Get BNPC products for display
+  const bnpcProducts = checkoutData?.bnpcProducts || [];
+  const hasBNPCProducts = bnpcProducts.length > 0;
 
-  // Initial values from system
-  const initialBookletUsed = preCalculated.weeklyDiscountUsed || 0;
-  const initialPurchaseUsed = preCalculated.weeklyPurchaseUsed || 0;
-  
   // State for cashier inputs
   const [bookletUsedInput, setBookletUsedInput] = useState(
-    systemVerifiedEligible ? initialBookletUsed.toString() : ''
+    systemVerified && systemDiscountApplied > 0 ? systemBookletUsedBefore.toString() : '0'
   );
-  const [additionalAppliedInput, setAdditionalAppliedInput] = useState('');
   const [cashReceivedInput, setCashReceivedInput] = useState('');
   
   // Parse inputs
   const bookletUsed = Math.min(parseFloat(bookletUsedInput) || 0, WEEKLY_CAP);
-  const purchaseUsed = Math.min(initialPurchaseUsed, PURCHASE_CAP);
-  const additionalApplied = parseFloat(additionalAppliedInput) || 0;
   const cashReceived = parseFloat(cashReceivedInput) || 0;
+  
+  // Manual verification state (for cashier override) - Initialize based on system verification
+  const [manualVerification, setManualVerification] = useState({
+    verified: systemVerified,
+    type: systemVerificationType, // 'senior', 'pwd', 'regular', or null
+    override: false,
+  });
+
+  // Calculate 5% discount based on CURRENT verification status
+  const fivePercentDiscount = useMemo(() => {
+    // Determine current verification status
+    const currentVerificationType = manualVerification.verified ? 
+      manualVerification.type : systemVerificationType;
+    
+    const isEligibleForDiscount = (manualVerification.verified || systemVerified) && 
+      (currentVerificationType === 'senior' || currentVerificationType === 'pwd');
+    
+    if (!isEligibleForDiscount || bnpcSubtotal === 0) return 0;
+    
+    const discountAmount = bnpcSubtotal * 0.05;
+    const remainingDiscountCap = WEEKLY_CAP - bookletUsed;
+    return Math.min(discountAmount, remainingDiscountCap);
+  }, [manualVerification, systemVerified, systemVerificationType, bnpcSubtotal, bookletUsed]);
   
   // Calculate remaining caps
   const remainingDiscountCap = Math.max(WEEKLY_CAP - bookletUsed, 0);
-  const remainingPurchaseCap = Math.max(PURCHASE_CAP - purchaseUsed, 0);
+  const remainingPurchaseCap = Math.max(PURCHASE_CAP - bnpcSubtotal, 0);
   
-  // AUTO-CALCULATE MAXIMUM DISCOUNT (system suggestion)
-  const autoCalculatedDiscount = useMemo(() => {
-    if (!userIsEligible && !systemVerifiedEligible) return 0;
-    
-    // Maximum is the smallest of: remaining discount cap, remaining purchase cap, eligible subtotal
-    const maxPossible = Math.min(
-      remainingDiscountCap,
-      remainingPurchaseCap,
-      eligibleSubtotal
-    );
-    
-    // Calculate 20% discount on eligible items
-    const twentyPercentDiscount = eligibleSubtotal * 0.20;
-    
-    // Return the smaller of 20% discount or max possible
-    return Math.min(twentyPercentDiscount, maxPossible);
-  }, [userIsEligible, systemVerifiedEligible, remainingDiscountCap, remainingPurchaseCap, eligibleSubtotal]);
-  
-  // Total discount (auto-calculated + additional cashier input)
-  const totalDiscount = autoCalculatedDiscount + additionalApplied;
-  
-  // Final total calculation
-  const finalTotal = Math.max(subtotal - totalDiscount - voucher, 0);
-  
-  // Change calculation
+  // Final totals
+  const finalTotal = Math.max(subtotal - fivePercentDiscount - voucher, 0);
   const changeDue = cashReceived - finalTotal;
-  
-  // Handle manual verification
-  const [manualVerification, setManualVerification] = useState({
-    verified: false,
-    type: '', // 'senior' or 'pwd'
-  });
 
   const handleManualVerify = (type) => {
     Alert.alert(
-      'Manual Verification',
-      `Verify ${type === 'senior' ? 'Senior Citizen' : 'PWD'} ID`,
+      `Verify ${type === 'senior' ? 'Senior Citizen' : 'PWD'}`,
+      'Check ID and purchase booklet',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Cancel', 
+          style: 'cancel',
+          onPress: () => {
+            // Don't reset if already verified by system
+            if (!systemVerified) {
+              setManualVerification({ verified: false, type: null, override: false });
+            }
+          }
+        },
         {
           text: 'Confirm',
           onPress: () => {
-            setManualVerification({ verified: true, type });
-            // Auto-fill booklet used with typical starting value if empty
-            if (!bookletUsedInput) {
+            setManualVerification({
+              verified: true,
+              type: type,
+              override: true, // Mark as manual override
+            });
+            
+            if (!bookletUsedInput && bnpcSubtotal > 0) {
               setBookletUsedInput('0');
             }
           },
@@ -116,74 +120,158 @@ const PaymentScreen = ({ route, navigation }) => {
     );
   };
 
-  const handleFinalize =async () => {
-   try {
-     if (cashReceived < finalTotal) {
-      Alert.alert('Insufficient Cash', 'Cash received is less than total amount.');
-      return;
-    }
-
-    // Validation for BNPC limits
-    if (totalDiscount > Math.min(remainingDiscountCap, remainingPurchaseCap, eligibleSubtotal)) {
+  const handleSetRegular = () => {
+    if (hasBNPCProducts) {
       Alert.alert(
-        'Discount Limit Exceeded',
-        'Total discount exceeds maximum allowed. Please adjust.'
+        "No BNPC Discount",
+        "This cart contains BNPC products. If customer is eligible for BNPC discounts, please verify as Senior or PWD.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Continue as Regular",
+            onPress: () => {
+              setManualVerification({
+                verified: true,
+                type: 'regular',
+                override: true
+              });
+              
+              // Clear booklet input for regular customers
+              if (bookletUsedInput !== '') {
+                setBookletUsedInput('');
+              }
+            }
+          },
+        ]
       );
-      return;
+    } else {
+      setManualVerification({
+        verified: true,
+        type: 'regular',
+        override: true
+      });
+      
+      // Clear booklet input for regular customers
+      if (bookletUsedInput !== '') {
+        setBookletUsedInput('');
+      }
     }
-
-    // Create transaction log
-    const transactionLog = {
-      timestamp: new Date().toISOString(),
-      orderId: checkoutData?._id,
-      checkoutCode,
-      customerType: manualVerification.verified 
-        ? manualVerification.type 
-        : (isSenior ? 'senior' : isPWD ? 'pwd' : 'none'),
-      verificationSource: manualVerification.verified ? 'manual' : 'system',
-      amounts: {
-        subtotal,
-        eligibleSubtotal,
-        autoDiscount: autoCalculatedDiscount,
-        additionalDiscount: additionalApplied,
-        totalDiscount,
-        voucherDiscount: voucher,
-        finalTotal,
-        cashReceived,
-        changeDue: Math.max(changeDue, 0),
-      },
-      caps: {
-        bookletUsedBefore: bookletUsed,
-        purchaseUsedBefore: purchaseUsed,
-        remainingDiscountCap,
-        remainingPurchaseCap,
-        bookletUsedAfter: bookletUsed + totalDiscount,
-        purchaseUsedAfter: purchaseUsed + eligibleSubtotal,
-      },
-      cashier: checkoutData?.cashier,
-      items: checkoutData?.items?.length || 0,
-    };
-
-    console.log('TRANSACTION COMPLETED:', transactionLog);
-
-    const result = await payOrder(checkoutCode)
-    
-    // Navigate to receipt
-    navigation.navigate('OrderSummary', {
-      transactionData: transactionLog,
-      orderDetails: checkoutData,
-    });
-
-   } catch (error) {
-    console.error(error)
-   }
   };
 
-  // Auto-focus cash input on mount
-  const cashInputRef = React.useRef();
+  const handleCustomerTypeChange = () => {
+    Alert.alert(
+      'Change Customer Type',
+      'Are you sure you want to change customer type?',
+      [
+        { 
+          text: 'Cancel', 
+          style: 'cancel' 
+        },
+        {
+          text: 'Change',
+          onPress: () => {
+            setManualVerification({ 
+              verified: false, 
+              type: null, 
+              override: true 
+            });
+            
+            // Clear booklet input when resetting verification
+            if (bookletUsedInput !== '') {
+              setBookletUsedInput('');
+            }
+          },
+        },
+      ]
+    );
+  };
 
-  // Determine if BNPC section should be shown
-  const showBNPCSection = userIsEligible || systemVerifiedEligible || manualVerification.verified;
+  const handleFinalize = async () => {
+    try {
+      if (cashReceived < finalTotal) {
+        Alert.alert('Insufficient Cash', 'Cash received is less than total amount.');
+        return;
+      }
+
+      // Determine final verification type
+      const finalVerificationType = manualVerification.verified ? 
+        manualVerification.type : systemVerificationType;
+      
+      // Only check BNPC limits for Senior/PWD
+      if (finalVerificationType === 'senior' || finalVerificationType === 'pwd') {
+        if (bookletUsed + fivePercentDiscount > WEEKLY_CAP) {
+          Alert.alert('Discount Limit Exceeded', 'Total discount exceeds weekly cap of ₱125');
+          return;
+        }
+
+        if (bnpcSubtotal > PURCHASE_CAP) {
+          Alert.alert('Purchase Limit Exceeded', 'BNPC purchase exceeds weekly limit of ₱2,500');
+          return;
+        }
+      }
+
+      // Determine verification source
+      const verificationSource = manualVerification.override ? 'manual' : 
+        (systemVerified ? checkoutData?.customerVerification?.verificationSource || 'system' : 'manual');
+
+      // Create transaction log
+      const transactionLog = {
+        timestamp: new Date().toISOString(),
+        orderId: checkoutData?._id,
+        checkoutCode,
+        appUser: appUser,
+        customerType: finalVerificationType || 'regular',
+        verificationSource: verificationSource,
+        amounts: {
+          subtotal,
+          bnpcSubtotal,
+          discount: fivePercentDiscount,
+          voucherDiscount: voucher,
+          finalTotal,
+          cashReceived,
+          changeDue: Math.max(changeDue, 0),
+        },
+        caps: {
+          bookletUsedBefore: bookletUsed,
+          remainingDiscountCap,
+          remainingPurchaseCap,
+          bookletUsedAfter: bookletUsed + fivePercentDiscount,
+          purchaseUsedAfter: bnpcSubtotal,
+        },
+        cashier: checkoutData?.cashier,
+        items: checkoutData?.items?.length || 0,
+        systemData: {
+          systemVerified: systemVerified,
+          systemVerificationType: systemVerificationType,
+          systemDiscountApplied: systemDiscountApplied,
+          userEligibility: userEligibility,
+          manualOverride: manualVerification.override,
+        },
+      };
+
+      console.log('TRANSACTION COMPLETED:', transactionLog);
+
+      appUser && await payOrder(checkoutCode);
+      
+      // Navigate to receipt
+      navigation.navigate('OrderSummary', {
+        transactionData: transactionLog,
+        orderDetails: checkoutData,
+      });
+
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'Failed to process payment. Please try again.');
+    }
+  };
+
+  // Determine if customer is verified for discount (uses current state)
+  const isCustomerVerifiedForDiscount = manualVerification.verified ? 
+    (manualVerification.type === 'senior' || manualVerification.type === 'pwd') :
+    (systemVerified && (systemVerificationType === 'senior' || systemVerificationType === 'pwd'));
+
+  // Determine if we should show verification options
+  const showVerificationOptions = !manualVerification.verified || manualVerification.type === 'regular';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -198,61 +286,136 @@ const PaymentScreen = ({ route, navigation }) => {
           <Text style={styles.orderCode}>#{checkoutCode}</Text>
         </View>
 
-        {/* Customer Status Badge */}
-        <View style={styles.statusCard}>
-          <View style={styles.statusRow}>
-            <Ionicons 
-              name={systemVerifiedEligible ? "checkmark-circle" : "person-circle"} 
-              size={20} 
-              color={systemVerifiedEligible ? "#10B981" : "#6B7280"} 
-            />
-            <Text style={styles.statusText}>
-              {systemVerifiedEligible 
-                ? `Verified ${isSenior ? 'Senior Citizen' : 'PWD'}`
-                : userIsEligible
-                ? `Eligible ${isSenior ? 'Senior Citizen' : 'PWD'}`
-                : 'Regular Customer'
-              }
+        {/* BNPC Products Warning */}
+        {hasBNPCProducts && !isCustomerVerifiedForDiscount && (
+          <View style={styles.bnpcWarningSection}>
+            <View style={styles.bnpcWarningHeader}>
+              <Ionicons name="warning" size={18} color="#FF9800" />
+              <Text style={styles.bnpcWarningTitle}>BNPC Products in Cart</Text>
+            </View>
+            
+            <View style={styles.bnpcProductsList}>
+              {bnpcProducts.slice(0, 3).map((product, index) => (
+                <View key={index} style={styles.bnpcProductItem}>
+                  <Text style={styles.bnpcProductName} numberOfLines={1}>
+                    {product.name}
+                  </Text>
+                  <Text style={styles.bnpcProductDetails}>
+                    {product.quantity} × ₱{product.price.toFixed(2)}
+                  </Text>
+                </View>
+              ))}
+              {bnpcProducts.length > 3 && (
+                <Text style={styles.bnpcMoreItems}>
+                  +{bnpcProducts.length - 3} more BNPC items
+                </Text>
+              )}
+            </View>
+            
+            <Text style={styles.bnpcWarningText}>
+              Customer must present valid ID for BNPC discounts
             </Text>
           </View>
+        )}
+
+        {/* Customer Verification */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="person" size={18} color="#374151" />
+            <Text style={styles.sectionTitle}>Customer Verification</Text>
+            
+            {isCustomerVerifiedForDiscount && !manualVerification.override && (
+              <View style={styles.appVerifiedBadge}>
+                <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                <Text style={styles.appVerifiedText}>System Verified</Text>
+              </View>
+            )}
+          </View>
           
-          {!systemVerifiedEligible && !userIsEligible && (
-            <View style={styles.manualVerifySection}>
-              <Text style={styles.manualVerifyLabel}>Manual Verification:</Text>
-              <View style={styles.verifyButtons}>
+          {showVerificationOptions ? (
+            <View style={styles.verificationBox}>
+              <Text style={styles.verificationText}>
+                {hasBNPCProducts
+                  ? "Verify customer for BNPC discounts"
+                  : "Select customer type"}
+              </Text>
+              <View style={styles.verificationButtons}>
                 <TouchableOpacity
-                  style={[
-                    styles.verifyButton,
-                    manualVerification.type === 'senior' && styles.verifyButtonActive
-                  ]}
+                  style={[styles.verifyButton, styles.seniorButton]}
                   onPress={() => handleManualVerify('senior')}
                 >
-                  <Text style={styles.verifyButtonText}>Senior</Text>
+                  <Text style={styles.verifyButtonText}>Senior Citizen</Text>
                 </TouchableOpacity>
+                
                 <TouchableOpacity
-                  style={[
-                    styles.verifyButton,
-                    manualVerification.type === 'pwd' && styles.verifyButtonActive
-                  ]}
+                  style={[styles.verifyButton, styles.pwdButton]}
                   onPress={() => handleManualVerify('pwd')}
                 >
                   <Text style={styles.verifyButtonText}>PWD</Text>
                 </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.verifyButton, styles.regularButton]}
+                  onPress={handleSetRegular}
+                >
+                  <Text style={styles.regularButtonText}>Regular Customer</Text>
+                </TouchableOpacity>
               </View>
+            </View>
+          ) : (
+            <View style={[
+              styles.verifiedBox,
+              manualVerification.type === 'regular' && styles.regularVerifiedBox
+            ]}>
+              <View style={styles.verifiedHeader}>
+                <Ionicons 
+                  name="checkmark-circle" 
+                  size={18} 
+                  color={manualVerification.type === 'regular' ? "#6B7280" : "#10B981"} 
+                />
+                <Text style={[
+                  styles.verifiedText,
+                  manualVerification.type === 'regular' && styles.regularCustomerText
+                ]}>
+                  {manualVerification.type === 'senior' ? 'Senior Citizen' :
+                   manualVerification.type === 'pwd' ? 'Person with Disability' :
+                   'Regular Customer'} Verified
+                  {!manualVerification.override && ' (via System)'}
+                </Text>
+                
+                <TouchableOpacity
+                  style={styles.changeTypeButton}
+                  onPress={handleCustomerTypeChange}
+                >
+                  <Text style={styles.changeTypeText}>Change</Text>
+                </TouchableOpacity>
+              </View>
+              
+              {isCustomerVerifiedForDiscount && hasBNPCProducts && (
+                <Text style={styles.verifiedNote}>
+                  5% BNPC discount applies to eligible items
+                </Text>
+              )}
+              
+              {manualVerification.type === 'regular' && hasBNPCProducts && (
+                <Text style={styles.regularWarning}>
+                  ⚠️ BNPC products in cart - no discounts applied
+                </Text>
+              )}
             </View>
           )}
         </View>
 
-        {/* BNPC Section - Only show if eligible */}
-        {showBNPCSection && (
+        {/* BNPC Section - Only for verified Senior/PWD customers */}
+        {isCustomerVerifiedForDiscount && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name="document-text" size={18} color="#374151" />
-              <Text style={styles.sectionTitle}>BNPC Booklet</Text>
+              <Text style={styles.sectionTitle}>BNPC Discount</Text>
             </View>
             
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Used this week (from booklet)</Text>
+              <Text style={styles.inputLabel}>Booklet Used This Week</Text>
               <TextInput
                 style={styles.input}
                 keyboardType="decimal-pad"
@@ -274,37 +437,13 @@ const PaymentScreen = ({ route, navigation }) => {
               </View>
             </View>
             
-            {/* Auto-calculated discount display */}
-            {autoCalculatedDiscount > 0 && (
-              <View style={styles.autoDiscountBox}>
-                <View style={styles.autoDiscountHeader}>
-                  <Ionicons name="calculator" size={16} color="#059669" />
-                  <Text style={styles.autoDiscountTitle}>Auto-calculated Discount</Text>
+            {fivePercentDiscount > 0 && (
+              <View style={styles.discountAppliedBox}>
+                <View style={styles.discountAppliedHeader}>
+                  <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                  <Text style={styles.discountAppliedTitle}>5% Discount Applied</Text>
                 </View>
-                <Text style={styles.autoDiscountAmount}>₱{autoCalculatedDiscount.toFixed(2)}</Text>
-                <Text style={styles.autoDiscountNote}>
-                  (20% of eligible items: ₱{eligibleSubtotal.toFixed(2)})
-                </Text>
-              </View>
-            )}
-            
-            {/* Additional discount input */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Additional discount (if any)</Text>
-              <TextInput
-                style={styles.input}
-                keyboardType="decimal-pad"
-                value={additionalAppliedInput}
-                onChangeText={setAdditionalAppliedInput}
-                placeholder="0.00"
-              />
-            </View>
-            
-            {/* Validation warning */}
-            {totalDiscount > Math.min(remainingDiscountCap, remainingPurchaseCap, eligibleSubtotal) && (
-              <View style={styles.warningBox}>
-                <Ionicons name="warning" size={16} color="#DC2626" />
-                <Text style={styles.warningText}>Total discount exceeds maximum allowed</Text>
+                <Text style={styles.discountAppliedAmount}>-₱{fivePercentDiscount.toFixed(2)}</Text>
               </View>
             )}
           </View>
@@ -314,7 +453,7 @@ const PaymentScreen = ({ route, navigation }) => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="receipt" size={18} color="#374151" />
-            <Text style={styles.sectionTitle}>Amounts</Text>
+            <Text style={styles.sectionTitle}>Amount Summary</Text>
           </View>
           
           <View style={styles.amountsGrid}>
@@ -323,11 +462,11 @@ const PaymentScreen = ({ route, navigation }) => {
               <Text style={styles.amountValue}>₱{subtotal.toFixed(2)}</Text>
             </View>
             
-            {totalDiscount > 0 && (
+            {fivePercentDiscount > 0 && (
               <View style={styles.amountRow}>
-                <Text style={styles.amountLabel}>BNPC Discount</Text>
+                <Text style={styles.amountLabel}>BNPC Discount (5%)</Text>
                 <Text style={[styles.amountValue, styles.discountValue]}>
-                  -₱{totalDiscount.toFixed(2)}
+                  -₱{fivePercentDiscount.toFixed(2)}
                 </Text>
               </View>
             )}
@@ -344,7 +483,7 @@ const PaymentScreen = ({ route, navigation }) => {
             <View style={styles.divider} />
             
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Total</Text>
+              <Text style={styles.totalLabel}>Total Amount</Text>
               <Text style={styles.totalValue}>₱{finalTotal.toFixed(2)}</Text>
             </View>
           </View>
@@ -354,13 +493,12 @@ const PaymentScreen = ({ route, navigation }) => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="cash" size={18} color="#374151" />
-            <Text style={styles.sectionTitle}>Cash</Text>
+            <Text style={styles.sectionTitle}>Cash Payment</Text>
           </View>
           
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Cash Received</Text>
             <TextInput
-              ref={cashInputRef}
               style={[styles.input, styles.cashInput]}
               keyboardType="decimal-pad"
               value={cashReceivedInput}
@@ -389,13 +527,10 @@ const PaymentScreen = ({ route, navigation }) => {
         <TouchableOpacity
           style={[
             styles.finalizeButton,
-            (cashReceived < finalTotal || 
-             totalDiscount > Math.min(remainingDiscountCap, remainingPurchaseCap, eligibleSubtotal)
-            ) && styles.finalizeButtonDisabled
+            cashReceived < finalTotal && styles.finalizeButtonDisabled
           ]}
           onPress={handleFinalize}
-          disabled={cashReceived < finalTotal || 
-            totalDiscount > Math.min(remainingDiscountCap, remainingPurchaseCap, eligibleSubtotal)}
+          disabled={cashReceived < finalTotal}
         >
           <Ionicons name="checkmark-circle" size={22} color="#FFFFFF" />
           <Text style={styles.finalizeButtonText}>
@@ -405,7 +540,7 @@ const PaymentScreen = ({ route, navigation }) => {
         
         {/* Compliance Note */}
         <Text style={styles.complianceNote}>
-          Note: BNPC booklet must be updated manually after transaction
+          Note: Update BNPC booklet manually after transaction
         </Text>
       </ScrollView>
     </SafeAreaView>
@@ -437,57 +572,58 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 2,
   },
-  statusCard: {
-    backgroundColor: '#FFFFFF',
+  bnpcWarningSection: {
+    backgroundColor: '#FFF8E1',
     borderRadius: 8,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#FFD54F',
   },
-  statusRow: {
+  bnpcWarningHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
   },
-  statusText: {
-    fontSize: 15,
-    color: '#374151',
+  bnpcWarningTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FF9800',
     marginLeft: 8,
-    fontWeight: '500',
   },
-  manualVerifySection: {
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-    paddingTop: 12,
-  },
-  manualVerifyLabel: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginBottom: 8,
-  },
-  verifyButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  verifyButton: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: '#F9FAFB',
+  bnpcProductsList: {
+    backgroundColor: 'rgba(255, 248, 225, 0.7)',
     borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
+    padding: 12,
+    marginBottom: 12,
+  },
+  bnpcProductItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 6,
   },
-  verifyButtonActive: {
-    backgroundColor: '#EFF6FF',
-    borderColor: '#3B82F6',
-  },
-  verifyButtonText: {
+  bnpcProductName: {
     fontSize: 13,
-    color: '#374151',
-    fontWeight: '500',
+    color: '#333',
+    flex: 1,
+    marginRight: 8,
+  },
+  bnpcProductDetails: {
+    fontSize: 12,
+    color: '#666',
+  },
+  bnpcMoreItems: {
+    fontSize: 11,
+    color: '#FF9800',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  bnpcWarningText: {
+    fontSize: 12,
+    color: '#FF9800',
+    fontStyle: 'italic',
   },
   section: {
     backgroundColor: '#FFFFFF',
@@ -501,12 +637,115 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
+    justifyContent: 'space-between',
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#374151',
     marginLeft: 8,
+    flex: 1,
+  },
+  appVerifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  appVerifiedText: {
+    fontSize: 12,
+    color: '#10B981',
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  verificationBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 6,
+    padding: 12,
+  },
+  verificationText: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  verificationButtons: {
+    gap: 8,
+  },
+  verifyButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  seniorButton: {
+    backgroundColor: '#00A86B',
+  },
+  pwdButton: {
+    backgroundColor: '#00A86B',
+  },
+  regularButton: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  verifyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  regularButtonText: {
+    color: '#374151',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  verifiedBox: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 6,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  regularVerifiedBox: {
+    backgroundColor: '#F5F5F5',
+    borderColor: '#E0E0E0',
+  },
+  verifiedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  verifiedText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#10B981',
+    marginLeft: 8,
+    flex: 1,
+  },
+  regularCustomerText: {
+    color: '#6B7280',
+  },
+  changeTypeButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 4,
+  },
+  changeTypeText: {
+    fontSize: 12,
+    color: '#3B82F6',
+    fontWeight: '500',
+  },
+  verifiedNote: {
+    fontSize: 12,
+    color: '#10B981',
+  },
+  regularWarning: {
+    fontSize: 12,
+    color: '#FF9800',
+    fontStyle: 'italic',
   },
   inputGroup: {
     marginBottom: 16,
@@ -558,51 +797,28 @@ const styles = StyleSheet.create({
     width: 1,
     backgroundColor: '#E5E7EB',
   },
-  autoDiscountBox: {
+  discountAppliedBox: {
     backgroundColor: '#F0FDF4',
     borderWidth: 1,
     borderColor: '#BBF7D0',
     borderRadius: 6,
     padding: 12,
-    marginBottom: 16,
   },
-  autoDiscountHeader: {
+  discountAppliedHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 4,
   },
-  autoDiscountTitle: {
+  discountAppliedTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#059669',
+    color: '#10B981',
     marginLeft: 6,
   },
-  autoDiscountAmount: {
+  discountAppliedAmount: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#059669',
-    marginBottom: 2,
-  },
-  autoDiscountNote: {
-    fontSize: 11,
-    color: '#059669',
-    opacity: 0.8,
-  },
-  warningBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    borderRadius: 6,
-    padding: 10,
-    marginTop: 8,
-  },
-  warningText: {
-    fontSize: 12,
-    color: '#DC2626',
-    marginLeft: 6,
-    fontWeight: '500',
+    color: '#10B981',
   },
   amountsGrid: {
     backgroundColor: '#F9FAFB',
@@ -624,7 +840,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   discountValue: {
-    color: '#059669',
+    color: '#10B981',
+    fontWeight: '700',
   },
   divider: {
     height: 1,
@@ -666,7 +883,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   changePositive: {
-    color: '#059669',
+    color: '#10B981',
   },
   changeNegative: {
     color: '#DC2626',

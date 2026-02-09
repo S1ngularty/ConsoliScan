@@ -42,6 +42,7 @@ const CartScreen = ({ navigation, route }) => {
   const [appliedVoucher, setAppliedVoucher] = useState(null);
   const [weeklyUsage, setWeeklyUsage] = useState(mockWeeklyUsage);
   const eligibilityStatus = useSelector((state) => state.auth.eligible);
+  const userState = useSelector((state) => state.auth);
   const [userEligibility, setUserEligibility] = useState({
     isPWD: false,
     isSenior: false,
@@ -51,14 +52,14 @@ const CartScreen = ({ navigation, route }) => {
 
   // Get cart from Redux store
   const { cart, itemCount } = useSelector((state) => state.cart);
-
+  console.log(cart)
   // Check if user is eligible for BNPC discounts
   const isEligibleUser = eligibilityStatus?.isVerified;
 
   useEffect(() => {
     // Fetch cart from server on mount
-    dispatch(getCartFromServer());
-  }, []);
+   userState.role ==="user" && dispatch(getCartFromServer());
+  }, [userState.role]);
 
   useEffect(() => {
     // Set user eligibility based on auth status
@@ -97,10 +98,10 @@ const CartScreen = ({ navigation, route }) => {
     // Check if item is from server (has product nested) or local (flat)
     const product = item.product || item;
     const quantity = item.selectedQuantity || item.qty || 1;
-    
+
     // Get BNPC fields from category object
     const category = product.category || {};
-    
+
     // Extract all necessary fields
     return {
       _id: item._id || product._id,
@@ -110,7 +111,7 @@ const CartScreen = ({ navigation, route }) => {
       selectedQuantity: Number(quantity),
       qty: Number(quantity),
       dateAdded: item.dateAdded || new Date().toISOString(),
-      
+
       // Product details for discount calculations - UPDATED
       product: {
         _id: product._id,
@@ -124,8 +125,8 @@ const CartScreen = ({ navigation, route }) => {
         unit: product.unit || "pc",
         images: product.images || [],
         // Keep reference to category for debugging
-        category: category
-      }
+        category: category,
+      },
     };
   };
 
@@ -138,11 +139,11 @@ const CartScreen = ({ navigation, route }) => {
     let subtotal = 0;
     let totalItems = 0;
 
-    cart.forEach(item => {
+    cart.forEach((item) => {
       const normalizedItem = normalizeCartItem(item);
       const price = Number(normalizedItem.price) || 0;
       const quantity = Number(normalizedItem.selectedQuantity) || 1;
-      
+
       if (!isNaN(price) && !isNaN(quantity)) {
         subtotal += price * quantity;
         totalItems += quantity;
@@ -151,7 +152,7 @@ const CartScreen = ({ navigation, route }) => {
 
     return {
       subtotal: parseFloat(subtotal.toFixed(2)),
-      itemCount: totalItems
+      itemCount: totalItems,
     };
   };
 
@@ -174,11 +175,11 @@ const CartScreen = ({ navigation, route }) => {
     if (!userScope) return [];
 
     // console.log("Checking BNPC eligibility for user scope:", userScope);
-    
+
     return cart.filter((item) => {
       const normalizedItem = normalizeCartItem(item);
       const product = normalizedItem.product;
-      
+
       // Debug log
       // console.log(`Item: ${product.name}`);
       // console.log(`  - isBNPC: ${product.isBNPC}`);
@@ -186,119 +187,115 @@ const CartScreen = ({ navigation, route }) => {
       // console.log(`  - discountScopes: ${JSON.stringify(product.discountScopes)}`);
       // console.log(`  - userScope: ${userScope}`);
       // console.log(`  - includes user scope: ${product.discountScopes?.includes(userScope)}`);
-      
-      const isEligible = (
+
+      const isEligible =
         product.isBNPC &&
         !product.excludedFromDiscount &&
-        product.discountScopes?.includes(userScope)
-      );
-      
+        product.discountScopes?.includes(userScope);
+
       // console.log(`  - Final eligibility: ${isEligible}`);
-      
+
       return isEligible;
     });
   };
 
-  // Step 2: Compute BNPC Subtotal safely
-  const calculateBNPCSubtotal = (eligibleItems) => {
-    const subtotal = eligibleItems.reduce((sum, item) => {
-      const normalizedItem = normalizeCartItem(item);
-      const price = Number(normalizedItem.price) || 0;
-      const quantity = Number(normalizedItem.selectedQuantity) || 1;
-      return sum + (price * quantity);
-    }, 0);
-    
-    // console.log("BNPC Subtotal calculated:", subtotal);
-    return subtotal;
-  };
+// Step 2: Compute BNPC Subtotal safely - FIXED FOR ALL CUSTOMERS
+const calculateBNPCSubtotal = () => {
+  const bnpcItems = cart.filter((item) => {
+    const normalizedItem = normalizeCartItem(item);
+    const product = normalizedItem.product;
+    return product.isBNPC === true;
+  });
 
-  // Step 3 & 4: Apply Weekly Caps
-  const calculateDiscountDetails = () => {
-    // console.log("\n=== Calculating Discount Details ===");
-    // console.log("User eligible:", isEligibleUser);
-    // console.log("User eligibility status:", userEligibility);
-    // console.log("Weekly usage:", weeklyUsage);
-    
-    if (!isEligibleUser) {
-      // console.log("User not eligible for BNPC discounts");
-      return {
-        eligible: false,
-        discountApplied: 0,
-        bnpcSubtotal: 0,
-        cappedBNPCAmount: 0,
-        reason: "User not eligible for BNPC discounts",
-      };
-    }
+  const subtotal = bnpcItems.reduce((sum, item) => {
+    const normalizedItem = normalizeCartItem(item);
+    const price = Number(normalizedItem.price) || 0;
+    const quantity = Number(normalizedItem.selectedQuantity) || 1;
+    return sum + price * quantity;
+  }, 0);
 
-    const eligibleItems = getEligibleBNPCItems();
-    // console.log("Eligible BNPC items found:", eligibleItems.length);
-
-    if (eligibleItems.length === 0) {
-      // console.log("No eligible BNPC items in cart");
-      return {
-        eligible: false,
-        discountApplied: 0,
-        bnpcSubtotal: 0,
-        cappedBNPCAmount: 0,
-        reason: "No eligible BNPC items in cart",
-      };
-    }
-
-    const bnpcSubtotal = calculateBNPCSubtotal(eligibleItems);
-    // console.log("BNPC subtotal:", bnpcSubtotal);
-
-    // Weekly Purchase Cap: ₱2,500
-    const remainingPurchaseCap = Math.max(2500 - weeklyUsage.bnpcAmountUsed, 0);
-    // console.log("Remaining purchase cap:", remainingPurchaseCap);
-
-    if (remainingPurchaseCap === 0) {
-      // console.log("Weekly purchase cap reached");
-      return {
-        eligible: false,
-        discountApplied: 0,
-        bnpcSubtotal,
-        cappedBNPCAmount: 0,
-        reason: "Weekly purchase cap reached (₱2,500)",
-      };
-    }
-
-    const cappedBNPCAmount = Math.min(bnpcSubtotal, remainingPurchaseCap);
-    // console.log("Capped BNPC amount:", cappedBNPCAmount);
-
-    // Compute Raw 5% Discount
-    const rawDiscount = cappedBNPCAmount * 0.05;
-    // console.log("Raw 5% discount:", rawDiscount);
-
-    // Weekly Discount Cap: ₱125
-    const remainingDiscountCap = Math.max(125 - weeklyUsage.discountUsed, 0);
-    // console.log("Remaining discount cap:", remainingDiscountCap);
-
-    if (remainingDiscountCap === 0) {
-      // console.log("Weekly discount cap reached");
-      return {
-        eligible: false,
-        discountApplied: 0,
-        bnpcSubtotal,
-        cappedBNPCAmount,
-        reason: "Weekly discount cap reached (₱125)",
-      };
-    }
-
-    const discountApplied = Math.min(rawDiscount, remainingDiscountCap);
-    // console.log("Final discount applied:", discountApplied);
-
+  return subtotal;
+};
+ // Step 3 & 4: Apply Weekly Caps - FIXED
+const calculateDiscountDetails = () => {
+  // Always calculate BNPC subtotal (for tracking)
+  const bnpcSubtotal = calculateBNPCSubtotal();
+  
+  // For non-eligible users, just return tracking data
+  if (!isEligibleUser) {
     return {
-      eligible: true,
-      discountApplied,
-      bnpcSubtotal,
-      cappedBNPCAmount,
-      eligibleItemsCount: eligibleItems.length,
-      remainingPurchaseCap,
-      remainingDiscountCap,
-      weeklyPurchaseUsed: weeklyUsage.bnpcAmountUsed + cappedBNPCAmount,
-      weeklyDiscountUsed: weeklyUsage.discountUsed + discountApplied,
+      eligible: false,
+      discountApplied: 0,
+      bnpcSubtotal: bnpcSubtotal, // Track BNPC subtotal even for non-eligible
+      cappedBNPCAmount: 0,
+      reason: "User not eligible for BNPC discounts",
     };
+  }
+
+  const eligibleItems = getEligibleBNPCItems();
+  if (eligibleItems.length === 0) {
+    return {
+      eligible: false,
+      discountApplied: 0,
+      bnpcSubtotal: bnpcSubtotal, // Track BNPC subtotal
+      cappedBNPCAmount: 0,
+      reason: "No eligible BNPC items in cart",
+    };
+  }
+
+  const eligibleBNPCSubtotal = calculateBNPCSubtotalForItems(eligibleItems);
+  
+  // Rest of your existing code...
+  const remainingPurchaseCap = Math.max(2500 - weeklyUsage.bnpcAmountUsed, 0);
+  
+  if (remainingPurchaseCap === 0) {
+    return {
+      eligible: false,
+      discountApplied: 0,
+      bnpcSubtotal: eligibleBNPCSubtotal,
+      cappedBNPCAmount: 0,
+      reason: "Weekly purchase cap reached (₱2,500)",
+    };
+  }
+
+  const cappedBNPCAmount = Math.min(eligibleBNPCSubtotal, remainingPurchaseCap);
+  const rawDiscount = cappedBNPCAmount * 0.05;
+  const remainingDiscountCap = Math.max(125 - weeklyUsage.discountUsed, 0);
+  
+  if (remainingDiscountCap === 0) {
+    return {
+      eligible: false,
+      discountApplied: 0,
+      bnpcSubtotal: eligibleBNPCSubtotal,
+      cappedBNPCAmount,
+      reason: "Weekly discount cap reached (₱125)",
+    };
+  }
+
+  const discountApplied = Math.min(rawDiscount, remainingDiscountCap);
+
+  return {
+    eligible: true,
+    discountApplied,
+    bnpcSubtotal: eligibleBNPCSubtotal,
+    cappedBNPCAmount,
+    eligibleItemsCount: eligibleItems.length,
+    remainingPurchaseCap,
+    remainingDiscountCap,
+    weeklyPurchaseUsed: weeklyUsage.bnpcAmountUsed + cappedBNPCAmount,
+    weeklyDiscountUsed: weeklyUsage.discountUsed + discountApplied,
   };
+};
+
+// Add this helper function
+const calculateBNPCSubtotalForItems = (items) => {
+  return items.reduce((sum, item) => {
+    const normalizedItem = normalizeCartItem(item);
+    const price = Number(normalizedItem.price) || 0;
+    const quantity = Number(normalizedItem.selectedQuantity) || 1;
+    return sum + price * quantity;
+  }, 0);
+};
 
   // Calculate voucher discount
   const calculateVoucherDiscount = (subtotal) => {
@@ -343,7 +340,7 @@ const CartScreen = ({ navigation, route }) => {
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      await dispatch(getCartFromServer());
+      userState.role === "user" && (await dispatch(getCartFromServer()));
     } catch (error) {
       console.error("Error refreshing cart:", error);
     } finally {
@@ -356,7 +353,7 @@ const CartScreen = ({ navigation, route }) => {
       dispatch(removeFromCart(itemId));
     } else {
       // Find the item to get its correct structure
-      const item = cart.find(item => item._id === itemId);
+      const item = cart.find((item) => item._id === itemId);
       if (item) {
         const normalizedItem = normalizeCartItem(item);
         dispatch(
@@ -364,12 +361,12 @@ const CartScreen = ({ navigation, route }) => {
             _id: itemId,
             selectedQuantity: newQty,
             price: normalizedItem.price,
-            name: normalizedItem.name
+            name: normalizedItem.name,
           }),
         );
       }
     }
-    debounceCartSync(dispatch);
+    userState.role ==="user" && debounceCartSync(dispatch);
   };
 
   const removeItem = (itemId) => {
@@ -383,7 +380,7 @@ const CartScreen = ({ navigation, route }) => {
           style: "destructive",
           onPress: () => {
             dispatch(removeFromCart(itemId));
-            debounceCartSync(dispatch);
+            userState.role === "user" && debounceCartSync(dispatch);
           },
         },
       ],
@@ -398,7 +395,7 @@ const CartScreen = ({ navigation, route }) => {
         style: "destructive",
         onPress: () => {
           dispatch(clearCart());
-          dispatch(clearCartToServer());
+          userState.role === "user" && dispatch(clearCartToServer());
         },
       },
     ]);
@@ -443,107 +440,147 @@ const CartScreen = ({ navigation, route }) => {
     setVoucherCode("");
   };
 
-  const handleCheckout = async () => {
-    const { itemCount } = calculateCartTotals();
-    
-    if (itemCount === 0) {
-      Alert.alert("Empty Cart", "Your cart is empty. Add items to checkout.");
-      return;
-    }
+ const handleCheckout = async () => {
+  const { itemCount } = calculateCartTotals();
+  if (itemCount === 0) {
+    Alert.alert("Empty Cart", "Your cart is empty. Add items to checkout.");
+    return;
+  }
+  const totals = calculateTotals();
+  const discountDetails = totals.discountDetails;
 
-    const totals = calculateTotals();
-    const discountDetails = totals.discountDetails;
-
-    /* ======================
-     SANITIZE CART ITEMS - UPDATED
-    ====================== */
-
-    const items = cart.map((item) => {
+  /* ======================
+     EXTRACT BNPC PRODUCTS
+  ====================== */
+  const bnpcProducts = cart
+    .filter((item) => {
       const normalizedItem = normalizeCartItem(item);
       const product = normalizedItem.product;
-
-      const isBNPCEligible =
-        (discountDetails.eligible &&
-          product.isBNPC &&
-          !product.excludedFromDiscount &&
-          product.discountScopes?.includes(
-            userEligibility.isPWD ? "PWD" : "SENIOR",
-          )) ?? false;
-
+      return product.isBNPC === true;
+    })
+    .map((item) => {
+      const normalizedItem = normalizeCartItem(item);
+      const product = normalizedItem.product;
       return {
-        product: product._id,
+        productId: product._id,
         name: product.name,
-        sku: product.sku || `PROD-${product._id.slice(-6)}`,
+        price: normalizedItem.price,
         quantity: normalizedItem.selectedQuantity,
-        unitPrice: normalizedItem.price,
-        categoryType: product.bnpcCategory || null,
-        isBNPCEligible,
-        // Include category data for reference
-        category: product.category
+        bnpcCategory: product.bnpcCategory || "",
+        discountScopes: product.discountScopes || [],
+        requiresVerification: true,
       };
     });
 
-    /* ======================
-     FREEZE TOTALS
-    ====================== */
+  /* ======================
+     SANITIZE CART ITEMS - UPDATED
+  ====================== */
+  const items = cart.map((item) => {
+    const normalizedItem = normalizeCartItem(item);
+    const product = normalizedItem.product;
 
-    const checkoutTotals = {
-      subtotal: totals.subtotal,
-      discountTotal: (totals.bnpcDiscount || 0) + (totals.voucherDiscount || 0),
-      finalTotal: totals.finalTotal,
+    const userScope = getUserDiscountScope();
+    const isBNPCEligible =
+      isEligibleUser &&
+      product.isBNPC &&
+      !product.excludedFromDiscount &&
+      product.discountScopes?.includes(userScope);
+
+    return {
+      product: product._id,
+      name: product.name,
+      sku: product.sku || `PROD-${product._id.slice(-6)}`,
+      quantity: normalizedItem.selectedQuantity,
+      unitPrice: normalizedItem.price,
+      categoryType: product.bnpcCategory || null,
+      isBNPCEligible: isBNPCEligible || false,
+      isBNPCProduct: product.isBNPC || false,
+      bnpcCategory: product.bnpcCategory || "",
+      discountScopes: product.discountScopes || [],
+      // Include category data for reference
+      category: product.category,
     };
+  });
 
-    /* ======================
-     DISCOUNT SNAPSHOT
-    ====================== */
-
-    const discountSnapshot = {
-      eligible: discountDetails.eligible,
-      eligibleItemsCount: discountDetails.eligibleItemsCount || 0,
-      bnpcSubtotal: discountDetails.bnpcSubtotal || 0,
-      cappedBNPCAmount: discountDetails.cappedBNPCAmount || 0,
-      discountApplied: discountDetails.discountApplied || 0,
-      weeklyDiscountUsed: discountDetails.weeklyDiscountUsed || weeklyUsage.discountUsed,
-      weeklyPurchaseUsed: discountDetails.weeklyPurchaseUsed || weeklyUsage.bnpcAmountUsed,
-      remainingDiscountCap: discountDetails.remainingDiscountCap || (125 - weeklyUsage.discountUsed),
-      remainingPurchaseCap: discountDetails.remainingPurchaseCap || (2500 - weeklyUsage.bnpcAmountUsed),
-    };
-
-    /* ======================
-     FINAL CHECKOUT PAYLOAD - UPDATED
-    ====================== */
-
-    const checkoutData = {
-      items,
-      totals: checkoutTotals,
-      discountSnapshot,
-      userEligibility: {
-        isPWD: userEligibility.isPWD,
-        isSenior: userEligibility.isSenior,
-      },
-      voucher: appliedVoucher
-        ? {
-            code: appliedVoucher.code,
-            discountAmount: totals.voucherDiscount || appliedVoucher.discount,
-          }
-        : null,
-      weeklyUsageSnapshot: {
-        bnpcAmountUsed: discountSnapshot.weeklyPurchaseUsed,
-        discountUsed: discountSnapshot.weeklyDiscountUsed,
-      },
-    };
-
-    // console.log("Checkout payload:", JSON.stringify(checkoutData, null, 2));
-
-    try {
-      const token = await getToken();
-      const queue = await checkout(checkoutData);
-      navigation.navigate("QR", { ...queue, token });
-    } catch (error) {
-      console.error("Checkout error:", error);
-      Alert.alert("Checkout Failed", error.message || "Please try again");
-    }
+  /* ======================
+     FREEZE TOTALS - FIXED (ADD bnpcSubtotal)
+  ====================== */
+  const checkoutTotals = {
+    subtotal: totals.subtotal,
+    bnpcSubtotal: discountDetails.bnpcSubtotal || 0, // ADD THIS LINE
+    discountTotal: (totals.bnpcDiscount || 0) + (totals.voucherDiscount || 0),
+    finalTotal: totals.finalTotal,
   };
+
+  /* ======================
+     DISCOUNT SNAPSHOT
+  ====================== */
+  const discountSnapshot = {
+    eligible: discountDetails.eligible,
+    eligibleItemsCount: discountDetails.eligibleItemsCount || 0,
+    bnpcSubtotal: discountDetails.bnpcSubtotal || 0,
+    cappedBNPCAmount: discountDetails.cappedBNPCAmount || 0,
+    discountApplied: discountDetails.discountApplied || 0,
+    weeklyDiscountUsed:
+      discountDetails.weeklyDiscountUsed || weeklyUsage.discountUsed,
+    weeklyPurchaseUsed:
+      discountDetails.weeklyPurchaseUsed || weeklyUsage.bnpcAmountUsed,
+    remainingDiscountCap:
+      discountDetails.remainingDiscountCap || 125 - weeklyUsage.discountUsed,
+    remainingPurchaseCap:
+      discountDetails.remainingPurchaseCap ||
+      2500 - weeklyUsage.bnpcAmountUsed,
+  };
+
+  /* ======================
+     FINAL CHECKOUT PAYLOAD - FIXED
+  ====================== */
+  const checkoutData = {
+    user: userState.user?.userId || null,
+    userType: userState.user?.userId ? "user" : "guest",
+    items,
+    bnpcProducts, // ADD BNPC products array
+    totals: checkoutTotals,
+    discountSnapshot,
+    userEligibility: {
+      isPWD: userEligibility.isPWD,
+      isSenior: userEligibility.isSenior,
+      verified: isEligibleUser,
+    },
+    // Add customer verification info for app users
+    customerVerification: isEligibleUser ? {
+      type: userEligibility.isPWD ? "pwd" : userEligibility.isSenior ? "senior" : null,
+      verified: isEligibleUser,
+      verificationSource: "system",
+    } : null,
+    voucher: appliedVoucher
+      ? {
+          code: appliedVoucher.code,
+          discountAmount: totals.voucherDiscount || appliedVoucher.discount,
+          type: appliedVoucher.type,
+        }
+      : null,
+    weeklyUsageSnapshot: {
+      bnpcAmountUsed: discountSnapshot.weeklyPurchaseUsed,
+      discountUsed: discountSnapshot.weeklyDiscountUsed,
+    },
+  };
+
+  console.log("Checkout payload:", JSON.stringify(checkoutData, null, 2));
+
+  try {
+    const token = userState.role === "user" ? await getToken() : null;
+    console.log("token:", token);
+    const queue = await checkout(checkoutData);
+    navigation.navigate("Shared", {
+      screen: "QR",
+      params: { ...queue, token },
+    });
+  } catch (error) {
+    console.error("Checkout error:", error);
+    Alert.alert("Checkout Failed", error.message || "Please try again");
+  }
+};
 
   const formatDate = (dateString) => {
     if (!dateString) return "Recently added";
@@ -562,9 +599,9 @@ const CartScreen = ({ navigation, route }) => {
     const normalizedItem = normalizeCartItem(item);
     const product = normalizedItem.product;
     const itemTotal = normalizedItem.price * normalizedItem.selectedQuantity;
-    
+
     const totals = calculateTotals();
-    
+
     // Check if item is BNPC eligible
     const userScope = getUserDiscountScope();
     const isBNPCEligible =
@@ -605,11 +642,12 @@ const CartScreen = ({ navigation, route }) => {
               <View style={styles.bnpcBadge}>
                 <Text style={styles.bnpcBadgeText}>BNPC</Text>
               </View>
-              {!product.excludedFromDiscount && product.discountScopes?.length > 0 && (
-                <Text style={styles.discountEligibleText}>
-                  Eligible for {product.discountScopes?.join("/")} discount
-                </Text>
-              )}
+              {!product.excludedFromDiscount &&
+                product.discountScopes?.length > 0 && (
+                  <Text style={styles.discountEligibleText}>
+                    Eligible for {product.discountScopes?.join("/")} discount
+                  </Text>
+                )}
             </View>
           )}
 
@@ -642,18 +680,30 @@ const CartScreen = ({ navigation, route }) => {
           <View style={styles.quantityContainer}>
             <TouchableOpacity
               style={styles.qtyButton}
-              onPress={() => updateQuantity(normalizedItem._id, normalizedItem.selectedQuantity - 1)}
+              onPress={() =>
+                updateQuantity(
+                  normalizedItem._id,
+                  normalizedItem.selectedQuantity - 1,
+                )
+              }
             >
               <MaterialCommunityIcons name="minus" size={18} color="#666" />
             </TouchableOpacity>
 
             <View style={styles.qtyDisplay}>
-              <Text style={styles.qtyText}>{normalizedItem.selectedQuantity}</Text>
+              <Text style={styles.qtyText}>
+                {normalizedItem.selectedQuantity}
+              </Text>
             </View>
 
             <TouchableOpacity
               style={styles.qtyButton}
-              onPress={() => updateQuantity(normalizedItem._id, normalizedItem.selectedQuantity + 1)}
+              onPress={() =>
+                updateQuantity(
+                  normalizedItem._id,
+                  normalizedItem.selectedQuantity + 1,
+                )
+              }
             >
               <MaterialCommunityIcons name="plus" size={18} color="#666" />
             </TouchableOpacity>
@@ -879,7 +929,9 @@ const CartScreen = ({ navigation, route }) => {
             {discountDetails.eligible && discountDetails.bnpcSubtotal > 0 && (
               <>
                 <View style={styles.sectionDivider} />
-                <Text style={styles.discountSectionTitle}>{isEligibleUser && "Estimated"}  BNPC Discount</Text>
+                <Text style={styles.discountSectionTitle}>
+                  {isEligibleUser && "Estimated"} BNPC Discount
+                </Text>
 
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Eligible BNPC items</Text>
@@ -945,7 +997,7 @@ const CartScreen = ({ navigation, route }) => {
 
                 <View style={styles.summaryRow}>
                   <Text style={[styles.summaryLabel, styles.bnpcDiscountLabel]}>
-                    {isEligibleUser && "Estimated"}  Total BNPC Discount
+                    {isEligibleUser && "Estimated"} Total BNPC Discount
                   </Text>
                   <Text style={[styles.summaryValue, styles.bnpcDiscountValue]}>
                     -₱{discountDetails.discountApplied.toFixed(2)}
@@ -1019,7 +1071,9 @@ const CartScreen = ({ navigation, route }) => {
 
             {/* Final Total */}
             <View style={styles.summaryRow}>
-              <Text style={styles.totalLabel}>{isEligibleUser &&   "Estimated"} Total Amount</Text>
+              <Text style={styles.totalLabel}>
+                {isEligibleUser && "Estimated"} Total Amount
+              </Text>
               <Text style={styles.totalValue}>
                 ₱{totals.finalTotal.toFixed(2)}
               </Text>

@@ -16,7 +16,15 @@ exports.register = async (request) => {
     sex,
     password: hashPassword,
   });
-  return newUser;
+
+  const user = {
+    userId: String(newUser._id),
+    name: newUser.name,
+    email: newUser.email,
+    role: newUser.role,
+    status: newUser.status,
+  };
+  return user;
 };
 
 exports.login = async (request) => {
@@ -45,7 +53,7 @@ exports.login = async (request) => {
     role: userData.role,
     status: userData.status,
   };
-  console.log(user);
+  // console.log(user);
   return { user, eligibilityStatus, token: jwtToken };
 };
 

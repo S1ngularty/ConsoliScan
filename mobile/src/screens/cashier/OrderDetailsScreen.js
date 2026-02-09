@@ -112,7 +112,7 @@ const OrderDetailsScreen = () => {
     setIsLoading(true);
     try {
       const result = await lockedOrder(checkoutCode)
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       navigation.navigate("Payment", {
         checkoutCode,

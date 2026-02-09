@@ -96,6 +96,7 @@ const QRScannerScreen = () => {
       }
 
       const OrderDetails = await getCheckoutDetails(checkoutCode);
+      console.log(OrderDetails)
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
       const response = OrderDetails;

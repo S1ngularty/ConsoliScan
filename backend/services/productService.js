@@ -243,7 +243,7 @@ const getBarcode = async (request) => {
   const scannedProduct = await Product.findOne({
     barcode: data,
     barcodeType: parseType,
-  });
+  }).populate("category")
   if (!scannedProduct) throw new Error("scanned Product not found");
   return scannedProduct;
 };

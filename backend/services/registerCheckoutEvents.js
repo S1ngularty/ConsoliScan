@@ -2,7 +2,7 @@ const CheckOutQueue = require("../models/checkoutQueueModel");
 const User = require("../models/userModel");
 
 exports.registerCheckoutEvents = async (socket) => {
-  const { userId, role } = socket.user;
+  // const { userId, role } = socket.user;
 
   socket.on("checkout:join", async ({ checkoutCode }) => {
     const checkoutDoc = await CheckOutQueue.findOne({
@@ -13,13 +13,13 @@ exports.registerCheckoutEvents = async (socket) => {
 
     if (!checkoutDoc) return;
 
-    if (role === "user" && checkoutDoc.user.toString() !== userId) return;
-    if (
-      role === "checker" &&
-      checkoutDoc.cashier &&
-      checkoutDoc.cashier.toString() !== userId
-    )
-      return;
+    // if (checkoutDoc.userType === "user" && checkoutDoc.user.toString() !== userId) return;
+    // if (
+    //   checkoutDoc.userType === "checker" &&
+    //   checkoutDoc.cashier &&
+    //   checkoutDoc.cashier.toString() !== userId
+    // )
+    //   return;
 
     socket.join(`checkout:${checkoutCode}`);
     console.log(`checkout:${checkoutCode}`)

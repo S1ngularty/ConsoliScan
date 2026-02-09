@@ -161,9 +161,12 @@ const MenuScreen = ({ navigation }) => {
                 Member since {user.memberSince}
               </Text>
             </View>
-            <TouchableOpacity style={styles.editButton} onPress={()=>{
-              navigation.navigate("Profile")
-            }}>
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => {
+                navigation.navigate("Profile");
+              }}
+            >
               <MaterialCommunityIcons
                 name="pencil-outline"
                 size={16}
@@ -273,7 +276,13 @@ const MenuScreen = ({ navigation }) => {
               title={item.title}
               icon={item.icon}
               isLast={index === menuItems.length - 1}
-              onPress={() => navigation.navigate(item.path)}
+              onPress={() =>
+                item.path === "Help"
+                  ? navigation.navigate("Shared", {
+                      screen: item.path,
+                    })
+                  : navigation.navigate(item.path)
+              }
             />
           ))}
         </View>

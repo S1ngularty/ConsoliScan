@@ -6,11 +6,9 @@ export const checkout = async (data) => {
   if (!data) throw new Error("empty cart");
   // console.log("CHECKOUT SNAPSHOT:", data);
   // console.log(`${API_URL}api/v1/checkout`);
-  const token = await getToken();
   const result = await axios.post(`${API_URL}api/v1/checkout`, data, {
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
     },
   });
 
@@ -54,7 +52,7 @@ export const lockedOrder = async (checkoutCode) => {
 
 export const payOrder = async (checkoutCode) => {
   const token = await getToken();
-  if (!token) throw new Error("missing token");
+  if (!token) return;
   const response = await fetch(`${API_URL}api/v1/checkout/paid/${checkoutCode}`, {
     method: "PUT",
     headers: {

@@ -4,11 +4,12 @@ const crypto = require("crypto");
 
 exports.checkout = async (request) => {
   if (!request.body) throw new Error("empty request content");
-  const { userId } = request.user;
+  const { userId } = request.body;
   const data = { ...request.body };
   const checkoutCode = `CHK-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
   const expiresAt = Date.now() + 10 * 60 * 1000;
-  data.user = userId;
+
+  data.userType = !userId ? "user" : "guest";
   data.checkoutCode = checkoutCode;
   data.expiresAt = expiresAt;
 
@@ -33,7 +34,7 @@ exports.checkout = async (request) => {
 exports.getOrder = async (request) => {
   const { checkoutCode } = request.params;
   const { userId, name } = request.user;
-  const order = Queue.findOneAndUpdate(
+  const order =await  Queue.findOneAndUpdate(
     { checkoutCode: checkoutCode },
     {
       cashier: { cashierId: userId, name },
@@ -41,10 +42,11 @@ exports.getOrder = async (request) => {
       scannedAt: Date.now(),
     },
     { new: true },
-  ).populate({
-    path: "items.product",
-    select: "barcode barcodeType",
-  });
+  )
+    .populate({
+      path: "items.product",
+      select: "barcode barcodeType category",
+    })
 
   if (!order) throw new Error("order not found");
 
@@ -62,7 +64,7 @@ exports.lockedOrder = async (request) => {
   if (!request.body) throw new Error("empty request content");
   const { checkoutCode } = request.params;
   const order = await Queue.findOneAndUpdate(
-    { checkoutCode, "cashier.cashierId":userId, status:"SCANNED" },
+    { checkoutCode, "cashier.cashierId": userId, status: "SCANNED" },
     {
       status: "LOCKED",
     },
@@ -89,7 +91,7 @@ exports.payOrder = async (request) => {
 
   const queue = await Queue.findOneAndUpdate(
     {
-      checkoutCode:checkoutCode,
+      checkoutCode: checkoutCode,
       "cashier.cashierId": userId,
       status: "LOCKED",
     },

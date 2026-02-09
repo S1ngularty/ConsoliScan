@@ -13,7 +13,7 @@ import { confirmOrder } from "../../api/order.api";
 
 const OrderSummaryScreen = ({ route, navigation }) => {
   const { transactionData, orderDetails } = route.params;
-
+  console.log(transactionData.appUser)
   // Format date for display
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -40,89 +40,82 @@ const OrderSummaryScreen = ({ route, navigation }) => {
       // Prepare order data for MongoDB with all transaction log details
       const orderData = {
         // Core relationships
-        user: orderDetails.user,
-        cashier:
-          orderDetails.cashier?._id ||
-          orderDetails.cashier?.cashierId ||
-          orderDetails.cashier,
-
+        user: orderDetails.user || null,
+        cashier: transactionData.cashier?.cashierId || orderDetails.cashier?.cashierId || null,
+        appUser: transactionData.appUser,
         // Order metadata
         checkoutCode: transactionData.checkoutCode,
-        customerType: transactionData.customerType,
-        verificationSource: transactionData.verificationSource,
+        customerType: transactionData.customerType || 'regular',
+        verificationSource: transactionData.verificationSource || 'manual',
 
         // Items with full details
-        items: orderDetails.items.map((item) => ({
-          product: item.product?._id || item.product,
+        items: orderDetails.items?.map((item) => ({
+          product: item.product?._id || item.product || null,
           name: item.name || item.product?.name || "Product",
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          categoryType: item.categoryType,
+          quantity: item.quantity || 1,
+          unitPrice: item.unitPrice || 0,
+          categoryType: item.categoryType || item.bnpcCategory || null,
           isGroceryDiscountEligible: item.isBNPCEligible || false,
-          promoApplied: item.promoApplied || false,
-          sku: item.sku || item.product?.sku,
-        })),
+          promoApplied: false,
+          sku: item.sku || item.product?.sku || `PROD-${item.product?._id?.slice(-6)}`,
+        })) || [],
 
         // Amounts & discounts
-        baseAmount: transactionData.amounts.subtotal,
-        groceryEligibleSubtotal: transactionData.amounts.eligibleSubtotal,
+        baseAmount: transactionData.amounts.subtotal || 0,
+        groceryEligibleSubtotal: transactionData.amounts.bnpcSubtotal || 0,
 
         // BNPC discount breakdown
         bnpcDiscount: {
-          autoCalculated: transactionData.amounts.autoDiscount || 0,
-          additionalApplied: transactionData.amounts.additionalDiscount || 0,
-          total: transactionData.amounts.totalDiscount,
+          autoCalculated: transactionData.amounts.discount || 0,
+          additionalApplied: 0,
+          total: transactionData.amounts.discount || 0,
         },
 
         // Legacy field (for backward compatibility)
-        seniorPwdDiscountAmount: transactionData.amounts.totalDiscount,
+        seniorPwdDiscountAmount: transactionData.amounts.discount || 0,
 
         // Voucher discount
         voucherDiscount: transactionData.amounts.voucherDiscount || 0,
 
         // Loyalty points
-        pointsUsed: orderDetails.voucher?.pointsUsed || 0,
-        finalAmountPaid: transactionData.amounts.finalTotal,
-        pointsEarned: Math.floor(transactionData.amounts.finalTotal / 100) * 10,
+        pointsUsed: 0, // Not in your data
+        finalAmountPaid: transactionData.amounts.finalTotal || 0,
+        pointsEarned: Math.floor((transactionData.amounts.finalTotal || 0) / 10),
 
         // Cash transaction
         cashTransaction: {
-          cashReceived: transactionData.amounts.cashReceived,
-          changeDue: transactionData.amounts.changeDue,
+          cashReceived: transactionData.amounts.cashReceived || 0,
+          changeDue: transactionData.amounts.changeDue || 0,
         },
 
         // BNPC caps & compliance
         bnpcCaps: {
           discountCap: {
             weeklyCap: 125,
-            usedBefore: transactionData.caps.bookletUsedBefore,
-            remainingAtCheckout: transactionData.caps.remainingDiscountCap,
-            usedAfter: transactionData.caps.bookletUsedAfter,
+            usedBefore: transactionData.caps.bookletUsedBefore || 0,
+            remainingAtCheckout: transactionData.caps.remainingDiscountCap || 125,
+            usedAfter: transactionData.caps.bookletUsedAfter || transactionData.caps.bookletUsedBefore || 0,
           },
           purchaseCap: {
             weeklyCap: 2500,
-            usedBefore: transactionData.caps.purchaseUsedBefore,
-            remainingAtCheckout: transactionData.caps.remainingPurchaseCap,
-            usedAfter: transactionData.caps.purchaseUsedAfter,
+            usedBefore: 0,
+            remainingAtCheckout: transactionData.caps.remainingPurchaseCap || 2500,
+            usedAfter: transactionData.caps.purchaseUsedAfter || transactionData.amounts.bnpcSubtotal || 0,
           },
-          weeklyCapRemainingAtCheckout:
-            transactionData.caps.remainingDiscountCap,
+          weeklyCapRemainingAtCheckout: transactionData.caps.remainingDiscountCap || 125,
         },
 
         // Item statistics
         itemStats: {
           totalItems: orderDetails.items?.length || 0,
-          totalQuantity:
-            orderDetails.items?.reduce(
-              (sum, item) => sum + (item.quantity || 0),
-              0,
-            ) || 0,
-          bnpcEligibleItems:
-            orderDetails.items?.filter((i) => i.isBNPCEligible).length || 0,
-          bnpcEligibleQuantity:
-            orderDetails.items
-              ?.filter((i) => i.isBNPCEligible)
-              .reduce((sum, item) => sum + (item.quantity || 0), 0) || 0,
+          totalQuantity: orderDetails.items?.reduce(
+            (sum, item) => sum + (item.quantity || 0),
+            0,
+          ) || 0,
+          bnpcEligibleItems: orderDetails.items?.filter((i) => i.isBNPCEligible).length || 0,
+          bnpcEligibleQuantity: orderDetails.items
+            ?.filter((i) => i.isBNPCEligible)
+            .reduce((sum, item) => sum + (item.quantity || 0), 0) || 0,
         },
 
         // Order state
@@ -131,11 +124,10 @@ const OrderSummaryScreen = ({ route, navigation }) => {
 
         // Booklet compliance
         bookletUpdated: false,
-        bookletUpdateReminder:
-          "Physical booklet must be updated with new total",
+        bookletUpdateReminder: "Physical booklet must be updated with new total",
       };
 
-      console.log("Submitting complete order data:", orderData);
+      console.log("Submitting complete order data:", JSON.stringify(orderData, null, 2));
 
       const result = await confirmOrder(orderData);
 
@@ -170,7 +162,6 @@ const OrderSummaryScreen = ({ route, navigation }) => {
           text: "Yes, Cancel",
           style: "destructive",
           onPress: () => {
-            // Navigate back or to cancellation screen
             navigation.goBack();
           },
         },
@@ -179,7 +170,6 @@ const OrderSummaryScreen = ({ route, navigation }) => {
   };
 
   const handlePrintReceipt = () => {
-    // Implement receipt printing logic here
     Alert.alert("Print Receipt", "Receipt sent to printer.", [{ text: "OK" }]);
   };
 
@@ -217,7 +207,7 @@ const OrderSummaryScreen = ({ route, navigation }) => {
             <View style={styles.infoItem}>
               <Text style={styles.infoLabel}>Cashier</Text>
               <Text style={styles.infoValue}>
-                {orderDetails.cashier?.name || "Cashier"}
+                {transactionData.cashier?.name || orderDetails?.cashier?.name || "Cashier"}
               </Text>
             </View>
           </View>
@@ -289,16 +279,16 @@ const OrderSummaryScreen = ({ route, navigation }) => {
             </View>
 
             {/* BNPC Discount */}
-            {transactionData.amounts.totalDiscount > 0 && (
+            {transactionData.amounts.discount > 0 && (
               <View style={styles.amountRow}>
                 <View style={styles.discountRow}>
                   <Ionicons name="pricetag" size={14} color="#059669" />
                   <Text style={styles.amountLabel}>
-                    BNPC Discount ({transactionData.customerType.toUpperCase()})
+                    BNPC Discount ({transactionData.customerType?.toUpperCase() || 'REGULAR'})
                   </Text>
                 </View>
                 <Text style={[styles.amountValue, styles.discountValue]}>
-                  -₱{transactionData.amounts.totalDiscount.toFixed(2)}
+                  -₱{transactionData.amounts.discount.toFixed(2)}
                 </Text>
               </View>
             )}
@@ -342,7 +332,7 @@ const OrderSummaryScreen = ({ route, navigation }) => {
         </View>
 
         {/* BNPC Caps Summary */}
-        {transactionData.amounts.totalDiscount > 0 && (
+        {transactionData.amounts.discount > 0 && (
           <View style={styles.card}>
             <View style={styles.sectionHeader}>
               <Ionicons name="document-text" size={18} color="#374151" />
@@ -359,7 +349,7 @@ const OrderSummaryScreen = ({ route, navigation }) => {
               <View style={styles.capRow}>
                 <Text style={styles.capLabel}>Discount Applied</Text>
                 <Text style={styles.capValue}>
-                  ₱{transactionData.amounts.totalDiscount.toFixed(2)}
+                  ₱{transactionData.amounts.discount.toFixed(2)}
                 </Text>
               </View>
               <View style={styles.capDividerFull} />
@@ -392,17 +382,10 @@ const OrderSummaryScreen = ({ route, navigation }) => {
             <View style={styles.pointRow}>
               <Text style={styles.pointLabel}>Points Earned</Text>
               <Text style={styles.pointValue}>
-                +{Math.floor(transactionData.amounts.finalTotal / 100) * 10}
+                +{Math.floor(transactionData.amounts.finalTotal / 10)}
               </Text>
             </View>
-            {transactionData.amounts.voucherDiscount > 0 && (
-              <View style={styles.pointRow}>
-                <Text style={styles.pointLabel}>Points Used</Text>
-                <Text style={[styles.pointValue, styles.pointsUsed]}>
-                  -{orderDetails.voucher?.pointsUsed || 0}
-                </Text>
-              </View>
-            )}
+            {/* Remove points used since not in your data */}
           </View>
         </View>
 
@@ -421,8 +404,10 @@ const OrderSummaryScreen = ({ route, navigation }) => {
             <Text style={styles.verificationText}>
               Verified via{" "}
               {transactionData.verificationSource === "system"
-                ? "QR Code"
-                : "Manual"}
+                ? "System"
+                : transactionData.verificationSource === "manual"
+                ? "Manual"
+                : "System"}
             </Text>
           </View>
         </View>

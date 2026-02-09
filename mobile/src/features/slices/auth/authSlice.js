@@ -18,18 +18,27 @@ function rejectedState(state, action) {
   state.error = action.error.message;
 }
 
-const authSlice = createSlice({
-  name: "auth",
-  initialState: {
+const initialState = {
     user: null,
-    role: "guest",
+    role: "",
     eligible: null,
     isLoggedIn: false,
     loading: false,
     error: null,
     isNewUser: false,
+  }
+
+const authSlice = createSlice({
+  name: "auth",
+ initialState,
+  reducers: {
+    guestMode:(state,action)=>{
+      state.role = "guest"
+    },
+    resetState:(state)=>{
+      return initialState
+    }
   },
-  reducers: {},
 
   extraReducers: (builder) => {
     builder
@@ -51,7 +60,7 @@ const authSlice = createSlice({
       .addCase(logout.rejected, rejectedState)
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
-        state.role = "guest";
+        state.role = "";
         state.eligible = null;
         state.isLoggedIn = false;
         state.loading = false;
@@ -61,5 +70,7 @@ const authSlice = createSlice({
       .addCase(logout.pending, pendingState);
   },
 });
+
+export const {guestMode, resetState} = authSlice.actions
 
 export default authSlice.reducer;

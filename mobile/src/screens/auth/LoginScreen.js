@@ -16,6 +16,7 @@ import * as Haptics from "expo-haptics";
 import { getToken } from "../../utils/authUtil";
 import { useDispatch, useSelector } from "react-redux";
 import { login, verifyToken } from "../../features/slices/auth/authThunks";
+import { guestMode } from "../../features/slices/auth/authSlice";
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");
@@ -37,6 +38,10 @@ const LoginScreen = ({ navigation }) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
   };
+
+  function handleGuest() {
+    dispatch(guestMode());
+  }
 
   React.useEffect(() => {
     (async () => {
@@ -146,9 +151,13 @@ const LoginScreen = ({ navigation }) => {
             </View>
 
             {/* Google Login */}
-            <TouchableOpacity style={styles.googleButton}>
-              <MaterialCommunityIcons name="google" size={20} color="#DB4437" />
-              <Text>Continue with Google</Text>
+            <TouchableOpacity style={styles.googleButton} onPress={handleGuest}>
+              <MaterialCommunityIcons
+                name="account"
+                size={25}
+                color="#0f0201"
+              />
+              <Text>Continue as a Guest</Text>
             </TouchableOpacity>
 
             {/* Footer */}

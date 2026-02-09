@@ -3,7 +3,7 @@ const router = express.Router()
 const authMiddlware = require("../middlewares/authMiddleware")
 const queueController = require("../controllers/checkoutQueueController")
 
-router.route("/checkout").post(authMiddlware.verifyToken,queueController.userCheckout)
+router.route("/checkout").post(queueController.userCheckout)
 router.route("/checkout/:checkoutCode")
 .get(authMiddlware.verifyToken, queueController.getCustomerOrder)
 .put(authMiddlware.verifyToken,queueController.lockCustomerOrder)
