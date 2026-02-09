@@ -17,6 +17,11 @@ const orderSchema = new mongoose.Schema(
       required: true
     },
 
+    appUser:{
+      type:Boolean,
+      default:true
+    },
+
     /* ======================
        ORDER METADATA
     ======================= */

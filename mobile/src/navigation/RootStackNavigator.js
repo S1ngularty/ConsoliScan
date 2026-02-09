@@ -6,7 +6,6 @@ import AuthNavigation from "./AuthNavigator";
 import CustomerStackNavigator from "./CustomerStackNavigator";
 import CashierStackNavigator from "./CashierStackNavigator";
 import SplashScreen from "../screens/SplashScreen";
-import SharedNavigation from "./SharedNavigation";
 import GuestNavigator from "./GuestNavigator";
 
 const ROLES = {
@@ -34,14 +33,12 @@ export default function RootNavigator() {
       {role === ROLES.Customer ? (
         <>
           <Stack.Screen name="Customer" component={CustomerStackNavigator} />
-          <Stack.Screen name="Shared" component={SharedNavigation} />
         </>
       ) : role === ROLES.Cashier ? (
         <Stack.Screen name="Cashier" component={CashierStackNavigator} />
       ) : role === ROLES.Guest ? (
         <>
           <Stack.Screen name="Guest" component={GuestNavigator} />
-          <Stack.Screen name="Shared" component={SharedNavigation} />
         </>
       ) : (
         <Stack.Screen name="Auth" component={AuthNavigation} />

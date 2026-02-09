@@ -160,13 +160,7 @@ const ScanningScreen = ({ navigation }) => {
             activeOpacity={0.7}
             onPress={() => {
               console.log(userState.role);
-              if (userState.role === "guest") {
-                navigation.navigate("Cart");
-              } else {
-                navigation.navigate("HomeTabs", {
-                  screen: "Cart",
-                });
-              }
+              navigation.navigate("Cart");
             }}
           >
             <MaterialCommunityIcons

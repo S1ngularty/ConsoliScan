@@ -52,7 +52,7 @@ export const lockedOrder = async (checkoutCode) => {
 
 export const payOrder = async (checkoutCode) => {
   const token = await getToken();
-  if (!token) throw new Error("missing token");
+  if (!token) return;
   const response = await fetch(`${API_URL}api/v1/checkout/paid/${checkoutCode}`, {
     method: "PUT",
     headers: {

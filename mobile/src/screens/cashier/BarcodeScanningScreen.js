@@ -218,7 +218,8 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
       checkoutCode,
       scannedItemsCount: scannedItems.length,
       totalAmount: totalPrice,
-      bnpcEligibleTotal: bnpcSubtotal
+      bnpcEligibleTotal: bnpcSubtotal,
+      appUser:false
     });
   };
 
