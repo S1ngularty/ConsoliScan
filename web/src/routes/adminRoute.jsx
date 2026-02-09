@@ -7,6 +7,7 @@ import ProductInventory from "../pages/admin/product/ProductInventory";
 import ProductPage from "../pages/admin/product/ProductPage"
 import CategoryPage from "../pages/admin/category/CategoryPage"
 import BeneficiaryManagement from "../pages/admin/user/UserBeneficiaryPage";
+import PromoListPage from "../pages/admin/discount/PromoPage";
 
 function adminRoute() {
   return [
@@ -48,6 +49,11 @@ function adminRoute() {
     {
       component: <CategoryPage></CategoryPage>,
       path: "/admin/categories",
+      index: false,
+    },
+    {
+      component: <PromoListPage></PromoListPage>,
+      path: "/admin/discount/promo",
       index: false,
     },
   ];

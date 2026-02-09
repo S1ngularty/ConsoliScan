@@ -167,6 +167,25 @@ const Sidebar = ({ breadcrumb }) => {
             },
           ],
         },
+          {
+          name: "Discount Management",
+          icon: <Layers size={22} />,
+          hasDropdown: true,
+          dropdown: [
+            {
+              name: "Promos",
+              icon: <Tag size={18} />,
+              navigate: "/admin/discount/promo",
+              location: "Admin / Discount / Promo ",
+            },
+             {
+              name: "Loyalty Points",
+              icon: <Tag size={18} />,
+              navigate: "/admin/loyalty",
+              location: "Admin / Discount / Loyalty Points ",
+            },
+          ],
+        },
         {
           name: "Order Management",
           icon: <ShoppingCart size={22} />,
