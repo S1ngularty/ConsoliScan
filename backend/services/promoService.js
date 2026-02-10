@@ -22,3 +22,17 @@ exports.getSelection = async (request) => {
 
   return { products, categories };
 };
+
+exports.updatePromo = async (request) => {
+  if (!request.body) throw new Error("empty body request");
+  const { promoId } = request.params;
+  const updatedPromo = await Promo.findByIdAndUpdate(promoId, request.body, {
+    new: true,
+    upsert: true,
+    runValidators: true,
+  });
+
+  if (!updatedPromo) throw new Error("failed to update the promo");
+
+  return updatedPromo;
+};

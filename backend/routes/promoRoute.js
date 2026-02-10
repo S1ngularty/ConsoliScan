@@ -7,7 +7,11 @@ const promoController = require("../controllers/promoController");
 router
   .route("/promo")
   .post(authMiddleware.verifyToken, promoController.createPromo)
-  .get(authMiddleware.verifyToken, promoController.getAllPromo)
+  .get(authMiddleware.verifyToken, promoController.getAllPromo);
+
+router
+  .route("/promo/:promoId")
+  .put(authMiddleware.verifyToken, promoController.updatePromo);
 
 router
   .route("/promo/selections")
