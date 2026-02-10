@@ -30,16 +30,16 @@ import { getToken } from "../../utils/authUtil";
 
 // Mock weekly usage tracker - in production, fetch from API
 const mockWeeklyUsage = {
-  bnpcAmountUsed: 0, // Amount spent on BNPC this week
-  discountUsed: 0, // Discount used this week
+  bnpcAmountUsed: 0,
+  discountUsed: 0,
   weekStart: "2024-01-15",
   weekEnd: "2024-01-21",
 };
 
 const CartScreen = ({ navigation, route }) => {
   const [refreshing, setRefreshing] = useState(false);
-  const [voucherCode, setVoucherCode] = useState("");
-  const [appliedVoucher, setAppliedVoucher] = useState(null);
+  const [selectedPromo, setSelectedPromo] = useState(null);
+  const [loyaltyPoints, setLoyaltyPoints] = useState("");
   const [weeklyUsage, setWeeklyUsage] = useState(mockWeeklyUsage);
   const eligibilityStatus = useSelector((state) => state.auth.eligible);
   const userState = useSelector((state) => state.auth);
@@ -50,19 +50,16 @@ const CartScreen = ({ navigation, route }) => {
 
   const dispatch = useDispatch();
 
-  // Get cart from Redux store
-  const { cart, itemCount } = useSelector((state) => state.cart);
-  console.log(cart)
-  // Check if user is eligible for BNPC discounts
+  const { cart, itemCount, promo } = useSelector((state) => state.cart);
+  // console.log(promo, cart);
+
   const isEligibleUser = eligibilityStatus?.isVerified;
 
   useEffect(() => {
-    // Fetch cart from server on mount
-   userState.role ==="user" && dispatch(getCartFromServer());
+    userState.role === "user" && dispatch(getCartFromServer());
   }, [userState.role]);
 
   useEffect(() => {
-    // Set user eligibility based on auth status
     if (eligibilityStatus?.idType === "senior") {
       setUserEligibility((prev) => ({ ...prev, isSenior: true }));
     }
@@ -71,60 +68,75 @@ const CartScreen = ({ navigation, route }) => {
     }
   }, [eligibilityStatus]);
 
-  // Available vouchers
-  const availableVouchers = [
+  // Available promos from the LOG data
+  const availablePromos = [
     {
-      code: "WELCOME10",
-      discount: 10,
+      _id: "698ab7496df9cbd7f5fdcb3b",
+      code: "PROMO-YWABWU83",
+      name: "BUY 1 GET NONE",
       type: "percentage",
-      minSpend: 100,
-      description: "10% off on first purchase",
+      value: 25,
+      scope: "category",
+      targetIds: [
+        "6989f666d310e45067710e70",
+        "6989f666d310e45067710e6f",
+        "6989f6f2d310e45067710e8a",
+        "6989f6f2d310e45067710e89",
+        "6989f8e9f212b85e9b2bf7e9",
+      ],
+      minPurchase: 0,
+      startDate: "2026-02-10T00:00:00.000Z",
+      endDate: "2026-04-10T00:00:00.000Z",
+      usageLimit: 1000,
+      usedCount: 300,
+      active: true,
     },
     {
-      code: "SAVE50",
-      discount: 50,
-      type: "fixed",
-      minSpend: 200,
-      description: "Save ₱50 on orders above ₱200",
+      _id: "698ae5c10006555e22337a69",
+      code: "PROMO-5GUBY2ZR",
+      name: "SummerSale 20% off",
+      type: "percentage",
+      value: 20,
+      scope: "product",
+      targetIds: [
+        "697218a0f58f7c6804de4b14",
+        "697231bf94db4310e9900e25",
+        "6981a260b29f902e9a8b0f4e",
+        "6981a3b6b29f902e9a8b0f5f",
+      ],
+      minPurchase: 0,
+      startDate: "2026-02-10T00:00:00.000Z",
+      endDate: "2026-03-10T00:00:00.000Z",
+      active: true,
     },
   ];
 
-  // =========================
-  // HELPER FUNCTIONS FOR DATA SYNC - UPDATED
-  // =========================
-
-  // Normalize cart item for consistent data structure - UPDATED for new category structure
+  // Normalize cart item
   const normalizeCartItem = (item) => {
-    // Check if item is from server (has product nested) or local (flat)
     const product = item.product || item;
     const quantity = item.selectedQuantity || item.qty || 1;
-
-    // Get BNPC fields from category object
     const category = product.category || {};
 
-    // Extract all necessary fields
     return {
       _id: item._id || product._id,
       name: item.name || product.name,
       price: Number(item.price || product.price || 0),
+      salePrice: product.salePrice,
+      saleActive: product.saleActive,
       images: item.images || product.images || [],
       selectedQuantity: Number(quantity),
       qty: Number(quantity),
       dateAdded: item.dateAdded || new Date().toISOString(),
-
-      // Product details for discount calculations - UPDATED
       product: {
         _id: product._id,
         name: product.name,
         price: Number(product.price || 0),
-        // BNPC fields now come from category object
+        salePrice: product.salePrice,
+        saleActive: product.saleActive,
         isBNPC: category.isBNPC || false,
         excludedFromDiscount: product.excludedFromDiscount || false,
-        discountScopes: category.applicableTo || [],
-        bnpcCategory: category.bnpcCategory || "",
         unit: product.unit || "pc",
         images: product.images || [],
-        // Keep reference to category for debugging
         category: category,
       },
     };
@@ -141,7 +153,10 @@ const CartScreen = ({ navigation, route }) => {
 
     cart.forEach((item) => {
       const normalizedItem = normalizeCartItem(item);
-      const price = Number(normalizedItem.price) || 0;
+      const price =
+        normalizedItem.saleActive && normalizedItem.salePrice
+          ? Number(normalizedItem.salePrice)
+          : Number(normalizedItem.price) || 0;
       const quantity = Number(normalizedItem.selectedQuantity) || 1;
 
       if (!isNaN(price) && !isNaN(quantity)) {
@@ -156,10 +171,6 @@ const CartScreen = ({ navigation, route }) => {
     };
   };
 
-  // =========================
-  // BNPC DISCOUNT CALCULATION - UPDATED
-  // =========================
-
   // Get user discount scope based on eligibility
   const getUserDiscountScope = () => {
     if (userEligibility.isPWD) return "PWD";
@@ -167,171 +178,228 @@ const CartScreen = ({ navigation, route }) => {
     return null;
   };
 
-  // Step 1: Filter Eligible BNPC Items - FIXED
+  // Step 1: Filter Eligible BNPC Items
   const getEligibleBNPCItems = () => {
     if (!isEligibleUser) return [];
 
     const userScope = getUserDiscountScope();
     if (!userScope) return [];
 
-    // console.log("Checking BNPC eligibility for user scope:", userScope);
-
     return cart.filter((item) => {
       const normalizedItem = normalizeCartItem(item);
       const product = normalizedItem.product;
-
-      // Debug log
-      // console.log(`Item: ${product.name}`);
-      // console.log(`  - isBNPC: ${product.isBNPC}`);
-      // console.log(`  - excludedFromDiscount: ${product.excludedFromDiscount}`);
-      // console.log(`  - discountScopes: ${JSON.stringify(product.discountScopes)}`);
-      // console.log(`  - userScope: ${userScope}`);
-      // console.log(`  - includes user scope: ${product.discountScopes?.includes(userScope)}`);
-
+      // console.log(product);
       const isEligible =
         product.isBNPC &&
         !product.excludedFromDiscount &&
-        product.discountScopes?.includes(userScope);
-
-      // console.log(`  - Final eligibility: ${isEligible}`);
+        ["PWD", "SENIOR"].includes(userScope);
 
       return isEligible;
     });
   };
 
-// Step 2: Compute BNPC Subtotal safely - FIXED FOR ALL CUSTOMERS
-const calculateBNPCSubtotal = () => {
-  const bnpcItems = cart.filter((item) => {
-    const normalizedItem = normalizeCartItem(item);
-    const product = normalizedItem.product;
-    return product.isBNPC === true;
-  });
+  // Step 2: Compute BNPC Subtotal safely
+  const calculateBNPCSubtotal = () => {
+    const bnpcItems = cart.filter((item) => {
+      const normalizedItem = normalizeCartItem(item);
+      const product = normalizedItem.product;
+      return product.isBNPC === true;
+    });
 
-  const subtotal = bnpcItems.reduce((sum, item) => {
-    const normalizedItem = normalizeCartItem(item);
-    const price = Number(normalizedItem.price) || 0;
-    const quantity = Number(normalizedItem.selectedQuantity) || 1;
-    return sum + price * quantity;
-  }, 0);
+    const subtotal = bnpcItems.reduce((sum, item) => {
+      const normalizedItem = normalizeCartItem(item);
+      const price =
+        normalizedItem.saleActive && normalizedItem.salePrice
+          ? Number(normalizedItem.salePrice)
+          : Number(normalizedItem.price) || 0;
+      const quantity = Number(normalizedItem.selectedQuantity) || 1;
+      return sum + price * quantity;
+    }, 0);
 
-  return subtotal;
-};
- // Step 3 & 4: Apply Weekly Caps - FIXED
-const calculateDiscountDetails = () => {
-  // Always calculate BNPC subtotal (for tracking)
-  const bnpcSubtotal = calculateBNPCSubtotal();
-  
-  // For non-eligible users, just return tracking data
-  if (!isEligibleUser) {
-    return {
-      eligible: false,
-      discountApplied: 0,
-      bnpcSubtotal: bnpcSubtotal, // Track BNPC subtotal even for non-eligible
-      cappedBNPCAmount: 0,
-      reason: "User not eligible for BNPC discounts",
+    return subtotal;
+  };
+
+  // Step 3 & 4: Apply Weekly Caps
+  const calculateDiscountDetails = () => {
+    const bnpcSubtotal = calculateBNPCSubtotal();
+
+    if (!isEligibleUser) {
+      return {
+        eligible: false,
+        discountApplied: 0,
+        bnpcSubtotal: bnpcSubtotal,
+        cappedBNPCAmount: 0,
+        reason: "User not eligible for BNPC discounts",
+      };
+    }
+
+    const eligibleItems = getEligibleBNPCItems();
+    if (eligibleItems.length === 0) {
+      return {
+        eligible: false,
+        discountApplied: 0,
+        bnpcSubtotal: bnpcSubtotal,
+        cappedBNPCAmount: 0,
+        reason: "No eligible BNPC items in cart",
+      };
+    }
+
+    const calculateBNPCSubtotalForItems = (items) => {
+      return items.reduce((sum, item) => {
+        const normalizedItem = normalizeCartItem(item);
+        const price =
+          normalizedItem.saleActive && normalizedItem.salePrice
+            ? Number(normalizedItem.salePrice)
+            : Number(normalizedItem.price) || 0;
+        const quantity = Number(normalizedItem.selectedQuantity) || 1;
+        return sum + price * quantity;
+      }, 0);
     };
-  }
 
-  const eligibleItems = getEligibleBNPCItems();
-  if (eligibleItems.length === 0) {
-    return {
-      eligible: false,
-      discountApplied: 0,
-      bnpcSubtotal: bnpcSubtotal, // Track BNPC subtotal
-      cappedBNPCAmount: 0,
-      reason: "No eligible BNPC items in cart",
-    };
-  }
+    const eligibleBNPCSubtotal = calculateBNPCSubtotalForItems(eligibleItems);
+    const remainingPurchaseCap = Math.max(2500 - weeklyUsage.bnpcAmountUsed, 0);
 
-  const eligibleBNPCSubtotal = calculateBNPCSubtotalForItems(eligibleItems);
-  
-  // Rest of your existing code...
-  const remainingPurchaseCap = Math.max(2500 - weeklyUsage.bnpcAmountUsed, 0);
-  
-  if (remainingPurchaseCap === 0) {
-    return {
-      eligible: false,
-      discountApplied: 0,
-      bnpcSubtotal: eligibleBNPCSubtotal,
-      cappedBNPCAmount: 0,
-      reason: "Weekly purchase cap reached (₱2,500)",
-    };
-  }
+    if (remainingPurchaseCap === 0) {
+      return {
+        eligible: false,
+        discountApplied: 0,
+        bnpcSubtotal: eligibleBNPCSubtotal,
+        cappedBNPCAmount: 0,
+        reason: "Weekly purchase cap reached (₱2,500)",
+      };
+    }
 
-  const cappedBNPCAmount = Math.min(eligibleBNPCSubtotal, remainingPurchaseCap);
-  const rawDiscount = cappedBNPCAmount * 0.05;
-  const remainingDiscountCap = Math.max(125 - weeklyUsage.discountUsed, 0);
-  
-  if (remainingDiscountCap === 0) {
+    const cappedBNPCAmount = Math.min(
+      eligibleBNPCSubtotal,
+      remainingPurchaseCap,
+    );
+    const rawDiscount = cappedBNPCAmount * 0.05;
+    const remainingDiscountCap = Math.max(125 - weeklyUsage.discountUsed, 0);
+
+    if (remainingDiscountCap === 0) {
+      return {
+        eligible: false,
+        discountApplied: 0,
+        bnpcSubtotal: eligibleBNPCSubtotal,
+        cappedBNPCAmount,
+        reason: "Weekly discount cap reached (₱125)",
+      };
+    }
+
+    const discountApplied = Math.min(rawDiscount, remainingDiscountCap);
+
     return {
-      eligible: false,
-      discountApplied: 0,
+      eligible: true,
+      discountApplied,
       bnpcSubtotal: eligibleBNPCSubtotal,
       cappedBNPCAmount,
-      reason: "Weekly discount cap reached (₱125)",
+      eligibleItemsCount: eligibleItems.length,
+      remainingPurchaseCap,
+      remainingDiscountCap,
+      weeklyPurchaseUsed: weeklyUsage.bnpcAmountUsed + cappedBNPCAmount,
+      weeklyDiscountUsed: weeklyUsage.discountUsed + discountApplied,
     };
-  }
-
-  const discountApplied = Math.min(rawDiscount, remainingDiscountCap);
-
-  return {
-    eligible: true,
-    discountApplied,
-    bnpcSubtotal: eligibleBNPCSubtotal,
-    cappedBNPCAmount,
-    eligibleItemsCount: eligibleItems.length,
-    remainingPurchaseCap,
-    remainingDiscountCap,
-    weeklyPurchaseUsed: weeklyUsage.bnpcAmountUsed + cappedBNPCAmount,
-    weeklyDiscountUsed: weeklyUsage.discountUsed + discountApplied,
   };
-};
 
-// Add this helper function
-const calculateBNPCSubtotalForItems = (items) => {
-  return items.reduce((sum, item) => {
-    const normalizedItem = normalizeCartItem(item);
-    const price = Number(normalizedItem.price) || 0;
-    const quantity = Number(normalizedItem.selectedQuantity) || 1;
-    return sum + price * quantity;
-  }, 0);
-};
+  // Calculate promo discount
+  const calculatePromoDiscount = (subtotal) => {
+    if (!selectedPromo) return 0;
 
-  // Calculate voucher discount
-  const calculateVoucherDiscount = (subtotal) => {
-    if (!appliedVoucher) return 0;
+    // Check if promo is still valid
+    const now = new Date();
+    const startDate = new Date(selectedPromo.startDate);
+    const endDate = new Date(selectedPromo.endDate);
 
-    const eligibleAmount = subtotal;
-
-    if (eligibleAmount < appliedVoucher.minSpend) return 0;
-
-    if (appliedVoucher.type === "percentage") {
-      return (eligibleAmount * appliedVoucher.discount) / 100;
-    } else {
-      return appliedVoucher.discount;
+    if (now < startDate || now > endDate) {
+      setSelectedPromo(null);
+      Alert.alert("Promo Expired", "This promo is no longer valid");
+      return 0;
     }
+
+    // Check usage limit
+    if (
+      selectedPromo.usageLimit &&
+      selectedPromo.usedCount >= selectedPromo.usageLimit
+    ) {
+      setSelectedPromo(null);
+      Alert.alert(
+        "Promo Limit Reached",
+        "This promo has reached its usage limit",
+      );
+      return 0;
+    }
+
+    // Check minimum purchase
+    if (subtotal < selectedPromo.minPurchase) {
+      Alert.alert(
+        "Minimum Purchase Required",
+        `Minimum purchase of ₱${selectedPromo.minPurchase} required for this promo`,
+      );
+      return 0;
+    }
+
+    // Check if items are eligible for promo
+    const eligibleItems = cart.filter((item) => {
+      const normalizedItem = normalizeCartItem(item);
+      const productId = normalizedItem.product._id;
+
+      if (selectedPromo.scope === "product") {
+        return selectedPromo.targetIds.includes(productId);
+      } else if (selectedPromo.scope === "category") {
+        const categoryId = normalizedItem.product.category?._id;
+        return categoryId && selectedPromo.targetIds.includes(categoryId);
+      }
+      return true; // For global promos
+    });
+
+    if (eligibleItems.length === 0) {
+      Alert.alert(
+        "Promo Not Applicable",
+        "No items in cart are eligible for this promo",
+      );
+      return 0;
+    }
+
+    // Calculate discount
+    if (selectedPromo.type === "percentage") {
+      return (subtotal * selectedPromo.value) / 100;
+    } else {
+      return selectedPromo.value;
+    }
+  };
+
+  // Calculate loyalty points discount (max 30% of order total)
+  const calculateLoyaltyPointsDiscount = (subtotal) => {
+    const points = parseInt(loyaltyPoints) || 0;
+    if (points <= 0) return 0;
+
+    // Assuming 1 point = ₱1 value
+    const pointsValue = points;
+    const maxPointsValue = subtotal * 0.3; // Max 30% of subtotal
+
+    return Math.min(pointsValue, maxPointsValue);
   };
 
   // Calculate all totals
   const calculateTotals = () => {
     const discountDetails = calculateDiscountDetails();
     const { subtotal } = calculateCartTotals();
-    const voucherDiscount = calculateVoucherDiscount(subtotal);
+    const promoDiscount = calculatePromoDiscount(subtotal);
+    const loyaltyDiscount = calculateLoyaltyPointsDiscount(subtotal);
+
     const finalTotal = Math.max(
       0,
-      subtotal - discountDetails.discountApplied - voucherDiscount,
+      subtotal -
+        discountDetails.discountApplied -
+        promoDiscount -
+        loyaltyDiscount,
     );
-
-    // console.log("\n=== Final Totals ===");
-    // console.log("Subtotal:", subtotal);
-    // console.log("BNPC Discount:", discountDetails.discountApplied);
-    // console.log("Voucher Discount:", voucherDiscount);
-    // console.log("Final Total:", finalTotal);
 
     return {
       subtotal,
       bnpcDiscount: discountDetails.discountApplied,
-      voucherDiscount,
+      promoDiscount,
+      loyaltyDiscount,
       finalTotal,
       discountDetails,
     };
@@ -352,7 +420,6 @@ const calculateBNPCSubtotalForItems = (items) => {
     if (newQty < 1) {
       dispatch(removeFromCart(itemId));
     } else {
-      // Find the item to get its correct structure
       const item = cart.find((item) => item._id === itemId);
       if (item) {
         const normalizedItem = normalizeCartItem(item);
@@ -366,7 +433,7 @@ const calculateBNPCSubtotalForItems = (items) => {
         );
       }
     }
-    userState.role ==="user" && debounceCartSync(dispatch);
+    userState.role === "user" && debounceCartSync(dispatch);
   };
 
   const removeItem = (itemId) => {
@@ -401,186 +468,185 @@ const calculateBNPCSubtotalForItems = (items) => {
     ]);
   };
 
-  const handleApplyVoucher = () => {
+  const handleSelectPromo = (promo) => {
+    setSelectedPromo(promo);
+
     const totals = calculateTotals();
+    const promoDiscount = calculatePromoDiscount(totals.subtotal);
 
-    if (!voucherCode.trim()) {
-      Alert.alert("Invalid Code", "Please enter a voucher code");
-      return;
-    }
-
-    const voucher = availableVouchers.find(
-      (v) => v.code === voucherCode.toUpperCase(),
-    );
-
-    if (!voucher) {
-      Alert.alert("Invalid Code", "Voucher code is not valid");
-      return;
-    }
-
-    if (totals.subtotal < voucher.minSpend) {
+    if (promoDiscount > 0) {
       Alert.alert(
-        "Minimum Spend Required",
-        `Minimum spend of ₱${voucher.minSpend} required for this voucher`,
+        "Success",
+        `Promo applied! You'll save ₱${promoDiscount.toFixed(2)}`,
       );
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setSelectedPromo(null);
+  };
+
+  const handleLoyaltyPointsChange = (text) => {
+    // Allow only numbers
+    const numericValue = text.replace(/[^0-9]/g, "");
+    setLoyaltyPoints(numericValue);
+  };
+
+  const handleApplyLoyaltyPoints = () => {
+    const points = parseInt(loyaltyPoints) || 0;
+    if (points <= 0) {
+      Alert.alert("Invalid Points", "Please enter valid loyalty points");
       return;
     }
 
-    setAppliedVoucher(voucher);
+    const totals = calculateTotals();
+    const maxPointsValue = totals.subtotal * 0.3;
+    const pointsValue = points; // Assuming 1 point = ₱1
 
-    const voucherDiscount = calculateVoucherDiscount(totals.subtotal);
-    Alert.alert(
-      "Success",
-      `Voucher applied! You saved ₱${voucherDiscount.toFixed(2)}`,
-    );
+    if (pointsValue > maxPointsValue) {
+      Alert.alert(
+        "Max Limit Exceeded",
+        `You can only use points worth ₱${maxPointsValue.toFixed(2)} (30% of order total)`,
+      );
+      setLoyaltyPoints(Math.floor(maxPointsValue).toString());
+    } else {
+      Alert.alert(
+        "Points Applied",
+        `Using ${points} points (₱${pointsValue.toFixed(2)})`,
+      );
+    }
   };
 
-  const handleRemoveVoucher = () => {
-    setAppliedVoucher(null);
-    setVoucherCode("");
-  };
+  const handleCheckout = async () => {
+    const { itemCount } = calculateCartTotals();
+    if (itemCount === 0) {
+      Alert.alert("Empty Cart", "Your cart is empty. Add items to checkout.");
+      return;
+    }
+    const totals = calculateTotals();
+    const discountDetails = totals.discountDetails;
 
- const handleCheckout = async () => {
-  const { itemCount } = calculateCartTotals();
-  if (itemCount === 0) {
-    Alert.alert("Empty Cart", "Your cart is empty. Add items to checkout.");
-    return;
-  }
-  const totals = calculateTotals();
-  const discountDetails = totals.discountDetails;
+    const bnpcProducts = cart
+      .filter((item) => {
+        const normalizedItem = normalizeCartItem(item);
+        const product = normalizedItem.product;
+        return product.isBNPC === true;
+      })
+      .map((item) => {
+        const normalizedItem = normalizeCartItem(item);
+        const product = normalizedItem.product;
+        return {
+          productId: product._id,
+          name: product.name,
+          price: normalizedItem.price,
+          quantity: normalizedItem.selectedQuantity,
+          requiresVerification: true,
+        };
+      });
 
-  /* ======================
-     EXTRACT BNPC PRODUCTS
-  ====================== */
-  const bnpcProducts = cart
-    .filter((item) => {
+    const items = cart.map((item) => {
       const normalizedItem = normalizeCartItem(item);
       const product = normalizedItem.product;
-      return product.isBNPC === true;
-    })
-    .map((item) => {
-      const normalizedItem = normalizeCartItem(item);
-      const product = normalizedItem.product;
+
+      const userScope = getUserDiscountScope();
+      const isBNPCEligible =
+        isEligibleUser &&
+        product.isBNPC &&
+        !product.excludedFromDiscount &&
+        ["PWD", "SENIOR"].includes(userScope);
+
       return {
-        productId: product._id,
+        product: product._id,
         name: product.name,
-        price: normalizedItem.price,
+        sku: product.sku || `PROD-${product._id.slice(-6)}`,
         quantity: normalizedItem.selectedQuantity,
-        bnpcCategory: product.bnpcCategory || "",
-        discountScopes: product.discountScopes || [],
-        requiresVerification: true,
+        unitPrice: normalizedItem.price,
+        isBNPCEligible: isBNPCEligible || false,
+        isBNPCProduct: product.isBNPC || false,
+        category: product.category,
       };
     });
 
-  /* ======================
-     SANITIZE CART ITEMS - UPDATED
-  ====================== */
-  const items = cart.map((item) => {
-    const normalizedItem = normalizeCartItem(item);
-    const product = normalizedItem.product;
-
-    const userScope = getUserDiscountScope();
-    const isBNPCEligible =
-      isEligibleUser &&
-      product.isBNPC &&
-      !product.excludedFromDiscount &&
-      product.discountScopes?.includes(userScope);
-
-    return {
-      product: product._id,
-      name: product.name,
-      sku: product.sku || `PROD-${product._id.slice(-6)}`,
-      quantity: normalizedItem.selectedQuantity,
-      unitPrice: normalizedItem.price,
-      categoryType: product.bnpcCategory || null,
-      isBNPCEligible: isBNPCEligible || false,
-      isBNPCProduct: product.isBNPC || false,
-      bnpcCategory: product.bnpcCategory || "",
-      discountScopes: product.discountScopes || [],
-      // Include category data for reference
-      category: product.category,
+    const checkoutTotals = {
+      subtotal: totals.subtotal,
+      bnpcSubtotal: discountDetails.bnpcSubtotal || 0,
+      discountTotal:
+        (totals.bnpcDiscount || 0) +
+        (totals.promoDiscount || 0) +
+        (totals.loyaltyDiscount || 0),
+      finalTotal: totals.finalTotal,
     };
-  });
 
-  /* ======================
-     FREEZE TOTALS - FIXED (ADD bnpcSubtotal)
-  ====================== */
-  const checkoutTotals = {
-    subtotal: totals.subtotal,
-    bnpcSubtotal: discountDetails.bnpcSubtotal || 0, // ADD THIS LINE
-    discountTotal: (totals.bnpcDiscount || 0) + (totals.voucherDiscount || 0),
-    finalTotal: totals.finalTotal,
+    const discountSnapshot = {
+      eligible: discountDetails.eligible,
+      eligibleItemsCount: discountDetails.eligibleItemsCount || 0,
+      bnpcSubtotal: discountDetails.bnpcSubtotal || 0,
+      cappedBNPCAmount: discountDetails.cappedBNPCAmount || 0,
+      discountApplied: discountDetails.discountApplied || 0,
+      weeklyDiscountUsed:
+        discountDetails.weeklyDiscountUsed || weeklyUsage.discountUsed,
+      weeklyPurchaseUsed:
+        discountDetails.weeklyPurchaseUsed || weeklyUsage.bnpcAmountUsed,
+      remainingDiscountCap:
+        discountDetails.remainingDiscountCap || 125 - weeklyUsage.discountUsed,
+      remainingPurchaseCap:
+        discountDetails.remainingPurchaseCap ||
+        2500 - weeklyUsage.bnpcAmountUsed,
+    };
+
+    const checkoutData = {
+      user: userState.user?.userId || null,
+      userType: userState.user?.userId ? "user" : "guest",
+      items,
+      bnpcProducts,
+      totals: checkoutTotals,
+      discountSnapshot,
+      userEligibility: {
+        isPWD: userEligibility.isPWD,
+        isSenior: userEligibility.isSenior,
+        verified: isEligibleUser,
+      },
+      customerVerification: isEligibleUser
+        ? {
+            type: userEligibility.isPWD
+              ? "pwd"
+              : userEligibility.isSenior
+                ? "senior"
+                : null,
+            verified: isEligibleUser,
+            verificationSource: "system",
+          }
+        : null,
+      promo: selectedPromo
+        ? {
+            code: selectedPromo.code,
+            discountAmount: totals.promoDiscount,
+            type: selectedPromo.type,
+            name: selectedPromo.name,
+          }
+        : null,
+      loyaltyPoints: {
+        pointsUsed: parseInt(loyaltyPoints) || 0,
+        discountAmount: totals.loyaltyDiscount,
+      },
+      weeklyUsageSnapshot: {
+        bnpcAmountUsed: discountSnapshot.weeklyPurchaseUsed,
+        discountUsed: discountSnapshot.weeklyDiscountUsed,
+      },
+    };
+
+    try {
+      const token = userState.role === "user" ? await getToken() : null;
+      const queue = await checkout(checkoutData);
+      navigation.navigate("Shared", {
+        screen: "QR",
+        params: { ...queue, token },
+      });
+    } catch (error) {
+      console.error("Checkout error:", error);
+      Alert.alert("Checkout Failed", error.message || "Please try again");
+    }
   };
-
-  /* ======================
-     DISCOUNT SNAPSHOT
-  ====================== */
-  const discountSnapshot = {
-    eligible: discountDetails.eligible,
-    eligibleItemsCount: discountDetails.eligibleItemsCount || 0,
-    bnpcSubtotal: discountDetails.bnpcSubtotal || 0,
-    cappedBNPCAmount: discountDetails.cappedBNPCAmount || 0,
-    discountApplied: discountDetails.discountApplied || 0,
-    weeklyDiscountUsed:
-      discountDetails.weeklyDiscountUsed || weeklyUsage.discountUsed,
-    weeklyPurchaseUsed:
-      discountDetails.weeklyPurchaseUsed || weeklyUsage.bnpcAmountUsed,
-    remainingDiscountCap:
-      discountDetails.remainingDiscountCap || 125 - weeklyUsage.discountUsed,
-    remainingPurchaseCap:
-      discountDetails.remainingPurchaseCap ||
-      2500 - weeklyUsage.bnpcAmountUsed,
-  };
-
-  /* ======================
-     FINAL CHECKOUT PAYLOAD - FIXED
-  ====================== */
-  const checkoutData = {
-    user: userState.user?.userId || null,
-    userType: userState.user?.userId ? "user" : "guest",
-    items,
-    bnpcProducts, // ADD BNPC products array
-    totals: checkoutTotals,
-    discountSnapshot,
-    userEligibility: {
-      isPWD: userEligibility.isPWD,
-      isSenior: userEligibility.isSenior,
-      verified: isEligibleUser,
-    },
-    // Add customer verification info for app users
-    customerVerification: isEligibleUser ? {
-      type: userEligibility.isPWD ? "pwd" : userEligibility.isSenior ? "senior" : null,
-      verified: isEligibleUser,
-      verificationSource: "system",
-    } : null,
-    voucher: appliedVoucher
-      ? {
-          code: appliedVoucher.code,
-          discountAmount: totals.voucherDiscount || appliedVoucher.discount,
-          type: appliedVoucher.type,
-        }
-      : null,
-    weeklyUsageSnapshot: {
-      bnpcAmountUsed: discountSnapshot.weeklyPurchaseUsed,
-      discountUsed: discountSnapshot.weeklyDiscountUsed,
-    },
-  };
-
-  console.log("Checkout payload:", JSON.stringify(checkoutData, null, 2));
-
-  try {
-    const token = userState.role === "user" ? await getToken() : null;
-    console.log("token:", token);
-    const queue = await checkout(checkoutData);
-    navigation.navigate("Shared", {
-      screen: "QR",
-      params: { ...queue, token },
-    });
-  } catch (error) {
-    console.error("Checkout error:", error);
-    Alert.alert("Checkout Failed", error.message || "Please try again");
-  }
-};
 
   const formatDate = (dateString) => {
     if (!dateString) return "Recently added";
@@ -598,26 +664,21 @@ const calculateBNPCSubtotalForItems = (items) => {
   const renderCartItem = (item) => {
     const normalizedItem = normalizeCartItem(item);
     const product = normalizedItem.product;
-    const itemTotal = normalizedItem.price * normalizedItem.selectedQuantity;
+    const currentPrice =
+      product.saleActive && product.salePrice
+        ? product.salePrice
+        : normalizedItem.price;
+    const itemTotal = currentPrice * normalizedItem.selectedQuantity;
 
     const totals = calculateTotals();
-
-    // Check if item is BNPC eligible
     const userScope = getUserDiscountScope();
     const isBNPCEligible =
       totals.discountDetails.eligible &&
       product.isBNPC &&
       !product.excludedFromDiscount &&
-      product.discountScopes?.includes(userScope);
+      ["PWD", "SENIOR"].includes(userScope);
 
     const bnpcItemDiscount = isBNPCEligible ? itemTotal * 0.05 : 0;
-
-    // Debug display
-    // console.log(`Rendering item: ${product.name}`);
-    // console.log(`  - isBNPC: ${product.isBNPC}`);
-    // console.log(`  - discountScopes: ${JSON.stringify(product.discountScopes)}`);
-    // console.log(`  - userScope: ${userScope}`);
-    // console.log(`  - isEligible: ${isBNPCEligible}`);
 
     return (
       <View key={normalizedItem._id} style={styles.cartItem}>
@@ -642,19 +703,27 @@ const calculateBNPCSubtotalForItems = (items) => {
               <View style={styles.bnpcBadge}>
                 <Text style={styles.bnpcBadgeText}>BNPC</Text>
               </View>
-              {!product.excludedFromDiscount &&
-                product.discountScopes?.length > 0 && (
-                  <Text style={styles.discountEligibleText}>
-                    Eligible for {product.discountScopes?.join("/")} discount
-                  </Text>
-                )}
             </View>
           )}
 
           <View style={styles.priceRow}>
-            <Text style={styles.itemPrice}>
-              ₱{normalizedItem.price.toFixed(2)}
-            </Text>
+            {product.saleActive && product.salePrice ? (
+              <>
+                <Text style={styles.salePrice}>
+                  ₱{product.salePrice.toFixed(2)}
+                </Text>
+                <Text style={styles.originalPriceText}>
+                  ₱{product.price.toFixed(2)}
+                </Text>
+                <View style={styles.saleBadge}>
+                  <Text style={styles.saleBadgeText}>SALE</Text>
+                </View>
+              </>
+            ) : (
+              <Text style={styles.itemPrice}>
+                ₱{normalizedItem.price.toFixed(2)}
+              </Text>
+            )}
             <Text style={styles.itemUnit}>per {product.unit || "pc"}</Text>
           </View>
 
@@ -743,18 +812,8 @@ const calculateBNPCSubtotalForItems = (items) => {
   const discountDetails = totals.discountDetails;
   const { itemCount: displayItemCount } = calculateCartTotals();
 
-  // Debug summary
-  // console.log("\n=== CART SUMMARY ===");
-  // console.log("Cart items:", cart.length);
-  // console.log("User eligible for BNPC:", isEligibleUser);
-  // console.log("User scope:", getUserDiscountScope());
-  // console.log("BNPC discount eligible:", discountDetails.eligible);
-  // console.log("BNPC discount reason:", discountDetails.reason);
-  // console.log("BNPC discount amount:", discountDetails.discountApplied);
-
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -791,7 +850,6 @@ const calculateBNPCSubtotalForItems = (items) => {
           />
         }
       >
-        {/* User Eligibility Banner */}
         {cart.length > 0 && (
           <View style={styles.eligibilityCard}>
             <View style={styles.eligibilityHeader}>
@@ -830,7 +888,6 @@ const calculateBNPCSubtotalForItems = (items) => {
           </View>
         )}
 
-        {/* Cart Items */}
         {cart.length > 0 ? (
           <View style={styles.cartItemsContainer}>
             {cart.map(renderCartItem)}
@@ -856,68 +913,118 @@ const calculateBNPCSubtotalForItems = (items) => {
           </View>
         )}
 
-        {/* Voucher Section */}
+        {/* Promo Selection Section */}
         {cart.length > 0 && (
-          <View style={styles.voucherCard}>
-            <View style={styles.voucherHeader}>
-              <MaterialCommunityIcons name="tag" size={22} color="#FF9800" />
-              <Text style={styles.voucherTitle}>Apply Voucher</Text>
+          <View style={styles.promoCard}>
+            <View style={styles.promoHeader}>
+              <MaterialCommunityIcons
+                name="tag-multiple"
+                size={22}
+                color="#FF9800"
+              />
+              <Text style={styles.promoTitle}>Apply Promo</Text>
             </View>
 
-            {appliedVoucher ? (
-              <View style={styles.appliedVoucher}>
-                <View style={styles.voucherInfo}>
+            {selectedPromo ? (
+              <View style={styles.appliedPromo}>
+                <View style={styles.promoInfo}>
                   <MaterialCommunityIcons
                     name="ticket-percent"
                     size={20}
                     color="#4CAF50"
                   />
-                  <View style={styles.voucherDetails}>
-                    <Text style={styles.voucherCode}>
-                      {appliedVoucher.code}
-                    </Text>
-                    <Text style={styles.voucherDescription}>
-                      {appliedVoucher.description}
+                  <View style={styles.promoDetails}>
+                    <Text style={styles.promoCode}>{selectedPromo.code}</Text>
+                    <Text style={styles.promoName}>{selectedPromo.name}</Text>
+                    <Text style={styles.promoDiscount}>
+                      {selectedPromo.type === "percentage"
+                        ? `${selectedPromo.value}% off`
+                        : `₱${selectedPromo.value} off`}
                     </Text>
                   </View>
                 </View>
                 <TouchableOpacity
-                  style={styles.removeVoucherButton}
-                  onPress={handleRemoveVoucher}
+                  style={styles.removePromoButton}
+                  onPress={handleRemovePromo}
                 >
-                  <Text style={styles.removeVoucherText}>Remove</Text>
+                  <Text style={styles.removePromoText}>Remove</Text>
                 </TouchableOpacity>
               </View>
             ) : (
-              <View style={styles.voucherInputContainer}>
-                <TextInput
-                  style={styles.voucherInput}
-                  placeholder="Enter voucher code"
-                  value={voucherCode}
-                  onChangeText={setVoucherCode}
-                  autoCapitalize="characters"
-                />
-                <TouchableOpacity
-                  style={[
-                    styles.applyButton,
-                    !voucherCode.trim() && styles.applyButtonDisabled,
-                  ]}
-                  onPress={handleApplyVoucher}
-                  disabled={!voucherCode.trim()}
-                >
-                  <Text style={styles.applyButtonText}>Apply</Text>
-                </TouchableOpacity>
+              <View style={styles.promoList}>
+                {availablePromos.map((promo) => (
+                  <TouchableOpacity
+                    key={promo._id}
+                    style={styles.promoItem}
+                    onPress={() => handleSelectPromo(promo)}
+                  >
+                    <MaterialCommunityIcons
+                      name="ticket"
+                      size={20}
+                      color="#00A86B"
+                    />
+                    <View style={styles.promoItemDetails}>
+                      <Text style={styles.promoItemCode}>{promo.code}</Text>
+                      <Text style={styles.promoItemName}>{promo.name}</Text>
+                    </View>
+                    <MaterialCommunityIcons
+                      name="chevron-right"
+                      size={20}
+                      color="#666"
+                    />
+                  </TouchableOpacity>
+                ))}
               </View>
             )}
           </View>
         )}
 
-        {/* Order Summary */}
+        {/* Loyalty Points Section */}
+        {cart.length > 0 && (
+          <View style={styles.loyaltyCard}>
+            <View style={styles.loyaltyHeader}>
+              <MaterialCommunityIcons name="trophy" size={22} color="#FFD700" />
+              <Text style={styles.loyaltyTitle}>Loyalty Points</Text>
+            </View>
+
+            <View style={styles.loyaltyInputContainer}>
+              <TextInput
+                style={styles.loyaltyInput}
+                placeholder="Enter points to use"
+                value={loyaltyPoints}
+                onChangeText={handleLoyaltyPointsChange}
+                keyboardType="numeric"
+                maxLength={6}
+              />
+              <TouchableOpacity
+                style={[
+                  styles.applyLoyaltyButton,
+                  !loyaltyPoints.trim() && styles.applyLoyaltyButtonDisabled,
+                ]}
+                onPress={handleApplyLoyaltyPoints}
+                disabled={!loyaltyPoints.trim()}
+              >
+                <Text style={styles.applyLoyaltyButtonText}>Apply</Text>
+              </TouchableOpacity>
+            </View>
+
+            {loyaltyPoints && (
+              <Text style={styles.loyaltyInfo}>
+                Max: ₱{(totals.subtotal * 0.3).toFixed(2)} (30% of order)
+              </Text>
+            )}
+
+            <Text style={styles.earnPointsText}>
+              You'll earn {Math.floor(totals.finalTotal / 10)} points with this
+              purchase
+            </Text>
+          </View>
+        )}
+
         {cart.length > 0 && (
           <View style={styles.summaryCard}>
             <Text style={styles.summaryTitle}>Order Summary</Text>
 
-            {/* Subtotal */}
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Subtotal</Text>
               <Text style={styles.summaryValue}>
@@ -925,7 +1032,6 @@ const calculateBNPCSubtotalForItems = (items) => {
               </Text>
             </View>
 
-            {/* BNPC Discount Details */}
             {discountDetails.eligible && discountDetails.bnpcSubtotal > 0 && (
               <>
                 <View style={styles.sectionDivider} />
@@ -1018,39 +1124,62 @@ const calculateBNPCSubtotalForItems = (items) => {
               </>
             )}
 
-            {/* Voucher Discount */}
-            {appliedVoucher && totals.voucherDiscount > 0 && (
+            {/* Promo Discount */}
+            {selectedPromo && totals.promoDiscount > 0 && (
               <>
                 <View style={styles.sectionDivider} />
-                <Text style={styles.discountSectionTitle}>
-                  Voucher Discount
-                </Text>
+                <Text style={styles.discountSectionTitle}>Promo Discount</Text>
 
                 <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>{appliedVoucher.code}</Text>
+                  <Text style={styles.detailLabel}>{selectedPromo.code}</Text>
                   <Text style={styles.detailValue}>
-                    {appliedVoucher.type === "percentage"
-                      ? `${appliedVoucher.discount}% off`
-                      : `₱${appliedVoucher.discount} off`}
+                    {selectedPromo.type === "percentage"
+                      ? `${selectedPromo.value}% off`
+                      : `₱${selectedPromo.value} off`}
                   </Text>
                 </View>
 
                 <View style={styles.summaryRow}>
                   <Text
-                    style={[styles.summaryLabel, styles.voucherDiscountLabel]}
+                    style={[styles.summaryLabel, styles.promoDiscountLabel]}
                   >
-                    Voucher Discount
+                    Promo Discount
                   </Text>
                   <Text
-                    style={[styles.summaryValue, styles.voucherDiscountValue]}
+                    style={[styles.summaryValue, styles.promoDiscountValue]}
                   >
-                    -₱{totals.voucherDiscount.toFixed(2)}
+                    -₱{totals.promoDiscount.toFixed(2)}
                   </Text>
                 </View>
               </>
             )}
 
-            {/* If not eligible, show reason */}
+            {/* Loyalty Points Discount */}
+            {loyaltyPoints && totals.loyaltyDiscount > 0 && (
+              <>
+                <View style={styles.sectionDivider} />
+                <Text style={styles.discountSectionTitle}>Loyalty Points</Text>
+
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>{loyaltyPoints} points</Text>
+                  <Text style={styles.detailValue}>₱1 per point</Text>
+                </View>
+
+                <View style={styles.summaryRow}>
+                  <Text
+                    style={[styles.summaryLabel, styles.loyaltyDiscountLabel]}
+                  >
+                    Points Discount
+                  </Text>
+                  <Text
+                    style={[styles.summaryValue, styles.loyaltyDiscountValue]}
+                  >
+                    -₱{totals.loyaltyDiscount.toFixed(2)}
+                  </Text>
+                </View>
+              </>
+            )}
+
             {!discountDetails.eligible && discountDetails.reason && (
               <>
                 <View style={styles.sectionDivider} />
@@ -1069,7 +1198,6 @@ const calculateBNPCSubtotalForItems = (items) => {
 
             <View style={styles.divider} />
 
-            {/* Final Total */}
             <View style={styles.summaryRow}>
               <Text style={styles.totalLabel}>
                 {isEligibleUser && "Estimated"} Total Amount
@@ -1079,9 +1207,9 @@ const calculateBNPCSubtotalForItems = (items) => {
               </Text>
             </View>
 
-            {/* Total Savings */}
             {(discountDetails.discountApplied > 0 ||
-              totals.voucherDiscount > 0) && (
+              totals.promoDiscount > 0 ||
+              totals.loyaltyDiscount > 0) && (
               <View style={styles.savingsContainer}>
                 <MaterialCommunityIcons
                   name="piggy-bank"
@@ -1091,30 +1219,17 @@ const calculateBNPCSubtotalForItems = (items) => {
                 <Text style={styles.savingsText}>
                   You save ₱
                   {(
-                    discountDetails.discountApplied + totals.voucherDiscount
+                    discountDetails.discountApplied +
+                    totals.promoDiscount +
+                    totals.loyaltyDiscount
                   ).toFixed(2)}
                 </Text>
               </View>
             )}
           </View>
         )}
-
-        {/* Loyalty Points */}
-        {cart.length > 0 && (
-          <View style={styles.pointsCard}>
-            <View style={styles.pointsHeader}>
-              <MaterialCommunityIcons name="trophy" size={24} color="#FFD700" />
-              <Text style={styles.pointsTitle}>Earn Points</Text>
-            </View>
-            <Text style={styles.pointsText}>
-              You'll earn {Math.floor(totals.finalTotal / 10)} loyalty points
-              with this purchase
-            </Text>
-          </View>
-        )}
       </ScrollView>
 
-      {/* Checkout Button */}
       {cart.length > 0 && (
         <View style={styles.checkoutBar}>
           <View style={styles.totalContainer}>
@@ -1188,7 +1303,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#f0f0f0",
   },
-  // Eligibility Card
   eligibilityCard: {
     backgroundColor: "#fff",
     marginHorizontal: 20,
@@ -1223,7 +1337,6 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     marginTop: 4,
   },
-  // Cart Items
   cartItemsContainer: {
     paddingHorizontal: 20,
     paddingTop: 16,
@@ -1285,6 +1398,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     marginBottom: 4,
+  },
+  salePrice: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#00A86B",
+  },
+  originalPriceText: {
+    fontSize: 14,
+    color: "#999",
+    textDecorationLine: "line-through",
+  },
+  saleBadge: {
+    backgroundColor: "#f44336",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  saleBadgeText: {
+    fontSize: 10,
+    color: "#fff",
+    fontWeight: "700",
   },
   itemPrice: {
     fontSize: 16,
@@ -1407,8 +1541,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  // Voucher Section
-  voucherCard: {
+  // Promo Card
+  promoCard: {
     backgroundColor: "#fff",
     marginHorizontal: 20,
     marginTop: 16,
@@ -1421,47 +1555,18 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  voucherHeader: {
+  promoHeader: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 16,
   },
-  voucherTitle: {
+  promoTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: "#000",
     marginLeft: 10,
   },
-  voucherInputContainer: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  voucherInput: {
-    flex: 1,
-    backgroundColor: "#f8f8f8",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: "#eee",
-  },
-  applyButton: {
-    backgroundColor: "#00A86B",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
-    justifyContent: "center",
-  },
-  applyButtonDisabled: {
-    backgroundColor: "#ccc",
-  },
-  applyButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  appliedVoucher: {
+  appliedPromo: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -1471,25 +1576,31 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#c8e6c9",
   },
-  voucherInfo: {
+  promoInfo: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
   },
-  voucherDetails: {
+  promoDetails: {
     marginLeft: 12,
   },
-  voucherCode: {
+  promoCode: {
     fontSize: 16,
     fontWeight: "700",
     color: "#00A86B",
   },
-  voucherDescription: {
-    fontSize: 13,
+  promoName: {
+    fontSize: 14,
     color: "#666",
     marginTop: 2,
   },
-  removeVoucherButton: {
+  promoDiscount: {
+    fontSize: 13,
+    color: "#FF9800",
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  removePromoButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     backgroundColor: "#fff",
@@ -1497,16 +1608,107 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#ffcdd2",
   },
-  removeVoucherText: {
+  removePromoText: {
     color: "#f44336",
     fontSize: 14,
     fontWeight: "600",
+  },
+  promoList: {
+    gap: 12,
+  },
+  promoItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f8f8f8",
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
+  promoItemDetails: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  promoItemCode: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#000",
+  },
+  promoItemName: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 2,
+  },
+  // Loyalty Card
+  loyaltyCard: {
+    backgroundColor: "#fff",
+    marginHorizontal: 20,
+    marginBottom: 16,
+    padding: 20,
+    borderRadius: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  loyaltyHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  loyaltyTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#000",
+    marginLeft: 10,
+  },
+  loyaltyInputContainer: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 8,
+  },
+  loyaltyInput: {
+    flex: 1,
+    backgroundColor: "#f8f8f8",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
+  applyLoyaltyButton: {
+    backgroundColor: "#FFD700",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    justifyContent: "center",
+  },
+  applyLoyaltyButtonDisabled: {
+    backgroundColor: "#ccc",
+  },
+  applyLoyaltyButtonText: {
+    color: "#000",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  loyaltyInfo: {
+    fontSize: 13,
+    color: "#666",
+    marginBottom: 8,
+    fontStyle: "italic",
+  },
+  earnPointsText: {
+    fontSize: 14,
+    color: "#666",
+    lineHeight: 20,
   },
   // Order Summary
   summaryCard: {
     backgroundColor: "#fff",
     marginHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 116,
     padding: 20,
     borderRadius: 16,
     shadowColor: "#000",
@@ -1536,7 +1738,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#000",
   },
-  // Discount Details
   discountSectionTitle: {
     fontSize: 16,
     fontWeight: "700",
@@ -1572,12 +1773,20 @@ const styles = StyleSheet.create({
     color: "#00A86B",
     fontWeight: "700",
   },
-  voucherDiscountLabel: {
+  promoDiscountLabel: {
     fontWeight: "700",
     color: "#000",
   },
-  voucherDiscountValue: {
+  promoDiscountValue: {
     color: "#FF9800",
+    fontWeight: "700",
+  },
+  loyaltyDiscountLabel: {
+    fontWeight: "700",
+    color: "#000",
+  },
+  loyaltyDiscountValue: {
+    color: "#FFD700",
     fontWeight: "700",
   },
   capNote: {
@@ -1646,37 +1855,6 @@ const styles = StyleSheet.create({
     color: "#00A86B",
     fontWeight: "600",
   },
-  // Points Card
-  pointsCard: {
-    backgroundColor: "#fff",
-    marginHorizontal: 20,
-    marginBottom: 100,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#FFD700",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  pointsHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  pointsTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#000",
-    marginLeft: 8,
-  },
-  pointsText: {
-    fontSize: 14,
-    color: "#666",
-    lineHeight: 20,
-  },
   // Checkout Bar
   checkoutBar: {
     position: "absolute",
@@ -1705,12 +1883,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "800",
     color: "#00A86B",
-  },
-  originalPrice: {
-    fontSize: 14,
-    color: "#999",
-    textDecorationLine: "line-through",
-    marginTop: 2,
   },
   checkoutButton: {
     flex: 1,

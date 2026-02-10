@@ -5,6 +5,7 @@ const cartSlice = createSlice({
   name: "cart",
   initialState: {
     cart: [],
+    promo:[],
     itemCount: 0,
     totalPrice: 0,
 
@@ -59,7 +60,8 @@ const cartSlice = createSlice({
 
   extraReducers: (builder) => {
     builder.addCase(getCartFromServer.fulfilled, (state, action) => {
-      state.cart = action.payload || [];
+      state.cart = action.payload?.formattedItems || [];
+      state.promo = action.payload?.promoSuggestionList || []
       recalcTotal(state);
     });
   },
