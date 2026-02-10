@@ -30,7 +30,10 @@ const promoSchema = new mongoose.Schema(
     endDate: Date,
 
     usageLimit: Number,
-    usedCount: Number,
+    usedCount: {
+      type:Number,
+      default:0
+    },
 
     active: Boolean,
   },

@@ -2,9 +2,14 @@ const Promo = require("../models/promoModel");
 const Product = require("../models/productModel");
 const Category = require("../models/categoryModel");
 
+exports.getAll = async (request) => {
+  const promos = await Promo.find();
+  return promos;
+};
+
 exports.create = async (request) => {
   if (!request.body) throw new Error("empty body");
-      const newPromo = await Promo.create(request.body);
+  const newPromo = await Promo.create(request.body);
   if (!newPromo) throw new Error("failed to create the promo");
   return newPromo;
 };

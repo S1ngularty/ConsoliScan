@@ -6,7 +6,8 @@ const promoController = require("../controllers/promoController");
 
 router
   .route("/promo")
-  .post(authMiddleware.verifyToken, promoController.createPromo);
+  .post(authMiddleware.verifyToken, promoController.createPromo)
+  .get(authMiddleware.verifyToken, promoController.getAllPromo)
 
 router
   .route("/promo/selections")
