@@ -1,10 +1,9 @@
-// src/services/promoService.js
 import axios from "axios";
 
 const API_URL = import.meta.env.VITE_APP_API;
 
 const axiosInstance = axios.create({
-  baseURL: API_URL,
+  baseURL: `${API_URL}api/v1`,
   headers: {
     "Content-Type": "application/json",
   },
@@ -29,17 +28,30 @@ export const promoService = {
   // Get all promos with filters
   getPromos: async (params = {}) => {
     try {
-      const response = await axiosInstance.get("/promos", { params });
+      const response = await axiosInstance.get("/promo", { params });
       return response.data?.result;
     } catch (error) {
       throw error.response?.data || error;
     }
   },
 
+  getSelections: async () => {
+    const response = await axiosInstance.get("/promo/selections");
+    const data = response.data?.result || null;
+    if (!data) return;
+
+    data.categories = data.categories.map((cat) => ({
+      _id: cat._id,
+      name: cat.categoryName,
+    }));
+
+    return data;
+  },
+
   // Get single promo by ID
   getPromoById: async (id) => {
     try {
-      const response = await axiosInstance.get(`/promos/${id}`);
+      const response = await axiosInstance.get(`/promo/${id}`);
       return response.data?.result;
     } catch (error) {
       throw error.response?.data || error;
@@ -49,7 +61,8 @@ export const promoService = {
   // Create new promo
   createPromo: async (promoData) => {
     try {
-      const response = await axiosInstance.post("/promos", promoData);
+      console.log(promoData)
+      const response = await axiosInstance.post("/promo", promoData);
       return response.data?.result;
     } catch (error) {
       throw error.response?.data || error;
@@ -59,7 +72,7 @@ export const promoService = {
   // Update promo
   updatePromo: async (id, promoData) => {
     try {
-      const response = await axiosInstance.put(`/promos/${id}`, promoData);
+      const response = await axiosInstance.put(`/promo/${id}`, promoData);
       return response.data?.result;
     } catch (error) {
       throw error.response?.data || error;
@@ -69,7 +82,7 @@ export const promoService = {
   // Delete promo
   deletePromo: async (id) => {
     try {
-      const response = await axiosInstance.delete(`/promos/${id}`);
+      const response = await axiosInstance.delete(`/promo/${id}`);
       return response.data;
     } catch (error) {
       throw error.response?.data?.result || error;
@@ -79,7 +92,7 @@ export const promoService = {
   // Toggle promo status
   togglePromoStatus: async (id, active) => {
     try {
-      const response = await axiosInstance.patch(`/promos/${id}/status`, {
+      const response = await axiosInstance.patch(`/promo/${id}/status`, {
         active,
       });
       return response.data?.result;
@@ -91,7 +104,7 @@ export const promoService = {
   // Validate promo code
   validatePromoCode: async (code, cartTotal = 0) => {
     try {
-      const response = await axiosInstance.post("/promos/validate", {
+      const response = await axiosInstance.post("/promo/validate", {
         code,
         cartTotal,
       });
@@ -104,7 +117,7 @@ export const promoService = {
   // Apply promo code
   applyPromoCode: async (code, cartId) => {
     try {
-      const response = await axiosInstance.post("/promos/apply", {
+      const response = await axiosInstance.post("/promo/apply", {
         code,
         cartId,
       });
@@ -124,3 +137,4 @@ export const deletePromo = promoService.deletePromo;
 export const togglePromoStatus = promoService.togglePromoStatus;
 export const validatePromoCode = promoService.validatePromoCode;
 export const applyPromoCode = promoService.applyPromoCode;
+export const getSelections = promoService.getSelections;
