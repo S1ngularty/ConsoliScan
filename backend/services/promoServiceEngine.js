@@ -12,16 +12,19 @@ const buildCartContext = (cart) => {
   let categories = [];
 
   for (let itemObj of cart.items) {
-    const item = itemObj.product.toObject()
-    subtotal = item.price * item.qty;
-    products.push(item._id);
-    categories.push(item.category._id);
+    const item = itemObj.product;
+    // console.log(itemObj)
+    subtotal = item.price * itemObj.qty;
+    // console.log(itemObj.price,itemObj.qty)
+    products.push(item._id.toString());
+    categories.push(item.category._id.toString());
   }
 
   return {
     subtotal,
     products,
     categories,
+    items:cart
   };
 };
 
@@ -73,17 +76,17 @@ const promoMatchesCart = (cart, promo) => {
 
 function calculateDiscount(cart, promo) {
   let baseAmount = cart.subtotal;
-
+  console.log(cart);
   if (promo.scope === "product") {
-    baseAmount = cart.items
-      .filter((i) => promo.targetIds.includes(i.productId))
-      .reduce((sum, i) => sum + i.price * i.qty, 0);
+    baseAmount = cart.items.items
+      .filter((i) => promo.targetIds.includes(i.product._id))
+      .reduce((sum, i) => sum + i.product.price * i.qty, 0);
   }
 
   if (promo.scope === "category") {
-    baseAmount = cart.items
-      .filter((i) => promo.targetIds.includes(i.categoryId))
-      .reduce((sum, i) => sum + i.price * i.qty, 0);
+    baseAmount = cart.items.items
+      .filter((i) => promo.targetIds.includes(i.product.category._id))
+      .reduce((sum, i) => sum + i.product.price * i.qty, 0);
   }
 
   if (promo.type === "percentage") return baseAmount * (promo.value / 100);

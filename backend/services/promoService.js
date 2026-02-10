@@ -1,6 +1,8 @@
 const Promo = require("../models/promoModel");
 const Product = require("../models/productModel");
 const Category = require("../models/categoryModel");
+const Cart = require("../models/cartModel");
+const { PromoEngine } = require("./promoServiceEngine");
 
 exports.getAll = async (request) => {
   const promos = await Promo.find();
@@ -37,4 +39,19 @@ exports.updatePromo = async (request) => {
   return updatedPromo;
 };
 
+exports.apply = async (request) => {
+  const { promoCode } = request.params;
+  const { userId } = request.user;
+  const now = Date.now();
+  const cart = await Cart.findOne({ user: userId }).populate({
+    path: "items.product",
+    populate: {
+      path: "category",
+    },
+  })
 
+  // console.log(cart.items[0].product.category)
+  const promoResult = PromoEngine(cart, promoCode);
+
+  return promoResult ;
+};

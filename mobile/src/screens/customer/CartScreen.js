@@ -952,7 +952,7 @@ const CartScreen = ({ navigation, route }) => {
               </View>
             ) : (
               <View style={styles.promoList}>
-                {availablePromos.map((promo) => (
+                {promo.map((promo) => (
                   <TouchableOpacity
                     key={promo._id}
                     style={styles.promoItem}
@@ -965,7 +965,7 @@ const CartScreen = ({ navigation, route }) => {
                     />
                     <View style={styles.promoItemDetails}>
                       <Text style={styles.promoItemCode}>{promo.code}</Text>
-                      <Text style={styles.promoItemName}>{promo.name}</Text>
+                      <Text style={styles.promoItemName}>{promo.promoName.promo}</Text>
                     </View>
                     <MaterialCommunityIcons
                       name="chevron-right"
