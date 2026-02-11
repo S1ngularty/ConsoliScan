@@ -26,7 +26,7 @@ import {
   CoinsIcon,
   HandCoins,
 } from "lucide-react";
-import "../../styles/components/SidebarStyle.css";
+import "../../styles/css/SidebarStyle.css";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import ConfirmModalComponent from "../common/ConfirmModalComponent";

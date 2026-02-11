@@ -1,0 +1,156 @@
+.app-banner-container {
+  width: 100%;
+  padding: 0 20px;
+  margin: 24px auto;
+}
+
+.app-banner-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--green); /* Using brand green instead of Walmart blue */
+  border-radius: 30px;
+  padding: 30px 60px;
+  box-shadow: var(--shadow-soft);
+  max-width: 1250px; /* Matching the Hero container width */
+  margin: 0 auto;
+  width: 100%;
+  color: white;
+  flex-wrap: wrap;
+  gap: 30px;
+}
+
+/* Left: Badges */
+.app-badges {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.store-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: black;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 6px 14px;
+  color: white;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.2s, opacity 0.2s;
+  min-width: 160px;
+}
+
+.store-badge:hover {
+  transform: translateY(-2px);
+  opacity: 0.9;
+}
+
+.store-icon {
+  flex-shrink: 0;
+}
+
+.badge-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.badge-small {
+  font-size: 10px;
+  opacity: 0.9;
+}
+
+.badge-large {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Center: Text */
+.app-text-content {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  text-align: center;
+  flex: 1;
+  justify-content: center;
+}
+
+.app-title {
+  font-size: 32px;
+  font-weight: 800;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.app-divider {
+  width: 1px;
+  height: 40px;
+  background-color: rgba(255, 255, 255, 0.4);
+}
+
+.app-subtitle {
+  font-size: 18px;
+  margin: 0;
+  opacity: 0.9;
+  font-weight: 500;
+}
+
+/* Right: QR Code */
+.app-qr {
+  background-color: white;
+  padding: 8px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qr-placeholder {
+  color: black;
+  display: flex;
+}
+
+/* Responsive Design */
+@media (max-width: 960px) {
+  .app-banner-card {
+    padding: 24px 30px;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .app-text-content {
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    order: -1; /* Move text to top on mobile */
+  }
+
+  .app-divider {
+    display: none;
+  }
+  
+  .app-badges {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 600px) {
+  .app-banner-card {
+    flex-direction: column;
+    gap: 24px;
+  }
+  
+  .app-badges {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .store-badge {
+    width: 100%;
+    justify-content: center;
+  }
+}
