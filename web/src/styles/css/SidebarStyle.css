@@ -9,19 +9,18 @@
   --dropdown-border: #e2e8f0;
 }
 
-
 .sidebar {
-  position: fixed;
-  left: 60px;
-  top: 95px;
-  height: calc(100vh - 104px);
-  width: 250px;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.2);
-  transition: transform 0.3s ease, width 0.3s ease;
-  z-index: 999;
-  overflow: hidden;
-  border-radius: 40px;
+  width: 260px;
+  height: 100vh;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  font-family: 'Inter', sans-serif;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .sidebar.collapsed {
