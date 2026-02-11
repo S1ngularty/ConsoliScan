@@ -1,6 +1,6 @@
 import React from "react";
 import axios from "axios";
-import "../../styles/LoginStyle.css";
+import "../../styles/css/LoginStyle.css";
 import { googleSignIn, autoLogin } from "../../services/loginService.js";
 import { useNavigate } from "react-router-dom";
 
