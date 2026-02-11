@@ -7,7 +7,7 @@ import { SOCKET_API } from "../../constants/config";
 import { useSelector } from "react-redux";
 
 export default function CheckoutQRScreen({ route, navigation }) {
-  const { checkoutCode, expiresAt, token } = route.params;
+  const { checkoutCode, expiresAt, token, appUser = false } = route.params;
   const [timeLeft, setTimeLeft] = useState("");
   const [status, setStatus] = useState("PROCESSING");
   const [totals, setTotals] = useState(null);

@@ -16,7 +16,7 @@ const WEEKLY_CAP = 125;
 const PURCHASE_CAP = 2500;
 
 const PaymentScreen = ({ route, navigation }) => {
-  const { checkoutData, checkoutCode, appUser } = route.params;
+  const { checkoutData, checkoutCode, appUser=false } = route.params;
   console.log("PaymentScreen checkoutData:", checkoutData);
   console.log(appUser)
   // Extract user eligibility and verification from the scanned data
@@ -250,7 +250,7 @@ const PaymentScreen = ({ route, navigation }) => {
       };
 
       console.log('TRANSACTION COMPLETED:', transactionLog);
-
+      console.log(appUser)
       appUser && await payOrder(checkoutCode);
       
       // Navigate to receipt

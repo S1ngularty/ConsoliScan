@@ -27,6 +27,7 @@ import {
 import { debounceCartSync } from "../../features/slices/cart/cartDebounce";
 import { checkout } from "../../api/checkout.api";
 import { getToken } from "../../utils/authUtil";
+import { applyPromo } from "../../api/promo.api";
 
 // Mock weekly usage tracker - in production, fetch from API
 const mockWeeklyUsage = {
@@ -47,11 +48,13 @@ const CartScreen = ({ navigation, route }) => {
     isPWD: false,
     isSenior: false,
   });
+  const [promoDiscountAmount, setPromoDiscountAmount] = useState(0);
+  const [appliedPromoData, setAppliedPromoData] = useState(null);
 
   const dispatch = useDispatch();
 
   const { cart, itemCount, promo } = useSelector((state) => state.cart);
-  // console.log(promo, cart);
+  console.log("Cart promo data:", promo);
 
   const isEligibleUser = eligibilityStatus?.isVerified;
 
@@ -67,49 +70,6 @@ const CartScreen = ({ navigation, route }) => {
       setUserEligibility((prev) => ({ ...prev, isPWD: true }));
     }
   }, [eligibilityStatus]);
-
-  // Available promos from the LOG data
-  const availablePromos = [
-    {
-      _id: "698ab7496df9cbd7f5fdcb3b",
-      code: "PROMO-YWABWU83",
-      name: "BUY 1 GET NONE",
-      type: "percentage",
-      value: 25,
-      scope: "category",
-      targetIds: [
-        "6989f666d310e45067710e70",
-        "6989f666d310e45067710e6f",
-        "6989f6f2d310e45067710e8a",
-        "6989f6f2d310e45067710e89",
-        "6989f8e9f212b85e9b2bf7e9",
-      ],
-      minPurchase: 0,
-      startDate: "2026-02-10T00:00:00.000Z",
-      endDate: "2026-04-10T00:00:00.000Z",
-      usageLimit: 1000,
-      usedCount: 300,
-      active: true,
-    },
-    {
-      _id: "698ae5c10006555e22337a69",
-      code: "PROMO-5GUBY2ZR",
-      name: "SummerSale 20% off",
-      type: "percentage",
-      value: 20,
-      scope: "product",
-      targetIds: [
-        "697218a0f58f7c6804de4b14",
-        "697231bf94db4310e9900e25",
-        "6981a260b29f902e9a8b0f4e",
-        "6981a3b6b29f902e9a8b0f5f",
-      ],
-      minPurchase: 0,
-      startDate: "2026-02-10T00:00:00.000Z",
-      endDate: "2026-03-10T00:00:00.000Z",
-      active: true,
-    },
-  ];
 
   // Normalize cart item
   const normalizeCartItem = (item) => {
@@ -188,7 +148,7 @@ const CartScreen = ({ navigation, route }) => {
     return cart.filter((item) => {
       const normalizedItem = normalizeCartItem(item);
       const product = normalizedItem.product;
-      // console.log(product);
+      
       const isEligible =
         product.isBNPC &&
         !product.excludedFromDiscount &&
@@ -301,70 +261,45 @@ const CartScreen = ({ navigation, route }) => {
     };
   };
 
-  // Calculate promo discount
+  // Calculate promo discount with server validation
   const calculatePromoDiscount = (subtotal) => {
-    if (!selectedPromo) return 0;
+    if (!selectedPromo || !appliedPromoData) return 0;
 
-    // Check if promo is still valid
-    const now = new Date();
-    const startDate = new Date(selectedPromo.startDate);
-    const endDate = new Date(selectedPromo.endDate);
-
-    if (now < startDate || now > endDate) {
-      setSelectedPromo(null);
-      Alert.alert("Promo Expired", "This promo is no longer valid");
-      return 0;
-    }
-
-    // Check usage limit
-    if (
-      selectedPromo.usageLimit &&
-      selectedPromo.usedCount >= selectedPromo.usageLimit
-    ) {
-      setSelectedPromo(null);
-      Alert.alert(
-        "Promo Limit Reached",
-        "This promo has reached its usage limit",
-      );
-      return 0;
-    }
+    const promoData = appliedPromoData;
 
     // Check minimum purchase
-    if (subtotal < selectedPromo.minPurchase) {
+    if (subtotal < (promoData.minPurchase || 0)) {
       Alert.alert(
         "Minimum Purchase Required",
-        `Minimum purchase of ₱${selectedPromo.minPurchase} required for this promo`,
+        `Minimum purchase of ₱${promoData.minPurchase || 0} required for this promo`
       );
       return 0;
     }
 
     // Check if items are eligible for promo
-    const eligibleItems = cart.filter((item) => {
+    const eligibleItems = cart.filter(item => {
       const normalizedItem = normalizeCartItem(item);
       const productId = normalizedItem.product._id;
-
-      if (selectedPromo.scope === "product") {
-        return selectedPromo.targetIds.includes(productId);
-      } else if (selectedPromo.scope === "category") {
+      
+      if (promoData.scope === "product") {
+        return promoData.targetIds.includes(productId);
+      } else if (promoData.scope === "category") {
         const categoryId = normalizedItem.product.category?._id;
-        return categoryId && selectedPromo.targetIds.includes(categoryId);
+        return categoryId && promoData.targetIds.includes(categoryId);
       }
       return true; // For global promos
     });
 
     if (eligibleItems.length === 0) {
-      Alert.alert(
-        "Promo Not Applicable",
-        "No items in cart are eligible for this promo",
-      );
+      Alert.alert("Promo Not Applicable", "No items in cart are eligible for this promo");
       return 0;
     }
 
-    // Calculate discount
-    if (selectedPromo.type === "percentage") {
-      return (subtotal * selectedPromo.value) / 100;
+    // Calculate discount based on server response
+    if (promoData.promoType === "percentage") {
+      return (subtotal * promoData.value) / 100;
     } else {
-      return selectedPromo.value;
+      return promoData.value;
     }
   };
 
@@ -468,22 +403,62 @@ const CartScreen = ({ navigation, route }) => {
     ]);
   };
 
-  const handleSelectPromo = (promo) => {
-    setSelectedPromo(promo);
+  const handleSelectPromo = async (promo) => {
+    try {
+      const promoResponse = await applyPromo(promo.code);
+      
+      if (!promoResponse.valid) {
+        Alert.alert("Invalid Promo", "This promo code is not valid");
+        return;
+      }
 
-    const totals = calculateTotals();
-    const promoDiscount = calculatePromoDiscount(totals.subtotal);
+      const promoData = promoResponse.promo;
+      
+      // Check if promo is still valid based on dates
+      const now = new Date();
+      const startDate = new Date(promoData.startDate);
+      const endDate = new Date(promoData.endDate);
+      
+      if (now < startDate || now > endDate) {
+        Alert.alert("Promo Expired", "This promo is no longer valid");
+        return;
+      }
 
-    if (promoDiscount > 0) {
-      Alert.alert(
-        "Success",
-        `Promo applied! You'll save ₱${promoDiscount.toFixed(2)}`,
-      );
+      // Check if promo is active
+      if (!promoData.active) {
+        Alert.alert("Promo Inactive", "This promo is not active");
+        return;
+      }
+
+      // Check usage limit
+      if (promoData.usageLimit && promoData.usedCount >= promoData.usageLimit) {
+        Alert.alert("Promo Limit Reached", "This promo has reached its usage limit");
+        return;
+      }
+
+      // Set the selected promo with server data
+      setSelectedPromo(promo);
+      setAppliedPromoData(promoData);
+      
+      const totals = calculateTotals();
+      const promoDiscount = calculatePromoDiscount(totals.subtotal);
+
+      if (promoDiscount > 0) {
+        Alert.alert(
+          "Success",
+          `Promo applied! You'll save ₱${promoDiscount.toFixed(2)}`
+        );
+      }
+    } catch (error) {
+      console.error("Error applying promo:", error);
+      Alert.alert("Promo Error", "Failed to apply promo. Please try again.");
     }
   };
 
   const handleRemovePromo = () => {
     setSelectedPromo(null);
+    setAppliedPromoData(null);
+    setPromoDiscountAmount(0);
   };
 
   const handleLoyaltyPointsChange = (text) => {
@@ -526,6 +501,7 @@ const CartScreen = ({ navigation, route }) => {
     const totals = calculateTotals();
     const discountDetails = totals.discountDetails;
 
+    // Prepare detailed BNPC products data
     const bnpcProducts = cart
       .filter((item) => {
         const normalizedItem = normalizeCartItem(item);
@@ -535,15 +511,31 @@ const CartScreen = ({ navigation, route }) => {
       .map((item) => {
         const normalizedItem = normalizeCartItem(item);
         const product = normalizedItem.product;
+        
+        const userScope = getUserDiscountScope();
+        const isBNPCEligible =
+          isEligibleUser &&
+          product.isBNPC &&
+          !product.excludedFromDiscount &&
+          ["PWD", "SENIOR"].includes(userScope);
+
         return {
           productId: product._id,
           name: product.name,
           price: normalizedItem.price,
+          salePrice: normalizedItem.salePrice,
+          saleActive: normalizedItem.saleActive,
           quantity: normalizedItem.selectedQuantity,
+          unit: product.unit || "pc",
+          category: product.category?._id,
+          categoryName: product.category?.categoryName,
+          isBNPCEligible: isBNPCEligible || false,
           requiresVerification: true,
+          discountApplied: isBNPCEligible ? (normalizedItem.price * normalizedItem.selectedQuantity * 0.05) : 0,
         };
       });
 
+    // Prepare detailed cart items
     const items = cart.map((item) => {
       const normalizedItem = normalizeCartItem(item);
       const product = normalizedItem.product;
@@ -561,15 +553,29 @@ const CartScreen = ({ navigation, route }) => {
         sku: product.sku || `PROD-${product._id.slice(-6)}`,
         quantity: normalizedItem.selectedQuantity,
         unitPrice: normalizedItem.price,
+        salePrice: normalizedItem.salePrice,
+        saleActive: normalizedItem.saleActive,
         isBNPCEligible: isBNPCEligible || false,
         isBNPCProduct: product.isBNPC || false,
-        category: product.category,
+        excludedFromDiscount: product.excludedFromDiscount || false,
+        category: {
+          id: product.category?._id,
+          name: product.category?.categoryName,
+          isBNPC: product.category?.isBNPC || false,
+        },
+        unit: product.unit || "pc",
+        itemTotal: normalizedItem.price * normalizedItem.selectedQuantity,
+        bnpcDiscount: isBNPCEligible ? (normalizedItem.price * normalizedItem.selectedQuantity * 0.05) : 0,
       };
     });
 
+    // Prepare detailed totals
     const checkoutTotals = {
       subtotal: totals.subtotal,
       bnpcSubtotal: discountDetails.bnpcSubtotal || 0,
+      bnpcDiscount: totals.bnpcDiscount || 0,
+      promoDiscount: totals.promoDiscount || 0,
+      loyaltyDiscount: totals.loyaltyDiscount || 0,
       discountTotal:
         (totals.bnpcDiscount || 0) +
         (totals.promoDiscount || 0) +
@@ -577,35 +583,100 @@ const CartScreen = ({ navigation, route }) => {
       finalTotal: totals.finalTotal,
     };
 
+    // Prepare detailed BNPC discount snapshot
     const discountSnapshot = {
       eligible: discountDetails.eligible,
       eligibleItemsCount: discountDetails.eligibleItemsCount || 0,
       bnpcSubtotal: discountDetails.bnpcSubtotal || 0,
       cappedBNPCAmount: discountDetails.cappedBNPCAmount || 0,
       discountApplied: discountDetails.discountApplied || 0,
-      weeklyDiscountUsed:
-        discountDetails.weeklyDiscountUsed || weeklyUsage.discountUsed,
-      weeklyPurchaseUsed:
-        discountDetails.weeklyPurchaseUsed || weeklyUsage.bnpcAmountUsed,
-      remainingDiscountCap:
-        discountDetails.remainingDiscountCap || 125 - weeklyUsage.discountUsed,
-      remainingPurchaseCap:
-        discountDetails.remainingPurchaseCap ||
-        2500 - weeklyUsage.bnpcAmountUsed,
+      remainingPurchaseCap: discountDetails.remainingPurchaseCap || 2500,
+      remainingDiscountCap: discountDetails.remainingDiscountCap || 125,
+      weeklyPurchaseUsed: discountDetails.weeklyPurchaseUsed || 0,
+      weeklyDiscountUsed: discountDetails.weeklyDiscountUsed || 0,
+      reason: discountDetails.reason || null,
     };
 
+    // Prepare detailed weekly usage
+    const weeklyUsageSnapshot = {
+      bnpcAmountUsed: weeklyUsage.bnpcAmountUsed,
+      discountUsed: weeklyUsage.discountUsed,
+      weekStart: weeklyUsage.weekStart,
+      weekEnd: weeklyUsage.weekEnd,
+      remainingPurchaseCap: 2500 - weeklyUsage.bnpcAmountUsed,
+      remainingDiscountCap: 125 - weeklyUsage.discountUsed,
+    };
+
+    // Prepare promo data if applied
+    const promoData = selectedPromo ? {
+      promoId: selectedPromo._id,
+      code: selectedPromo.code,
+      name: selectedPromo.promoName?.promo || selectedPromo.name,
+      type: selectedPromo.promoType || selectedPromo.type,
+      value: selectedPromo.value,
+      scope: selectedPromo.scope,
+      targetIds: selectedPromo.targetIds,
+      minPurchase: selectedPromo.minPurchase || 0,
+      discountAmount: totals.promoDiscount || 0,
+      serverValidated: true,
+      appliedPromoData: appliedPromoData,
+    } : null;
+
+    // Prepare loyalty points data
+    const loyaltyPointsData = loyaltyPoints ? {
+      pointsUsed: parseInt(loyaltyPoints) || 0,
+      pointsValue: 1, // ₱1 per point
+      discountAmount: totals.loyaltyDiscount || 0,
+      maxAllowedDiscount: totals.subtotal * 0.3,
+      percentageUsed: ((totals.loyaltyDiscount / totals.subtotal) * 100).toFixed(2) + "%",
+    } : null;
+
+    // Prepare user eligibility details
+    const userEligibilityDetails = {
+      isPWD: userEligibility.isPWD,
+      isSenior: userEligibility.isSenior,
+      verified: isEligibleUser,
+      verificationIdType: eligibilityStatus?.idType || null,
+      discountScope: getUserDiscountScope(),
+      weeklyCaps: {
+        purchaseCap: 2500,
+        discountCap: 125,
+      },
+    };
+
+    // Final checkout payload with all details
     const checkoutData = {
+      // User information
       user: userState.user?.userId || null,
       userType: userState.user?.userId ? "user" : "guest",
-      items,
-      bnpcProducts,
+      userEmail: userState.user?.email || null,
+      userName: userState.user?.name || null,
+      
+      // Cart items
+      items: items,
+      totalItems: itemCount,
+      
+      // BNPC specific data
+      bnpcProducts: bnpcProducts,
+      hasBNPCItems: bnpcProducts.length > 0,
+      
+      // Totals and discounts
       totals: checkoutTotals,
-      discountSnapshot,
-      userEligibility: {
-        isPWD: userEligibility.isPWD,
-        isSenior: userEligibility.isSenior,
-        verified: isEligibleUser,
+      discountBreakdown: {
+        bnpcDiscount: totals.bnpcDiscount,
+        promoDiscount: totals.promoDiscount,
+        loyaltyDiscount: totals.loyaltyDiscount,
+        totalDiscount: checkoutTotals.discountTotal,
       },
+      
+      // Discount calculations and snapshots
+      discountSnapshot: discountSnapshot,
+      weeklyUsageSnapshot: weeklyUsageSnapshot,
+      
+      // User eligibility
+      userEligibility: userEligibilityDetails,
+      
+      // Customer verification (for eligible users)
       customerVerification: isEligibleUser
         ? {
             type: userEligibility.isPWD
@@ -615,25 +686,37 @@ const CartScreen = ({ navigation, route }) => {
                 : null,
             verified: isEligibleUser,
             verificationSource: "system",
+            verificationDate: new Date().toISOString(),
           }
         : null,
-      promo: selectedPromo
-        ? {
-            code: selectedPromo.code,
-            discountAmount: totals.promoDiscount,
-            type: selectedPromo.type,
-            name: selectedPromo.name,
-          }
-        : null,
-      loyaltyPoints: {
-        pointsUsed: parseInt(loyaltyPoints) || 0,
-        discountAmount: totals.loyaltyDiscount,
+      
+      // Promo data (if applied)
+      promo: promoData,
+      
+      // Loyalty points (if used)
+      loyaltyPoints: loyaltyPointsData,
+      
+      // Additional metadata
+      timestamp: new Date().toISOString(),
+      platform: "mobile_app",
+      appVersion: "1.0.0",
+      deviceInfo: {
+        platform: "react-native",
       },
-      weeklyUsageSnapshot: {
-        bnpcAmountUsed: discountSnapshot.weeklyPurchaseUsed,
-        discountUsed: discountSnapshot.weeklyDiscountUsed,
+      
+      // Original cart reference
+      cartSnapshot: {
+        itemCount: cart.length,
+        totalValue: totals.subtotal,
+        items: cart.map(item => ({
+          productId: item.product?._id || item._id,
+          name: item.product?.name || item.name,
+          quantity: item.selectedQuantity || item.qty,
+        })),
       },
     };
+
+    console.log("Checkout payload:", JSON.stringify(checkoutData, null, 2));
 
     try {
       const token = userState.role === "user" ? await getToken() : null;
@@ -670,10 +753,9 @@ const CartScreen = ({ navigation, route }) => {
         : normalizedItem.price;
     const itemTotal = currentPrice * normalizedItem.selectedQuantity;
 
-    const totals = calculateTotals();
     const userScope = getUserDiscountScope();
     const isBNPCEligible =
-      totals.discountDetails.eligible &&
+      isEligibleUser &&
       product.isBNPC &&
       !product.excludedFromDiscount &&
       ["PWD", "SENIOR"].includes(userScope);
@@ -703,6 +785,11 @@ const CartScreen = ({ navigation, route }) => {
               <View style={styles.bnpcBadge}>
                 <Text style={styles.bnpcBadgeText}>BNPC</Text>
               </View>
+              {isBNPCEligible && (
+                <Text style={styles.discountEligibleText}>
+                  5% discount applied
+                </Text>
+              )}
             </View>
           )}
 
@@ -735,7 +822,7 @@ const CartScreen = ({ navigation, route }) => {
                 color="#00A86B"
               />
               <Text style={styles.discountText}>
-                5% off: ₱{bnpcItemDiscount.toFixed(2)}
+                5% BNPC discount: -₱{bnpcItemDiscount.toFixed(2)}
               </Text>
             </View>
           )}
@@ -880,9 +967,9 @@ const CartScreen = ({ navigation, route }) => {
                 ? `As a ${userEligibility.isPWD ? "PWD" : "Senior Citizen"}, you get 5% off on eligible BNPC items (up to ₱125/week)`
                 : "Sign up for PWD/Senior benefits to get discounts on BNPC items"}
             </Text>
-            {isEligibleUser && (
+            {isEligibleUser && discountDetails.eligibleItemsCount > 0 && (
               <Text style={styles.eligibilityDebug}>
-                User scope: {getUserDiscountScope() || "None"}
+                {discountDetails.eligibleItemsCount} BNPC item(s) eligible for 5% discount
               </Text>
             )}
           </View>
@@ -935,11 +1022,13 @@ const CartScreen = ({ navigation, route }) => {
                   />
                   <View style={styles.promoDetails}>
                     <Text style={styles.promoCode}>{selectedPromo.code}</Text>
-                    <Text style={styles.promoName}>{selectedPromo.name}</Text>
+                    <Text style={styles.promoName}>
+                      {selectedPromo.promoName?.promo || selectedPromo.name}
+                    </Text>
                     <Text style={styles.promoDiscount}>
-                      {selectedPromo.type === "percentage"
-                        ? `${selectedPromo.value}% off`
-                        : `₱${selectedPromo.value} off`}
+                      {appliedPromoData?.promoType === "percentage"
+                        ? `${appliedPromoData?.value}% off`
+                        : `₱${appliedPromoData?.value} off`}
                     </Text>
                   </View>
                 </View>
@@ -952,11 +1041,11 @@ const CartScreen = ({ navigation, route }) => {
               </View>
             ) : (
               <View style={styles.promoList}>
-                {promo.map((promo) => (
+                {promo.map((promoItem) => (
                   <TouchableOpacity
-                    key={promo._id}
+                    key={promoItem._id}
                     style={styles.promoItem}
-                    onPress={() => handleSelectPromo(promo)}
+                    onPress={() => handleSelectPromo(promoItem)}
                   >
                     <MaterialCommunityIcons
                       name="ticket"
@@ -964,8 +1053,10 @@ const CartScreen = ({ navigation, route }) => {
                       color="#00A86B"
                     />
                     <View style={styles.promoItemDetails}>
-                      <Text style={styles.promoItemCode}>{promo.code}</Text>
-                      <Text style={styles.promoItemName}>{promo.promoName.promo}</Text>
+                      <Text style={styles.promoItemCode}>{promoItem.code}</Text>
+                      <Text style={styles.promoItemName}>
+                        {promoItem.promoName?.promo}
+                      </Text>
                     </View>
                     <MaterialCommunityIcons
                       name="chevron-right"
@@ -1032,11 +1123,12 @@ const CartScreen = ({ navigation, route }) => {
               </Text>
             </View>
 
-            {discountDetails.eligible && discountDetails.bnpcSubtotal > 0 && (
+            {/* BNPC Discount Section */}
+            {isEligibleUser && discountDetails.bnpcSubtotal > 0 && (
               <>
                 <View style={styles.sectionDivider} />
                 <Text style={styles.discountSectionTitle}>
-                  {isEligibleUser && "Estimated"} BNPC Discount
+                  BNPC Discount
                 </Text>
 
                 <View style={styles.detailRow}>
@@ -1053,18 +1145,14 @@ const CartScreen = ({ navigation, route }) => {
                   </Text>
                 </View>
 
-                {discountDetails.bnpcSubtotal >
-                  discountDetails.cappedBNPCAmount && (
+                {discountDetails.bnpcSubtotal > discountDetails.cappedBNPCAmount && (
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>After weekly cap</Text>
                     <Text style={styles.detailValue}>
                       ₱{discountDetails.cappedBNPCAmount.toFixed(2)}
                       <Text style={styles.capNote}>
                         {" "}
-                        (₱{discountDetails.remainingPurchaseCap?.toFixed(
-                          2,
-                        )}{" "}
-                        remaining)
+                        (₱{discountDetails.remainingPurchaseCap?.toFixed(2)} remaining)
                       </Text>
                     </Text>
                   </View>
@@ -1084,41 +1172,36 @@ const CartScreen = ({ navigation, route }) => {
                   </Text>
                 </View>
 
-                {discountDetails.discountApplied <
-                  discountDetails.cappedBNPCAmount * 0.05 && (
+                {discountDetails.discountApplied < discountDetails.cappedBNPCAmount * 0.05 && (
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>After discount cap</Text>
                     <Text style={styles.detailValue}>
                       -₱{discountDetails.discountApplied.toFixed(2)}
                       <Text style={styles.capNote}>
                         {" "}
-                        (₱{discountDetails.remainingDiscountCap?.toFixed(
-                          2,
-                        )}{" "}
-                        remaining)
+                        (₱{discountDetails.remainingDiscountCap?.toFixed(2)} remaining)
                       </Text>
                     </Text>
                   </View>
                 )}
 
-                <View style={styles.summaryRow}>
-                  <Text style={[styles.summaryLabel, styles.bnpcDiscountLabel]}>
-                    {isEligibleUser && "Estimated"} Total BNPC Discount
-                  </Text>
-                  <Text style={[styles.summaryValue, styles.bnpcDiscountValue]}>
-                    -₱{discountDetails.discountApplied.toFixed(2)}
-                  </Text>
-                </View>
+                {discountDetails.discountApplied > 0 && (
+                  <View style={styles.summaryRow}>
+                    <Text style={[styles.summaryLabel, styles.bnpcDiscountLabel]}>
+                      BNPC Discount
+                    </Text>
+                    <Text style={[styles.summaryValue, styles.bnpcDiscountValue]}>
+                      -₱{discountDetails.discountApplied.toFixed(2)}
+                    </Text>
+                  </View>
+                )}
 
                 <View style={styles.weeklySummary}>
                   <Text style={styles.weeklySummaryText}>
-                    Weekly usage: ₱
-                    {discountDetails.weeklyPurchaseUsed?.toFixed(2)} / ₱2,500
-                    spent
+                    Weekly BNPC purchase: ₱{discountDetails.weeklyPurchaseUsed?.toFixed(2)} / ₱2,500
                   </Text>
                   <Text style={styles.weeklySummaryText}>
-                    Weekly discount: ₱
-                    {discountDetails.weeklyDiscountUsed?.toFixed(2)} / ₱125 used
+                    Weekly BNPC discount: ₱{discountDetails.weeklyDiscountUsed?.toFixed(2)} / ₱125
                   </Text>
                 </View>
               </>
@@ -1133,9 +1216,9 @@ const CartScreen = ({ navigation, route }) => {
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>{selectedPromo.code}</Text>
                   <Text style={styles.detailValue}>
-                    {selectedPromo.type === "percentage"
-                      ? `${selectedPromo.value}% off`
-                      : `₱${selectedPromo.value} off`}
+                    {appliedPromoData?.promoType === "percentage"
+                      ? `${appliedPromoData?.value}% off`
+                      : `₱${appliedPromoData?.value} off`}
                   </Text>
                 </View>
 
@@ -1180,7 +1263,7 @@ const CartScreen = ({ navigation, route }) => {
               </>
             )}
 
-            {!discountDetails.eligible && discountDetails.reason && (
+            {!discountDetails.eligible && discountDetails.reason && isEligibleUser && (
               <>
                 <View style={styles.sectionDivider} />
                 <View style={styles.noDiscountContainer}>
@@ -1200,7 +1283,7 @@ const CartScreen = ({ navigation, route }) => {
 
             <View style={styles.summaryRow}>
               <Text style={styles.totalLabel}>
-                {isEligibleUser && "Estimated"} Total Amount
+                Total Amount
               </Text>
               <Text style={styles.totalValue}>
                 ₱{totals.finalTotal.toFixed(2)}
@@ -1217,7 +1300,7 @@ const CartScreen = ({ navigation, route }) => {
                   color="#00A86B"
                 />
                 <Text style={styles.savingsText}>
-                  You save ₱
+                  Total savings: ₱
                   {(
                     discountDetails.discountApplied +
                     totals.promoDiscount +
@@ -1237,7 +1320,7 @@ const CartScreen = ({ navigation, route }) => {
             <Text style={styles.totalAmount}>
               ₱{totals.finalTotal.toFixed(2)}
             </Text>
-            {discountDetails.discountApplied > 0 && (
+            {(discountDetails.discountApplied > 0 || totals.promoDiscount > 0 || totals.loyaltyDiscount > 0) && (
               <Text style={styles.originalPrice}>
                 Was: ₱{totals.subtotal.toFixed(2)}
               </Text>
@@ -1333,8 +1416,8 @@ const styles = StyleSheet.create({
   },
   eligibilityDebug: {
     fontSize: 12,
-    color: "#888",
-    fontStyle: "italic",
+    color: "#00A86B",
+    fontWeight: "600",
     marginTop: 4,
   },
   cartItemsContainer: {
