@@ -14,6 +14,7 @@ const {
   order,
   checkoutQueue,
   promo,
+  loyalty,
 } = require("./routes/index");
 const productModel = require("./models/productModel");
 
@@ -56,5 +57,6 @@ app.use("/api/v1", cart);
 app.use("/api/v1", checkoutQueue);
 app.use("/api/v1", order);
 app.use("/api/v1", promo);
+app.use("/api/v1", loyalty);
 
 module.exports = app;

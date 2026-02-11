@@ -29,7 +29,7 @@ export const loyaltyService = {
   // Get loyalty configuration
   getLoyaltyConfig: async () => {
     try {
-      const response = await axiosInstance.get('/loyalty/config');
+      const response = await axiosInstance.get('/api/v1/loyalty/config');
       return response.data?.result;
     } catch (error) {
       // If 404, return default config
@@ -48,7 +48,7 @@ export const loyaltyService = {
   // Update loyalty configuration
   updateLoyaltyConfig: async (configData) => {
     try {
-      const response = await axiosInstance.put('/loyalty/config', configData);
+      const response = await axiosInstance.put('/api/v1/loyalty/config', configData);
       return response.data?.result;
     } catch (error) {
       throw error.response?.data || error;
