@@ -36,6 +36,7 @@ const LoyaltyConfigPage = () => {
   const [showResetModal, setShowResetModal] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [touched, setTouched] = useState({});
+  const [resetButton, setResetButton] = useState(true);
 
   // Fetch config on mount
   useEffect(() => {
@@ -178,10 +179,11 @@ const LoyaltyConfigPage = () => {
     setShowResetModal(true);
   };
 
-  const handleConfirmReset = async () => {
+  const handleConfirmReset = async (confirm) => {
     try {
       await resetLoyaltyPoints();
       setShowResetModal(false);
+      setResetButton(!resetButton);
       alert("All customer loyalty points have been reset to 0.");
     } catch (error) {
       console.error("Failed to reset points:", error);
@@ -674,6 +676,11 @@ const LoyaltyConfigPage = () => {
                   id="confirmationText"
                   placeholder="RESET POINTS"
                   className="confirmation-input-field"
+                  onChange={(e) =>
+                    setResetButton(
+                      e.target.value === "RESET POINTS" ? !resetButton : true,
+                    )
+                  }
                 />
               </div>
             </div>
@@ -687,10 +694,7 @@ const LoyaltyConfigPage = () => {
               <button
                 className="btn-danger"
                 onClick={handleConfirmReset}
-                disabled={
-                  document.getElementById("confirmationText")?.value !==
-                  "RESET POINTS"
-                }
+                disabled={resetButton}
               >
                 Confirm Reset
               </button>

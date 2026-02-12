@@ -8,4 +8,6 @@ router
   .route("/loyalty/config")
   .put(authMiddleware.verifyToken, loyaltyConfigController.updateLoyaltyConfig);
 
+router.route("/loyalty/reset-points").post(authMiddleware.verifyToken, loyaltyConfigController.resetLoyaltyPoints)
+
 module.exports = router;

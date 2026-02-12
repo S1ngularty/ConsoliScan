@@ -58,7 +58,7 @@ export const loyaltyService = {
   // Reset all customer points
   resetLoyaltyPoints: async () => {
     try {
-      const response = await axiosInstance.post('/loyalty/reset-points');
+      const response = await axiosInstance.post('/api/v1/loyalty/reset-points');
       return response.data?.result;
     } catch (error) {
       throw error.response?.data || error;
