@@ -21,6 +21,7 @@ import {
   getLoyaltyConfig,
   updateLoyaltyConfig,
   resetLoyaltyPoints,
+  updateLoyaltyProgramStatus,
 } from "../../../services/loyaltyConfigService";
 
 const LoyaltyConfigPage = () => {
@@ -115,8 +116,13 @@ const LoyaltyConfigPage = () => {
     }
   };
 
-  const handleToggle = (field) => {
-    setConfig((prev) => ({ ...prev, [field]: !prev[field] }));
+  const handleToggle = async (field) => {
+    try {
+      setConfig((prev) => ({ ...prev, [field]: !prev[field] }));
+      await updateLoyaltyProgramStatus(!config.enabled);
+    } catch (error) {
+      setConfig((prev) => ({ ...prev, [field]: !prev[field] }));
+    }
   };
 
   const handleBlur = (field) => {
