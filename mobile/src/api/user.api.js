@@ -55,7 +55,12 @@ export const ApplyEligibility = async (id, data) => {
   if (!token) throw new Error("unauthorized request");
 
   for (const [key, value] of Object.entries(data)) {
-    if ((typeof value === "object" && key !== "dateIssued" && key !== "expiryDate") || value.uri) {
+    if (
+      (typeof value === "object" &&
+        key !== "dateIssued" &&
+        key !== "expiryDate") ||
+      value.uri
+    ) {
       formData.append(key, {
         uri: value.uri,
         name: value.name,
@@ -76,4 +81,16 @@ export const ApplyEligibility = async (id, data) => {
   if (!response.ok) throw new Error("failed to sent the request");
   let responseData = await response.json();
   return response;
+};
+
+export const fetchHomeData = async () => {
+  const token = await getToken();
+  const response = await axios.get(`${API_URL}api/v1/customer/home`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response) throw new Error("failed to fetch the data");
+  // console.log(response.data.result)
+  return response.data?.result;
 };

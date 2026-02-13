@@ -32,4 +32,8 @@ router
   .route("/user/roles/:userId")
   .put(authMiddleware.verifyToken, userController.updatePermission);
 
+router
+  .route("/customer/home")
+  .get(authMiddleware.verifyToken, userController.userHomeData);
+
 module.exports = router;

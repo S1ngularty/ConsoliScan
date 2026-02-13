@@ -7,3 +7,4 @@ exports.getUserById = controllerWrapper(userService.getById);
 exports.createUser = controllerWrapper(userService.create)
 exports.deleteUser = controllerWrapper(userService.delete)
 exports.updatePermission = controllerWrapper(userService.rolesAndPermission)
+exports.userHomeData = controllerWrapper(userService.getHomeScreenData)
