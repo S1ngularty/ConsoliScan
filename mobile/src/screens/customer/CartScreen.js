@@ -54,7 +54,7 @@ const CartScreen = ({ navigation, route }) => {
   const dispatch = useDispatch();
 
   const { cart, itemCount, promo } = useSelector((state) => state.cart);
-  console.log("Cart promo data:", promo);
+  // console.log("Cart promo data:", promo);
 
   const isEligibleUser = eligibilityStatus?.isVerified;
 

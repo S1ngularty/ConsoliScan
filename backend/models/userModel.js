@@ -91,6 +91,13 @@ const userSchema = new mongoose.Schema(
         date: Date,
       },
     ],
+
+    eligibiltyDiscountUsage: {
+      discountUsed: Number,
+      purchasedUsed: Number,
+      weekStart: Date,
+      weekEnd: Date,
+    },
     status: {
       type: String,
       default: "active",

@@ -1,22 +1,34 @@
 const Order = require("../models/orderModel");
 const Product = require("../models/productModel");
+const User = require("../models/userModel");
 const blockchainService = require("./blockchainService");
 const CheckoutQueue = require("../models/checkoutQueueModel");
 const { emitCheckout } = require("../helper/socketEmitter");
+const { logBNPC_discountUsage } = require("../helper/discountUsageLogger");
 
 async function confirmOrder(request) {
   if (!request.body) throw new Error("empty content request");
   const { orderId } = request.params;
   const { userId } = request.user;
-  const orderData = { ...request.body.transaction, cashier: userId };
+  // console.log(request.body);
+  let orderData = { ...request.body.transaction, cashier: userId };
 
-  // 1 Save order (operational truth)
+  // console.log(
+  //   orderData?.user,
+  //   orderData?.appUser,
+  //   orderData?.groceryEligibleSubtotal > 0,
+  //   orderData?.bnpcDiscount?.autoCalculated > 0,
+  //   orderData?.seniorPwdDiscountAmount > 0,
+  //   orderData?.bookletUpdated,
+  // );
+
+  orderData = await logBNPC_discountUsage(orderData);
+  // console.log(orderData);
+
   const order = await Order.create(orderData);
 
-  // 2️ Log to blockchain
   const blockchainResult = await blockchainService.logConfirmedOrder(order);
 
-  // 3 Save blockchain reference
   order.blockchainTxId = blockchainResult.txId;
   order.blockchainHash = blockchainResult.hash;
 
@@ -38,8 +50,8 @@ async function confirmOrder(request) {
   Product.bulkWrite(bulkOps);
 
   emitCheckout(order.checkoutCode, "checkout:complete", {
-    orderId:order._id,
-    orderData:order,
+    orderId: order._id,
+    orderData: order,
     status: "COMPLETE",
   });
 

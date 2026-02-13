@@ -28,6 +28,7 @@ const HomeScreen = ({ navigation }) => {
 
   const userState = useSelector((state) => state.auth);
   const dispatch = useDispatch();
+  console.log(userState)
 
   useEffect(() => {
     loadHomeData();
