@@ -389,7 +389,7 @@ const HomeScreen = ({ navigation }) => {
         <View style={styles.heroSection}>
           <Text style={styles.heroLabel}>Your Points Balance</Text>
           <View style={styles.pointsRow}>
-            <Text style={styles.pointsValue}>{points.toLocaleString()}</Text>
+            <Text style={styles.pointsValue}>{points.toFixed(2)}</Text>
             <Text style={styles.pointsCurrency}>pts</Text>
           </View>
           {points === 0 ? (

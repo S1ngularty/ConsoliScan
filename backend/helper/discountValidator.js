@@ -1,4 +1,6 @@
 const User = require("../models/userModel");
+const LoyaltyConfig = require("../models/loyaltyConfigModel");
+const { getConfig } = require("../services/loyaltyConfigService");
 
 function startOfWeek(date) {
   const d = new Date(date);
@@ -75,4 +77,25 @@ exports.logBNPC_discountUsage = async (orderData) => {
     orderData.bnpcDiscount.total = finalDiscount;
   }
   return orderData;
+};
+
+exports.managePoints = async (orderData) => {
+  if (!orderData?.user && !orderData?.appUser) return;
+  const config = await getConfig();
+  let pointsEarned = config.earnRate * orderData?.finalAmountPaid;
+  const user = await User.findById(orderData.user);
+
+  user.loyaltyPoints += pointsEarned;
+  user.loyaltyPoints -= orderData.pointsUsed;
+
+  user.loyaltyHistory ??= [];
+
+  user.loyaltyHistory.push(
+    { event: "redeem", points: orderData.pointsUsed, date: Date.now() },
+    { event: "earn", points: pointsEarned, date: Date.now() },
+  );
+  
+  await user.save();
+
+  return user.loyaltyPoints;
 };

@@ -4,7 +4,7 @@ const User = require("../models/userModel");
 const blockchainService = require("./blockchainService");
 const CheckoutQueue = require("../models/checkoutQueueModel");
 const { emitCheckout } = require("../helper/socketEmitter");
-const { logBNPC_discountUsage } = require("../helper/discountUsageLogger");
+const { logBNPC_discountUsage, managePoints } = require("../helper/discountValidator");
 
 async function confirmOrder(request) {
   if (!request.body) throw new Error("empty content request");
@@ -23,7 +23,7 @@ async function confirmOrder(request) {
   // );
 
   orderData = await logBNPC_discountUsage(orderData);
-  // console.log(orderData);
+  orderData.pointsEarned = await managePoints(orderData) 
 
   const order = await Order.create(orderData);
 
