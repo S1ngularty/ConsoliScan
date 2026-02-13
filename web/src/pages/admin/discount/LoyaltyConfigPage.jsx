@@ -26,9 +26,9 @@ import {
 
 const LoyaltyConfigPage = () => {
   const [config, setConfig] = useState({
-    pointsToCurrencyRate: 100, // Points per ₱1
-    maxRedeemPercent: 20, // Maximum % of order that can be paid with points
-    earnRate: 1, // Points per peso spent
+    pointsToCurrencyRate: 100,
+    maxRedeemPercent: 20,
+    earnRate: 1,
     enabled: true,
   });
   const [loading, setLoading] = useState(true);
@@ -37,7 +37,10 @@ const LoyaltyConfigPage = () => {
   const [showResetModal, setShowResetModal] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [touched, setTouched] = useState({});
-  const [resetButton, setResetButton] = useState(true);
+  const [resetConfirmation, setResetConfirmation] = useState("");
+  const [isResetting, setIsResetting] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
 
   // Fetch config on mount
   useEffect(() => {
@@ -54,6 +57,7 @@ const LoyaltyConfigPage = () => {
       }
     } catch (error) {
       console.error("Failed to fetch loyalty config:", error);
+      alert("Failed to fetch configuration. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -65,21 +69,23 @@ const LoyaltyConfigPage = () => {
 
     switch (name) {
       case "pointsToCurrencyRate":
-        if (!value || isNaN(value)) error = "Points rate is required";
+        if (!value || value === "") error = "Points rate is required";
+        else if (isNaN(value)) error = "Points rate must be a number";
         else if (parseFloat(value) <= 0)
           error = "Points rate must be greater than 0";
         else if (parseFloat(value) > 1000) error = "Points rate is too high";
         break;
 
       case "maxRedeemPercent":
-        if (!value && value !== 0) error = "Maximum redeem percent is required";
+        if (value === "" || value === null) error = "Maximum redeem percent is required";
         else if (isNaN(value)) error = "Percent must be a number";
         else if (parseFloat(value) < 0) error = "Percent cannot be negative";
         else if (parseFloat(value) > 100) error = "Percent cannot exceed 100%";
         break;
 
       case "earnRate":
-        if (!value || isNaN(value)) error = "Earn rate is required";
+        if (!value || value === "") error = "Earn rate is required";
+        else if (isNaN(value)) error = "Earn rate must be a number";
         else if (parseFloat(value) <= 0)
           error = "Earn rate must be greater than 0";
         else if (parseFloat(value) > 10) error = "Earn rate is too high";
@@ -96,11 +102,11 @@ const LoyaltyConfigPage = () => {
     const newErrors = {};
     newErrors.pointsToCurrencyRate = validateField(
       "pointsToCurrencyRate",
-      config.pointsToCurrencyRate,
+      config.pointsToCurrencyRate
     );
     newErrors.maxRedeemPercent = validateField(
       "maxRedeemPercent",
-      config.maxRedeemPercent,
+      config.maxRedeemPercent
     );
     newErrors.earnRate = validateField("earnRate", config.earnRate);
     return newErrors;
@@ -109,7 +115,6 @@ const LoyaltyConfigPage = () => {
   const handleInputChange = (field, value) => {
     setConfig((prev) => ({ ...prev, [field]: value }));
 
-    // Validate on change if field has been touched
     if (touched[field]) {
       const error = validateField(field, value);
       setErrors((prev) => ({ ...prev, [field]: error }));
@@ -117,11 +122,23 @@ const LoyaltyConfigPage = () => {
   };
 
   const handleToggle = async (field) => {
+    const newStatus = !config[field];
+    
+    setUpdatingStatus(true);
     try {
-      setConfig((prev) => ({ ...prev, [field]: !prev[field] }));
-      await updateLoyaltyProgramStatus(!config.enabled);
+      // Call API to update status first
+      await updateLoyaltyProgramStatus(newStatus);
+      
+      // Then update UI
+      setConfig((prev) => ({ ...prev, [field]: newStatus }));
+      
+      alert(`Loyalty program ${newStatus ? 'activated' : 'deactivated'} successfully!`);
     } catch (error) {
-      setConfig((prev) => ({ ...prev, [field]: !prev[field] }));
+      console.error("Failed to update program status:", error);
+      alert("Failed to update program status. Please try again.");
+      // Don't update UI on error
+    } finally {
+      setUpdatingStatus(false);
     }
   };
 
@@ -132,7 +149,6 @@ const LoyaltyConfigPage = () => {
   };
 
   const handleSave = async () => {
-    // Mark all fields as touched
     const fields = ["pointsToCurrencyRate", "maxRedeemPercent", "earnRate"];
     const newTouched = {};
     fields.forEach((field) => {
@@ -140,16 +156,13 @@ const LoyaltyConfigPage = () => {
     });
     setTouched(newTouched);
 
-    // Validate form
     const formErrors = validateForm();
     setErrors(formErrors);
 
-    // Check if there are any errors
     const hasErrors = Object.values(formErrors).some((error) => error);
     if (hasErrors) {
-      // Scroll to first error
       const firstError = Object.keys(formErrors).find(
-        (field) => formErrors[field],
+        (field) => formErrors[field]
       );
       if (firstError) {
         const element = document.querySelector(`[data-field="${firstError}"]`);
@@ -163,19 +176,19 @@ const LoyaltyConfigPage = () => {
     setSaving(true);
 
     try {
-      const updatedConfig = await updateLoyaltyConfig(config);
+      const updatedConfig = await updateLoyaltyConfig({
+        pointsToCurrencyRate: parseFloat(config.pointsToCurrencyRate),
+        maxRedeemPercent: parseFloat(config.maxRedeemPercent),
+        earnRate: parseFloat(config.earnRate),
+        enabled: config.enabled,
+      });
+      
       setConfig(updatedConfig);
       setLastUpdated(updatedConfig.updatedAt);
-
-      // Show success message (you can replace with a toast)
       alert("Loyalty configuration saved successfully!");
     } catch (error) {
       console.error("Failed to save config:", error);
-      setErrors((prev) => ({
-        ...prev,
-        _form:
-          error.message || "Failed to save configuration. Please try again.",
-      }));
+      alert(error.message || "Failed to save configuration. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -183,31 +196,47 @@ const LoyaltyConfigPage = () => {
 
   const handleResetClick = () => {
     setShowResetModal(true);
+    setResetConfirmation("");
+    setResetSuccess(false);
   };
 
-  const handleConfirmReset = async (confirm) => {
+  const handleConfirmReset = async () => {
+    if (resetConfirmation !== "RESET POINTS") {
+      alert("Please type 'RESET POINTS' to confirm");
+      return;
+    }
+
+    setIsResetting(true);
     try {
       await resetLoyaltyPoints();
-      setShowResetModal(false);
-      setResetButton(!resetButton);
+      setResetSuccess(true);
       alert("All customer loyalty points have been reset to 0.");
+      
+      // Close modal after short delay to show success state
+      setTimeout(() => {
+        setShowResetModal(false);
+        setResetConfirmation("");
+        setResetSuccess(false);
+        // Refresh config to get updated data
+        fetchConfig();
+      }, 1500);
     } catch (error) {
       console.error("Failed to reset points:", error);
       alert("Failed to reset loyalty points. Please try again.");
+      setIsResetting(false);
     }
   };
 
-  // Calculate example values for better understanding (in PHP)
   const calculateExamples = () => {
-    const pointsRate = parseFloat(config.pointsToCurrencyRate) || 100; // Points per ₱1
-    const earnRate = parseFloat(config.earnRate) || 1; // Points per peso spent
-    const maxPercent = parseFloat(config.maxRedeemPercent) || 20; // % of order
+    const pointsRate = parseFloat(config.pointsToCurrencyRate) || 100;
+    const earnRate = parseFloat(config.earnRate) || 1;
+    const maxPercent = parseFloat(config.maxRedeemPercent) || 20;
 
-    const examplePurchase = 1000; // ₱1000 purchase
+    const examplePurchase = 1000;
     const pointsEarned = examplePurchase * earnRate;
-    const pointValue = 1 / pointsRate; // Value of 1 point in pesos (₱)
+    const pointValue = pointsRate > 0 ? 1 / pointsRate : 0.01;
     const maxRedeemValue = (examplePurchase * maxPercent) / 100;
-    const pointsNeededForMax = maxRedeemValue / pointValue;
+    const pointsNeededForMax = pointValue > 0 ? maxRedeemValue / pointValue : 0;
 
     return {
       examplePurchase,
@@ -269,11 +298,12 @@ const LoyaltyConfigPage = () => {
                   checked={config.enabled}
                   onChange={() => handleToggle("enabled")}
                   className="toggle-input"
+                  disabled={updatingStatus}
                 />
                 <label htmlFor="enabled" className="toggle-label">
                   <span className="toggle-slider"></span>
                   <span className="toggle-text">
-                    {config.enabled ? "Active" : "Inactive"}
+                    {updatingStatus ? "Updating..." : (config.enabled ? "Active" : "Inactive")}
                   </span>
                 </label>
               </div>
@@ -313,7 +343,7 @@ const LoyaltyConfigPage = () => {
                     min="1"
                     max="1000"
                     className={errors.pointsToCurrencyRate ? "input-error" : ""}
-                    disabled={!config.enabled}
+                    disabled={!config.enabled} // Disabled when program is inactive
                   />
                   <span className="input-suffix">points = ₱1.00</span>
                 </div>
@@ -346,7 +376,7 @@ const LoyaltyConfigPage = () => {
                     min="0"
                     max="100"
                     className={errors.maxRedeemPercent ? "input-error" : ""}
-                    disabled={!config.enabled}
+                    disabled={!config.enabled} // Disabled when program is inactive
                   />
                   <span className="input-suffix">% of order total</span>
                 </div>
@@ -379,7 +409,7 @@ const LoyaltyConfigPage = () => {
                     min="0.1"
                     max="10"
                     className={errors.earnRate ? "input-error" : ""}
-                    disabled={!config.enabled}
+                    disabled={!config.enabled} // Disabled when program is inactive
                   />
                   <span className="input-suffix">points per ₱1 spent</span>
                 </div>
@@ -414,10 +444,10 @@ const LoyaltyConfigPage = () => {
               <button
                 className="btn-reset"
                 onClick={handleResetClick}
-                disabled={!config.enabled}
+                disabled={isResetting || !config.enabled} // Disabled when program is inactive or resetting
               >
-                <RefreshCw size={16} />
-                <span>Reset All Points</span>
+                <RefreshCw size={16} className={isResetting ? "spin" : ""} />
+                <span>{isResetting ? "Resetting..." : "Reset All Points"}</span>
               </button>
             </div>
           </div>
@@ -577,13 +607,13 @@ const LoyaltyConfigPage = () => {
                   <div className="conversion-item">
                     <span className="conversion-label">₱100 purchase:</span>
                     <span className="conversion-value">
-                      Earns {config.earnRate * 100} points
+                      Earns {(config.earnRate * 100).toFixed(0)} points
                     </span>
                   </div>
                   <div className="conversion-item">
                     <span className="conversion-label">₱500 purchase:</span>
                     <span className="conversion-value">
-                      Earns {config.earnRate * 500} points
+                      Earns {(config.earnRate * 500).toFixed(0)} points
                     </span>
                   </div>
                   <div className="conversion-item">
@@ -617,23 +647,20 @@ const LoyaltyConfigPage = () => {
             onClick={fetchConfig}
             disabled={saving}
           >
-            <RefreshCw size={16} />
+            <RefreshCw size={16} className={loading ? "spin" : ""} />
             <span>Reload</span>
           </button>
           <div className="action-group">
-            {errors._form && (
-              <div className="form-error">
-                <AlertCircle size={14} />
-                <span>{errors._form}</span>
-              </div>
-            )}
             <button
               className="btn-primary"
               onClick={handleSave}
-              disabled={saving || !config.enabled}
+              disabled={saving || !config.enabled} // Disabled when program is inactive
             >
               {saving ? (
-                <span className="loading-spinner"></span>
+                <>
+                  <span className="loading-spinner"></span>
+                  <span>Saving...</span>
+                </>
               ) : (
                 <>
                   <Save size={16} />
@@ -656,7 +683,8 @@ const LoyaltyConfigPage = () => {
               <h3>Reset All Loyalty Points</h3>
               <button
                 className="modal-close"
-                onClick={() => setShowResetModal(false)}
+                onClick={() => !isResetting && setShowResetModal(false)}
+                disabled={isResetting}
               >
                 ×
               </button>
@@ -679,35 +707,70 @@ const LoyaltyConfigPage = () => {
                 </label>
                 <input
                   type="text"
-                  id="confirmationText"
+                  value={resetConfirmation}
+                  onChange={(e) => setResetConfirmation(e.target.value)}
                   placeholder="RESET POINTS"
                   className="confirmation-input-field"
-                  onChange={(e) =>
-                    setResetButton(
-                      e.target.value === "RESET POINTS" ? !resetButton : true,
-                    )
-                  }
+                  autoFocus
+                  disabled={isResetting || resetSuccess}
                 />
               </div>
+              {resetSuccess && (
+                <div className="success-message">
+                  <CheckCircle size={16} />
+                  <span>Points reset successfully!</span>
+                </div>
+              )}
             </div>
             <div className="modal-footer">
               <button
                 className="btn-secondary"
                 onClick={() => setShowResetModal(false)}
+                disabled={isResetting}
               >
                 Cancel
               </button>
               <button
                 className="btn-danger"
                 onClick={handleConfirmReset}
-                disabled={resetButton}
+                disabled={resetConfirmation !== "RESET POINTS" || isResetting || resetSuccess}
               >
-                Confirm Reset
+                {isResetting ? (
+                  <>
+                    <span className="loading-spinner"></span>
+                    <span>Resetting...</span>
+                  </>
+                ) : resetSuccess ? (
+                  <>
+                    <CheckCircle size={16} />
+                    <span>Done</span>
+                  </>
+                ) : (
+                  "Confirm Reset"
+                )}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .spin {
+          animation: spin 1s linear infinite;
+        }
+        .success-message {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #00A86B;
+          margin-top: 12px;
+          font-size: 14px;
+        }
+      `}</style>
     </div>
   );
 };

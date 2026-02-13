@@ -22,6 +22,8 @@ exports.update = async (request) => {
       runValidators: true,
     },
   );
+
+  return config
 };
 
 exports.reset = async (request) => {
