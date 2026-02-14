@@ -31,19 +31,20 @@ import { applyPromo } from "../../api/promo.api";
 import { fetchHomeData } from "../../api/user.api";
 import { getConfig } from "../../api/loyalty.api";
 
-// Mock weekly usage tracker - in production, fetch from API
-const mockWeeklyUsage = {
-  bnpcAmountUsed: 0,
-  discountUsed: 0,
-  weekStart: "2024-01-15",
-  weekEnd: "2024-01-21",
-};
+// Constants for BNPC caps
+const BNPC_PURCHASE_CAP = 2500;
+const BNPC_DISCOUNT_CAP = 125;
 
 const CartScreen = ({ navigation, route }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPromo, setSelectedPromo] = useState(null);
   const [loyaltyPoints, setLoyaltyPoints] = useState("");
-  const [weeklyUsage, setWeeklyUsage] = useState(mockWeeklyUsage);
+  const [weeklyUsage, setWeeklyUsage] = useState({
+    bnpcAmountUsed: 0,
+    discountUsed: 0,
+    weekStart: "",
+    weekEnd: "",
+  });
   const eligibilityStatus = useSelector((state) => state.auth.eligible);
   const userState = useSelector((state) => state.auth);
   const [userEligibility, setUserEligibility] = useState({
@@ -93,9 +94,24 @@ const CartScreen = ({ navigation, route }) => {
 
   async function fetchLoyaltyPointsData() {
     try {
-      const [points, config] = await Promise.all([fetchHomeData(), getConfig()]);
-      console.log("points:", points.loyaltyPoints, "config:", config);
-      setAvailablePoints(points.loyaltyPoints);
+      const [homeData, config] = await Promise.all([
+        fetchHomeData(),
+        getConfig(),
+      ]);
+      console.log("Home data:", homeData);
+      
+      setAvailablePoints(homeData.loyaltyPoints);
+      
+      // Set weekly usage from the API data
+      if (homeData.eligibilityDiscountUsage) {
+        setWeeklyUsage({
+          bnpcAmountUsed: homeData.eligibilityDiscountUsage.purchasedUsed || 0,
+          discountUsed: homeData.eligibilityDiscountUsage.discountUsed || 0,
+          weekStart: homeData.eligibilityDiscountUsage.weekStart,
+          weekEnd: homeData.eligibilityDiscountUsage.weekEnd,
+        });
+      }
+      
       setLoyaltyConfig(config);
     } catch (error) {
       console.error("Error fetching loyalty data:", error);
@@ -169,7 +185,7 @@ const CartScreen = ({ navigation, route }) => {
     return null;
   };
 
-  // Step 1: Filter Eligible BNPC Items
+  // Filter Eligible BNPC Items
   const getEligibleBNPCItems = () => {
     if (!isEligibleUser) return [];
 
@@ -189,7 +205,7 @@ const CartScreen = ({ navigation, route }) => {
     });
   };
 
-  // Step 2: Compute BNPC Subtotal for eligible items only
+  // Compute BNPC Subtotal for eligible items only
   const calculateBNPCEligibleSubtotal = () => {
     const eligibleItems = getEligibleBNPCItems();
 
@@ -206,7 +222,7 @@ const CartScreen = ({ navigation, route }) => {
     return subtotal;
   };
 
-  // Step 3 & 4: Apply Weekly Caps
+  // Apply Weekly Caps using real data from API
   const calculateDiscountDetails = () => {
     const eligibleItems = getEligibleBNPCItems();
     const eligibleBNPCSubtotal = calculateBNPCEligibleSubtotal();
@@ -233,7 +249,11 @@ const CartScreen = ({ navigation, route }) => {
       };
     }
 
-    const remainingPurchaseCap = Math.max(2500 - weeklyUsage.bnpcAmountUsed, 0);
+    // Calculate remaining caps based on actual usage from API
+    const remainingPurchaseCap = Math.max(
+      BNPC_PURCHASE_CAP - weeklyUsage.bnpcAmountUsed, 
+      0
+    );
 
     if (remainingPurchaseCap === 0) {
       return {
@@ -242,7 +262,7 @@ const CartScreen = ({ navigation, route }) => {
         bnpcEligibleSubtotal: eligibleBNPCSubtotal,
         cappedBNPCAmount: 0,
         eligibleItemsCount: eligibleItems.length,
-        reason: "Weekly purchase cap reached (₱2,500)",
+        reason: `Weekly purchase cap reached (₱${BNPC_PURCHASE_CAP.toLocaleString()})`,
       };
     }
 
@@ -252,7 +272,10 @@ const CartScreen = ({ navigation, route }) => {
     );
 
     const rawDiscount = cappedBNPCAmount * 0.05; // 5% discount on total eligible amount
-    const remainingDiscountCap = Math.max(125 - weeklyUsage.discountUsed, 0);
+    const remainingDiscountCap = Math.max(
+      BNPC_DISCOUNT_CAP - weeklyUsage.discountUsed, 
+      0
+    );
 
     if (remainingDiscountCap === 0) {
       return {
@@ -261,7 +284,7 @@ const CartScreen = ({ navigation, route }) => {
         bnpcEligibleSubtotal: eligibleBNPCSubtotal,
         cappedBNPCAmount,
         eligibleItemsCount: eligibleItems.length,
-        reason: "Weekly discount cap reached (₱125)",
+        reason: `Weekly discount cap reached (₱${BNPC_DISCOUNT_CAP})`,
       };
     }
 
@@ -277,6 +300,8 @@ const CartScreen = ({ navigation, route }) => {
       remainingDiscountCap,
       weeklyPurchaseUsed: weeklyUsage.bnpcAmountUsed + cappedBNPCAmount,
       weeklyDiscountUsed: weeklyUsage.discountUsed + discountApplied,
+      weekStart: weeklyUsage.weekStart,
+      weekEnd: weeklyUsage.weekEnd,
     };
   };
 
@@ -320,10 +345,13 @@ const CartScreen = ({ navigation, route }) => {
   // Validate and set loyalty points according to rules
   const validateAndSetPoints = (points) => {
     const { subtotal } = calculateCartTotals();
-    
+
     // Check if loyalty program is enabled
     if (!loyaltyConfig.enabled) {
-      Alert.alert("Loyalty Program Disabled", "Loyalty points cannot be used at this time");
+      Alert.alert(
+        "Loyalty Program Disabled",
+        "Loyalty points cannot be used at this time",
+      );
       setLoyaltyPoints("");
       setAppliedPoints(0);
       setPointsDiscount(0);
@@ -334,7 +362,7 @@ const CartScreen = ({ navigation, route }) => {
     if (points > availablePoints) {
       Alert.alert(
         "Insufficient Points",
-        `You only have ${availablePoints} points available`
+        `You only have ${availablePoints} points available`,
       );
       setLoyaltyPoints(availablePoints.toString());
       return false;
@@ -342,12 +370,14 @@ const CartScreen = ({ navigation, route }) => {
 
     // Calculate max points allowed (based on max redeem percent)
     const maxPointsValue = subtotal * (loyaltyConfig.maxRedeemPercent / 100);
-    const maxPointsAllowed = Math.floor(maxPointsValue / loyaltyConfig.pointsToCurrencyRate);
-    
+    const maxPointsAllowed = Math.floor(
+      maxPointsValue / loyaltyConfig.pointsToCurrencyRate,
+    );
+
     if (points > maxPointsAllowed) {
       Alert.alert(
         "Max Points Exceeded",
-        `You can only use up to ${maxPointsAllowed} points (${loyaltyConfig.maxRedeemPercent}% of order total)`
+        `You can only use up to ${maxPointsAllowed} points (${loyaltyConfig.maxRedeemPercent}% of order total)`,
       );
       setLoyaltyPoints(maxPointsAllowed.toString());
       return false;
@@ -355,7 +385,7 @@ const CartScreen = ({ navigation, route }) => {
 
     // Calculate discount value
     const discountValue = points * loyaltyConfig.pointsToCurrencyRate;
-    
+
     setAppliedPoints(points);
     setPointsDiscount(discountValue);
     return true;
@@ -365,7 +395,7 @@ const CartScreen = ({ navigation, route }) => {
     // Allow only numbers
     const numericValue = text.replace(/[^0-9]/g, "");
     setLoyaltyPoints(numericValue);
-    
+
     // Clear applied points if input is empty
     if (!numericValue) {
       setAppliedPoints(0);
@@ -375,7 +405,7 @@ const CartScreen = ({ navigation, route }) => {
 
   const handleApplyLoyaltyPoints = () => {
     const points = parseInt(loyaltyPoints) || 0;
-    
+
     if (points <= 0) {
       Alert.alert("Invalid Points", "Please enter valid loyalty points");
       return;
@@ -401,13 +431,18 @@ const CartScreen = ({ navigation, route }) => {
     const discountDetails = calculateDiscountDetails();
     const { subtotal } = calculateCartTotals();
     const promoDiscount = calculatePromoDiscount(subtotal);
-    
+
     // Calculate total after BNPC and promo discounts (before loyalty)
-    const afterOtherDiscounts = subtotal - discountDetails.discountApplied - promoDiscount;
-    
+    const afterOtherDiscounts =
+      subtotal - discountDetails.discountApplied - promoDiscount;
+
     // Loyalty points discount (capped at max redeem percent)
-    const maxLoyaltyDiscount = afterOtherDiscounts * (loyaltyConfig.maxRedeemPercent / 100);
-    const effectiveLoyaltyDiscount = Math.min(pointsDiscount, maxLoyaltyDiscount);
+    const maxLoyaltyDiscount =
+      afterOtherDiscounts * (loyaltyConfig.maxRedeemPercent / 100);
+    const effectiveLoyaltyDiscount = Math.min(
+      pointsDiscount,
+      maxLoyaltyDiscount,
+    );
 
     const finalTotal = Math.max(
       0,
@@ -419,7 +454,10 @@ const CartScreen = ({ navigation, route }) => {
       bnpcDiscount: discountDetails.discountApplied,
       promoDiscount,
       loyaltyDiscount: effectiveLoyaltyDiscount,
-      loyaltyPointsUsed: effectiveLoyaltyDiscount > 0 ? (effectiveLoyaltyDiscount / loyaltyConfig.pointsToCurrencyRate) : 0,
+      loyaltyPointsUsed:
+        effectiveLoyaltyDiscount > 0
+          ? effectiveLoyaltyDiscount / loyaltyConfig.pointsToCurrencyRate
+          : 0,
       finalTotal,
       discountDetails,
       afterOtherDiscounts,
@@ -564,7 +602,10 @@ const CartScreen = ({ navigation, route }) => {
 
     // Check if loyalty program is enabled when points are applied
     if (appliedPoints > 0 && !loyaltyConfig.enabled) {
-      Alert.alert("Loyalty Program Disabled", "Loyalty points cannot be used at this time");
+      Alert.alert(
+        "Loyalty Program Disabled",
+        "Loyalty points cannot be used at this time",
+      );
       return;
     }
 
@@ -644,28 +685,32 @@ const CartScreen = ({ navigation, route }) => {
       finalTotal: totals.finalTotal,
     };
 
-    // Prepare detailed BNPC discount snapshot
+    // Prepare detailed BNPC discount snapshot with real usage data
     const discountSnapshot = {
       eligible: discountDetails.eligible,
       eligibleItemsCount: discountDetails.eligibleItemsCount || 0,
       bnpcEligibleSubtotal: discountDetails.bnpcEligibleSubtotal || 0,
       cappedBNPCAmount: discountDetails.cappedBNPCAmount || 0,
       discountApplied: discountDetails.discountApplied || 0,
-      remainingPurchaseCap: discountDetails.remainingPurchaseCap || 2500,
-      remainingDiscountCap: discountDetails.remainingDiscountCap || 125,
+      remainingPurchaseCap: discountDetails.remainingPurchaseCap || BNPC_PURCHASE_CAP,
+      remainingDiscountCap: discountDetails.remainingDiscountCap || BNPC_DISCOUNT_CAP,
       weeklyPurchaseUsed: discountDetails.weeklyPurchaseUsed || 0,
       weeklyDiscountUsed: discountDetails.weeklyDiscountUsed || 0,
+      weekStart: discountDetails.weekStart,
+      weekEnd: discountDetails.weekEnd,
       reason: discountDetails.reason || null,
     };
 
-    // Prepare detailed weekly usage
+    // Prepare detailed weekly usage from API data
     const weeklyUsageSnapshot = {
       bnpcAmountUsed: weeklyUsage.bnpcAmountUsed,
       discountUsed: weeklyUsage.discountUsed,
       weekStart: weeklyUsage.weekStart,
       weekEnd: weeklyUsage.weekEnd,
-      remainingPurchaseCap: 2500 - weeklyUsage.bnpcAmountUsed,
-      remainingDiscountCap: 125 - weeklyUsage.discountUsed,
+      remainingPurchaseCap: BNPC_PURCHASE_CAP - weeklyUsage.bnpcAmountUsed,
+      remainingDiscountCap: BNPC_DISCOUNT_CAP - weeklyUsage.discountUsed,
+      purchaseCap: BNPC_PURCHASE_CAP,
+      discountCap: BNPC_DISCOUNT_CAP,
     };
 
     // Prepare promo data if applied
@@ -686,21 +731,28 @@ const CartScreen = ({ navigation, route }) => {
       : null;
 
     // Prepare loyalty points data with config
-    const loyaltyPointsData = totals.loyaltyDiscount > 0
-      ? {
-          pointsUsed: totals.loyaltyPointsUsed,
-          pointsValue: loyaltyConfig.pointsToCurrencyRate,
-          discountAmount: totals.loyaltyDiscount,
-          maxAllowedDiscount: totals.afterOtherDiscounts * (loyaltyConfig.maxRedeemPercent / 100),
-          maxRedeemPercent: loyaltyConfig.maxRedeemPercent,
-          percentageUsed: ((totals.loyaltyDiscount / totals.afterOtherDiscounts) * 100).toFixed(2) + "%",
-          config: {
-            pointsToCurrencyRate: loyaltyConfig.pointsToCurrencyRate,
+    const loyaltyPointsData =
+      totals.loyaltyDiscount > 0
+        ? {
+            pointsUsed: totals.loyaltyPointsUsed,
+            pointsValue: loyaltyConfig.pointsToCurrencyRate,
+            discountAmount: totals.loyaltyDiscount,
+            maxAllowedDiscount:
+              totals.afterOtherDiscounts *
+              (loyaltyConfig.maxRedeemPercent / 100),
             maxRedeemPercent: loyaltyConfig.maxRedeemPercent,
-            earnRate: loyaltyConfig.earnRate,
+            percentageUsed:
+              (
+                (totals.loyaltyDiscount / totals.afterOtherDiscounts) *
+                100
+              ).toFixed(2) + "%",
+            config: {
+              pointsToCurrencyRate: loyaltyConfig.pointsToCurrencyRate,
+              maxRedeemPercent: loyaltyConfig.maxRedeemPercent,
+              earnRate: loyaltyConfig.earnRate,
+            },
           }
-        }
-      : null;
+        : null;
 
     // Points earned from this purchase
     const pointsEarned = calculatePointsEarned(totals.finalTotal);
@@ -713,8 +765,14 @@ const CartScreen = ({ navigation, route }) => {
       verificationIdType: eligibilityStatus?.idType || null,
       discountScope: getUserDiscountScope(),
       weeklyCaps: {
-        purchaseCap: 2500,
-        discountCap: 125,
+        purchaseCap: BNPC_PURCHASE_CAP,
+        discountCap: BNPC_DISCOUNT_CAP,
+      },
+      currentUsage: {
+        purchasedUsed: weeklyUsage.bnpcAmountUsed,
+        discountUsed: weeklyUsage.discountUsed,
+        weekStart: weeklyUsage.weekStart,
+        weekEnd: weeklyUsage.weekEnd,
       },
     };
 
@@ -743,11 +801,11 @@ const CartScreen = ({ navigation, route }) => {
         totalDiscount: checkoutTotals.discountTotal,
       },
 
-      // Discount calculations and snapshots
+      // Discount calculations and snapshots with real usage data
       discountSnapshot: discountSnapshot,
       weeklyUsageSnapshot: weeklyUsageSnapshot,
 
-      // User eligibility
+      // User eligibility with current usage
       userEligibility: userEligibilityDetails,
 
       // Customer verification (for eligible users)
@@ -810,6 +868,17 @@ const CartScreen = ({ navigation, route }) => {
       });
     } catch {
       return "Recently added";
+    }
+  };
+
+  const formatWeekRange = (start, end) => {
+    if (!start || !end) return "";
+    try {
+      const startDate = new Date(start);
+      const endDate = new Date(end);
+      return `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
+    } catch {
+      return "";
     }
   };
 
@@ -948,9 +1017,13 @@ const CartScreen = ({ navigation, route }) => {
   const { itemCount: displayItemCount } = calculateCartTotals();
   const pointsEarned = calculatePointsEarned(totals.finalTotal);
   const maxPointsAllowed = Math.floor(
-    (totals.afterOtherDiscounts * (loyaltyConfig.maxRedeemPercent / 100)) / 
-    loyaltyConfig.pointsToCurrencyRate
+    (totals.afterOtherDiscounts * (loyaltyConfig.maxRedeemPercent / 100)) /
+      loyaltyConfig.pointsToCurrencyRate,
   );
+
+  // Calculate progress percentages for display
+  const purchaseProgress = (weeklyUsage.bnpcAmountUsed / BNPC_PURCHASE_CAP) * 100;
+  const discountProgress = (weeklyUsage.discountUsed / BNPC_DISCOUNT_CAP) * 100;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -1020,6 +1093,58 @@ const CartScreen = ({ navigation, route }) => {
                 ? `As a ${userEligibility.isPWD ? "PWD" : "Senior Citizen"}, you get 5% off on eligible BNPC items (up to ₱125/week)`
                 : "Sign up for PWD/Senior benefits to get discounts on BNPC items"}
             </Text>
+            
+            {/* Weekly Usage Progress */}
+            {isEligibleUser && (
+              <View style={styles.weeklyProgressContainer}>
+                <View style={styles.progressItem}>
+                  <View style={styles.progressHeader}>
+                    <Text style={styles.progressLabel}>Purchase Cap</Text>
+                    <Text style={styles.progressValue}>
+                      ₱{weeklyUsage.bnpcAmountUsed.toFixed(0)} / ₱{BNPC_PURCHASE_CAP}
+                    </Text>
+                  </View>
+                  <View style={styles.progressBar}>
+                    <View 
+                      style={[
+                        styles.progressFill,
+                        { 
+                          width: `${Math.min(purchaseProgress, 100)}%`,
+                          backgroundColor: purchaseProgress >= 100 ? '#f44336' : '#00A86B'
+                        }
+                      ]} 
+                    />
+                  </View>
+                </View>
+                
+                <View style={styles.progressItem}>
+                  <View style={styles.progressHeader}>
+                    <Text style={styles.progressLabel}>Discount Cap</Text>
+                    <Text style={styles.progressValue}>
+                      ₱{weeklyUsage.discountUsed.toFixed(0)} / ₱{BNPC_DISCOUNT_CAP}
+                    </Text>
+                  </View>
+                  <View style={styles.progressBar}>
+                    <View 
+                      style={[
+                        styles.progressFill,
+                        { 
+                          width: `${Math.min(discountProgress, 100)}%`,
+                          backgroundColor: discountProgress >= 100 ? '#f44336' : '#00A86B'
+                        }
+                      ]} 
+                    />
+                  </View>
+                </View>
+                
+                {weeklyUsage.weekStart && weeklyUsage.weekEnd && (
+                  <Text style={styles.weekRange}>
+                    Week: {formatWeekRange(weeklyUsage.weekStart, weeklyUsage.weekEnd)}
+                  </Text>
+                )}
+              </View>
+            )}
+            
             {isEligibleUser && discountDetails.eligibleItemsCount > 0 && (
               <Text style={styles.eligibilityDebug}>
                 {discountDetails.eligibleItemsCount} BNPC item(s) eligible for
@@ -1175,8 +1300,8 @@ const CartScreen = ({ navigation, route }) => {
                   <TouchableOpacity
                     style={[
                       styles.applyLoyaltyButton,
-                      (!loyaltyPoints.trim() || !loyaltyConfig.enabled) && 
-                      styles.applyLoyaltyButtonDisabled,
+                      (!loyaltyPoints.trim() || !loyaltyConfig.enabled) &&
+                        styles.applyLoyaltyButtonDisabled,
                     ]}
                     onPress={handleApplyLoyaltyPoints}
                     disabled={!loyaltyPoints.trim() || !loyaltyConfig.enabled}
@@ -1188,7 +1313,10 @@ const CartScreen = ({ navigation, route }) => {
                 {loyaltyPoints && (
                   <Text style={styles.loyaltyInfo}>
                     Max: {maxPointsAllowed} points (₱
-                    {(maxPointsAllowed * loyaltyConfig.pointsToCurrencyRate).toFixed(2)})
+                    {(
+                      maxPointsAllowed * loyaltyConfig.pointsToCurrencyRate
+                    ).toFixed(2)}
+                    )
                   </Text>
                 )}
               </>
@@ -1198,7 +1326,8 @@ const CartScreen = ({ navigation, route }) => {
               <MaterialCommunityIcons name="gift" size={16} color="#FFD700" />
               <Text style={styles.pointsEarnText}>
                 You'll earn {pointsEarned} points with this purchase
-                {loyaltyConfig.earnRate > 0 && ` (₱1 = ${loyaltyConfig.earnRate} pts)`}
+                {loyaltyConfig.earnRate > 0 &&
+                  ` (₱1 = ${loyaltyConfig.earnRate} pts)`}
               </Text>
             </View>
           </View>
@@ -1307,11 +1436,11 @@ const CartScreen = ({ navigation, route }) => {
                 <View style={styles.weeklySummary}>
                   <Text style={styles.weeklySummaryText}>
                     Weekly BNPC purchase: ₱
-                    {discountDetails.weeklyPurchaseUsed?.toFixed(2)} / ₱2,500
+                    {discountDetails.weeklyPurchaseUsed?.toFixed(2)} / ₱{BNPC_PURCHASE_CAP}
                   </Text>
                   <Text style={styles.weeklySummaryText}>
                     Weekly BNPC discount: ₱
-                    {discountDetails.weeklyDiscountUsed?.toFixed(2)} / ₱125
+                    {discountDetails.weeklyDiscountUsed?.toFixed(2)} / ₱{BNPC_DISCOUNT_CAP}
                   </Text>
                 </View>
               </>
@@ -1542,6 +1671,46 @@ const styles = StyleSheet.create({
     color: "#00A86B",
     fontWeight: "600",
     marginTop: 4,
+  },
+  weeklyProgressContainer: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: "#f8f8f8",
+    borderRadius: 8,
+  },
+  progressItem: {
+    marginBottom: 8,
+  },
+  progressHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  progressLabel: {
+    fontSize: 12,
+    color: "#666",
+  },
+  progressValue: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#000",
+  },
+  progressBar: {
+    height: 4,
+    backgroundColor: "#e0e0e0",
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 2,
+  },
+  weekRange: {
+    fontSize: 11,
+    color: "#999",
+    marginTop: 8,
+    fontStyle: "italic",
   },
   cartItemsContainer: {
     paddingHorizontal: 20,
@@ -2163,4 +2332,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default CartScreen;  
+export default CartScreen;
