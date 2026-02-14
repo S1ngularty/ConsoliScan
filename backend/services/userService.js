@@ -1,5 +1,8 @@
 const User = require("../models/userModel");
 const { uploadImage, deleteAssets } = require("../utils/cloundinaryUtil");
+const Eligibility = require("../models/eligibleModel");
+const Cart = require("../models/cartModel");
+const Order = require("../models/orderModel");
 const { createLog } = require("../services/activityLogsService");
 
 exports.update = async (request) => {
@@ -94,5 +97,25 @@ exports.rolesAndPermission = async (request) => {
     "SUCCESS",
     `Successfully updated ${user.name} permission with ID ${userId} `,
   );
+  return user;
+};
+
+exports.getHomeScreenData = async (request) => {
+  const { userId } = request.user;
+  const [userInfo, eligibilityInfo, cartInfo, orderCount] = await Promise.all([
+    User.findById(userId).lean(),
+    Eligibility.findOne({ user: userId }).lean(),
+    Cart.findOne({ user: userId }).lean(),
+    Order.find({ user: userId }).countDocuments(),
+  ]);
+
+  const user = {
+    eligibilityDiscountUsage: userInfo.eligibiltyDiscountUsage || {},
+    loyaltyPoints: userInfo.loyaltyPoints || 0,
+    is_eligibility_verified: eligibilityInfo?.isVerified || false,
+    cartItemCount: cartInfo?.items.length || 0,
+    orderCount,
+  };
+  // console.log(user);
   return user;
 };

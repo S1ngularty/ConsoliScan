@@ -23,7 +23,7 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       default: null,
-      select:false
+      select: false,
     },
     sex: {
       type: String,
@@ -80,6 +80,24 @@ const userSchema = new mongoose.Schema(
       default: "user",
       enum: ["user", "admin", "checker"],
     },
+    loyaltyPoints: {
+      type: Number,
+      default: 0,
+    },
+    loyaltyHistory: [
+      {
+        event: { type: String, enum: ["earn", "redeem"] },
+        points: Number,
+        date: Date,
+      },
+    ],
+
+    eligibiltyDiscountUsage: {
+      discountUsed: Number,
+      purchasedUsed: Number,
+      weekStart: Date,
+      weekEnd: Date,
+    },
     status: {
       type: String,
       default: "active",
@@ -99,11 +117,11 @@ userSchema.methods.getToken = function () {
   return jwt.sign(
     {
       userId: this._id,
-      name : this.name,
+      name: this.name,
       role: this.role,
       status: this.status,
       email: this.email,
-      createdAt:this.createdAt
+      createdAt: this.createdAt,
     },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXP },

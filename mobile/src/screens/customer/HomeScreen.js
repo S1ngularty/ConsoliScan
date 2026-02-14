@@ -15,47 +15,63 @@ import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import { useSelector, useDispatch } from "react-redux";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getCartFromServer } from "../../features/slices/cart/cartThunks";
+import { fetchHomeData } from "../../api/user.api";
 
 const HomeScreen = ({ navigation }) => {
-  const [points, setPoints] = useState(1250);
+  const [points, setPoints] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [recentScans, setRecentScans] = useState([]);
-  const [weeklyCap, setWeeklyCap] = useState({
-    used: 65,
-    total: 125,
+  const [homeData, setHomeData] = useState({
+    cartItemCount: 0,
+    eligibilityDiscountUsage: {
+      discountUsed: 0,
+      purchasedUsed: 0,
+      weekEnd: "",
+      weekStart: "",
+    },
+    is_eligibility_verified: false,
+    loyaltyPoints: 0,
+    orderCount: 0
   });
 
   const userState = useSelector((state) => state.auth);
+  const cartState = useSelector((state) => state.cart);
   const dispatch = useDispatch();
 
   useEffect(() => {
     loadHomeData();
   }, []);
 
+  useEffect(() => {
+    if (cartState.items) {
+      // You can decide whether to use cart from Redux or keep the fetched data
+      // setHomeData(prev => ({ ...prev, cartItemCount: cartState.items.length }));
+    }
+  }, [cartState.items]);
+
   const loadHomeData = async () => {
     setLoading(true);
     try {
       if (userState.isLoggedIn) {
-        dispatch(getCartFromServer());
+        await dispatch(getCartFromServer());
 
-        // Load scan history
+        // Fetch home data from API
+        const response = await fetchHomeData();
+        console.log("Home data from API:", response);
+        
+        // Set the home data from API response
+        setHomeData(response);
+        setPoints(response.loyaltyPoints || 0);
+        
+        // Load scan history from AsyncStorage
         const scanHistory = await AsyncStorage.getItem("scanHistory");
         if (scanHistory) {
           const parsedHistory = JSON.parse(scanHistory);
-          // Get last 3 scans
           setRecentScans(parsedHistory.slice(0, 3));
         }
 
-        // Mock API call for points and cap
-        setTimeout(() => {
-          setPoints(1420);
-          setWeeklyCap({
-            used: 78,
-            total: 125,
-          });
-          setLoading(false);
-        }, 800);
+        setLoading(false);
       }
     } catch (error) {
       console.error("Error loading home data:", error);
@@ -70,7 +86,8 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const calculateCapPercentage = () => {
-    return (weeklyCap.used / weeklyCap.total) * 100;
+    const discountUsed = homeData.eligibilityDiscountUsage?.discountUsed || 0;
+    return (discountUsed / 125) * 100;
   };
 
   const getCapColor = () => {
@@ -143,49 +160,76 @@ const HomeScreen = ({ navigation }) => {
     </TouchableOpacity>
   );
 
-  // New Component: Discount Cap Progress
-  const DiscountCapProgress = () => (
-    <View style={styles.discountCapCard}>
-      <View style={styles.capHeader}>
-        <MaterialCommunityIcons name="shield-check" size={20} color="#0f172a" />
-        <View style={styles.capTitleContainer}>
-          <Text style={styles.capTitle}>Weekly Discount Cap</Text>
-          <Text style={styles.capSubtitle}>Resets every Monday</Text>
+  // Component: Discount Cap Progress
+  const DiscountCapProgress = () => {
+    const discountUsed = homeData.eligibilityDiscountUsage?.discountUsed || 0;
+    const weekEnd = homeData.eligibilityDiscountUsage?.weekEnd;
+    
+    return (
+      <View style={styles.discountCapCard}>
+        <View style={styles.capHeader}>
+          <MaterialCommunityIcons name="shield-check" size={20} color="#0f172a" />
+          <View style={styles.capTitleContainer}>
+            <Text style={styles.capTitle}>Weekly Discount Cap</Text>
+            <Text style={styles.capSubtitle}>
+              {weekEnd ? `Resets ${new Date(weekEnd).toLocaleDateString()}` : 'Resets every Monday'}
+            </Text>
+          </View>
+          <Text style={styles.capAmount}>
+            ₱{discountUsed}/125
+          </Text>
         </View>
-        <Text style={styles.capAmount}>
-          ₱{weeklyCap.used}/{weeklyCap.total}
-        </Text>
-      </View>
 
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View
-            style={[
-              styles.progressFill,
-              {
-                width: `${calculateCapPercentage()}%`,
-                backgroundColor: getCapColor(),
-              },
-            ]}
-          />
-        </View>
-        <View style={styles.capInfo}>
-          <Text style={[styles.capStatus, { color: getCapColor() }]}>
-            {calculateCapPercentage() >= 100
-              ? "Cap Reached"
-              : calculateCapPercentage() >= 80
-                ? "Almost Full"
-                : "Good Progress"}
-          </Text>
-          <Text style={styles.capRemaining}>
-            ₱{weeklyCap.total - weeklyCap.used} remaining
-          </Text>
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBar}>
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  width: `${calculateCapPercentage()}%`,
+                  backgroundColor: getCapColor(),
+                },
+              ]}
+            />
+          </View>
+          <View style={styles.capInfo}>
+            <Text style={[styles.capStatus, { color: getCapColor() }]}>
+              {calculateCapPercentage() >= 100
+                ? "Cap Reached"
+                : calculateCapPercentage() >= 80
+                  ? "Almost Full"
+                  : "Good Progress"}
+            </Text>
+            <Text style={styles.capRemaining}>
+              ₱{125 - discountUsed} remaining
+            </Text>
+          </View>
         </View>
       </View>
+    );
+  };
+
+  // Component: Eligibility Verification Prompt
+  const EligibilityPrompt = () => (
+    <View style={styles.eligibilityCard}>
+      <View style={styles.eligibilityIconContainer}>
+        <MaterialCommunityIcons name="badge-account-alert" size={32} color="#FF9800" />
+      </View>
+      <Text style={styles.eligibilityTitle}>Verify Your Eligibility</Text>
+      <Text style={styles.eligibilityText}>
+        Get access to PWD/Senior discounts by verifying your eligibility status
+      </Text>
+      <TouchableOpacity
+        style={styles.eligibilityButton}
+        onPress={() => navigation.navigate("EligibilityIntro")}
+      >
+        <Text style={styles.eligibilityButtonText}>Verify Now</Text>
+        <MaterialCommunityIcons name="arrow-right" size={20} color="#fff" />
+      </TouchableOpacity>
     </View>
   );
 
-  // New Component: Quick Tips
+  // Component: Quick Tips
   const QuickTips = () => (
     <View style={styles.quickTipsCard}>
       <View style={styles.quickTipsHeader}>
@@ -233,7 +277,7 @@ const HomeScreen = ({ navigation }) => {
     </View>
   );
 
-  // New Component: Empty State for Recent Scans
+  // Component: Empty State for Recent Scans
   const EmptyRecentScans = () => (
     <View style={styles.emptyScansCard}>
       <MaterialCommunityIcons name="barcode-off" size={48} color="#cbd5e1" />
@@ -253,6 +297,21 @@ const HomeScreen = ({ navigation }) => {
         <Text style={styles.emptyScanButtonText}>Scan Your First Product</Text>
       </TouchableOpacity>
     </View>
+  );
+
+  // Component: Empty Cart State
+  const EmptyCartPrompt = () => (
+    <TouchableOpacity 
+      style={styles.emptyCartCard}
+      onPress={() => navigation.navigate("Shared", { screen: "Scan" })}
+    >
+      <MaterialCommunityIcons name="cart-outline" size={32} color="#94a3b8" />
+      <View style={styles.emptyCartContent}>
+        <Text style={styles.emptyCartTitle}>Your cart is empty</Text>
+        <Text style={styles.emptyCartText}>Start scanning products to add items</Text>
+      </View>
+      <MaterialCommunityIcons name="arrow-right" size={20} color="#00A86B" />
+    </TouchableOpacity>
   );
 
   if (loading && !refreshing) {
@@ -330,25 +389,28 @@ const HomeScreen = ({ navigation }) => {
         <View style={styles.heroSection}>
           <Text style={styles.heroLabel}>Your Points Balance</Text>
           <View style={styles.pointsRow}>
-            <Text style={styles.pointsValue}>{points.toLocaleString()}</Text>
+            <Text style={styles.pointsValue}>{points.toFixed(2)}</Text>
             <Text style={styles.pointsCurrency}>pts</Text>
           </View>
-          <TouchableOpacity
-            style={styles.rewardPill}
-            onPress={() => navigation.navigate("Rewards")}
-          >
-            <MaterialCommunityIcons
-              name="gift-outline"
-              size={16}
-              color="#00A86B"
-            />
-            <Text style={styles.rewardText}>Redeem points for rewards</Text>
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={16}
-              color="#00A86B"
-            />
-          </TouchableOpacity>
+          {points === 0 ? (
+            <TouchableOpacity
+              style={styles.earnPointsPill}
+              onPress={() => navigation.navigate("Rewards")}
+            >
+              <MaterialCommunityIcons name="star-outline" size={16} color="#00A86B" />
+              <Text style={styles.earnPointsText}>Start earning points</Text>
+              <MaterialCommunityIcons name="chevron-right" size={16} color="#00A86B" />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.rewardPill}
+              onPress={() => navigation.navigate("Rewards")}
+            >
+              <MaterialCommunityIcons name="gift-outline" size={16} color="#00A86B" />
+              <Text style={styles.rewardText}>Redeem points for rewards</Text>
+              <MaterialCommunityIcons name="chevron-right" size={16} color="#00A86B" />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* --- QUICK ACTIONS --- */}
@@ -365,7 +427,6 @@ const HomeScreen = ({ navigation }) => {
               })
             }
             isPrimary
-            badge="New"
           />
           <ActionCard
             title="My Cart"
@@ -375,18 +436,19 @@ const HomeScreen = ({ navigation }) => {
                 screen: "Cart",
               })
             }
-            badge="3"
+            badge={homeData.cartItemCount > 0 ? homeData.cartItemCount.toString() : null}
           />
           <ActionCard
             title="Eligibility"
             icon="badge-account"
             onPress={() => navigation.navigate("Eligibility")}
+            badge={!homeData.is_eligibility_verified ? "!" : null}
           />
           <ActionCard
             title="Order History"
             icon="clipboard-list-outline"
             onPress={() => navigation.navigate("Orders")}
-            badge="2"
+            badge={homeData.orderCount > 0 ? homeData.orderCount.toString() : null}
           />
           <ActionCard
             title="Saved Items"
@@ -400,8 +462,14 @@ const HomeScreen = ({ navigation }) => {
           />
         </View>
 
+        {/* Show cart prompt if cart is empty */}
+        {homeData.cartItemCount === 0 && <EmptyCartPrompt />}
+
         {/* --- DISCOUNT CAP PROGRESS --- */}
         <DiscountCapProgress />
+
+        {/* --- ELIGIBILITY PROMPT (if not verified) --- */}
+        {!homeData.is_eligibility_verified && <EligibilityPrompt />}
 
         {/* --- QUICK TIPS --- */}
         <QuickTips />
@@ -473,7 +541,7 @@ const HomeScreen = ({ navigation }) => {
           <EmptyRecentScans />
         )}
 
-        {/* --- TIPS CARD --- */}
+        {/* --- HELP CARD --- */}
         <TouchableOpacity
           style={styles.tipsCard}
           onPress={() =>
@@ -635,6 +703,21 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginTop: 18,
   },
+  earnPointsPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 152, 0, 0.08)",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginTop: 18,
+  },
+  earnPointsText: {
+    color: "#FF9800",
+    fontSize: 13,
+    fontWeight: "700",
+    marginHorizontal: 6,
+  },
   rewardText: {
     color: "#00A86B",
     fontSize: 13,
@@ -703,6 +786,54 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#64748b",
     fontWeight: "600",
+  },
+
+  // Eligibility Card
+  eligibilityCard: {
+    backgroundColor: "#fff",
+    marginHorizontal: 24,
+    marginBottom: 16,
+    padding: 24,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "#FFE0B2",
+    alignItems: "center",
+  },
+  eligibilityIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(255, 152, 0, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  eligibilityTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#0f172a",
+    marginBottom: 8,
+  },
+  eligibilityText: {
+    fontSize: 14,
+    color: "#64748b",
+    textAlign: "center",
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  eligibilityButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FF9800",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  eligibilityButtonText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#fff",
   },
 
   // Quick Tips Card
@@ -792,6 +923,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     color: "#fff",
+  },
+
+  // Empty Cart Card
+  emptyCartCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    marginHorizontal: 24,
+    marginBottom: 16,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
+    borderStyle: "dashed",
+  },
+  emptyCartContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  emptyCartTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#0f172a",
+  },
+  emptyCartText: {
+    fontSize: 12,
+    color: "#94a3b8",
+    marginTop: 2,
   },
 
   // Grid Container & Action Cards

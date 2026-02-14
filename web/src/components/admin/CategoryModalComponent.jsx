@@ -18,37 +18,11 @@ function CategoryModal({ isOpen, onClose, onSave, data }) {
   const isEditMode =
     data && typeof data === "object" && data.categoryName !== undefined;
 
-  // BNPC Categories enum
-  const bnpcCategories = [
-    "RICE",
-    "CORN",
-    "FRESH_MEAT",
-    "FRESH_POULTRY",
-    "FRESH_FISH",
-    "VEGETABLES",
-    "FRUITS",
-    "EGGS",
-    "COOKING_OIL",
-    "SUGAR",
-    "MILK",
-    "COFFEE",
-    "NOODLES",
-    "SOAP",
-    "DETERGENT",
-    "CANNED_GOODS",
-    "OTHERS"
-  ];
-
-  // Discount scopes
-  const discountScopeOptions = ["PWD", "SENIOR", "PROMO", "ALL"];
-
   const [categories, setCategories] = useState([
     { 
       categoryName: "", 
       id: Date.now(),
       isBNPC: false,
-      bnpcCategory: "OTHERS",
-      applicableTo: [],
     },
   ]);
   const [errors, setErrors] = useState({});
@@ -71,8 +45,6 @@ function CategoryModal({ isOpen, onClose, onSave, data }) {
             id: data._id || data.id,
             categoryName: data.categoryName || "",
             isBNPC: data.isBNPC || false,
-            bnpcCategory: data.bnpcCategory || "OTHERS",
-            applicableTo: data.applicableTo || [],
             createdAt: data.createdAt || null,
             updatedAt: data.updatedAt || null,
           },
@@ -83,8 +55,6 @@ function CategoryModal({ isOpen, onClose, onSave, data }) {
           categoryName: "", 
           id: Date.now(),
           isBNPC: false,
-          bnpcCategory: "OTHERS",
-          applicableTo: [],
         }]);
       }
     }
@@ -123,8 +93,6 @@ function CategoryModal({ isOpen, onClose, onSave, data }) {
       categoryName: "", 
       id: Date.now(),
       isBNPC: false,
-      bnpcCategory: "OTHERS",
-      applicableTo: [],
     };
     setCategories([...categories, newCategory]);
 
@@ -178,25 +146,6 @@ function CategoryModal({ isOpen, onClose, onSave, data }) {
   const handleCheckboxChange = (index, field) => {
     const updated = [...categories];
     updated[index][field] = !updated[index][field];
-    
-    if (field === "isBNPC" && !updated[index][field]) {
-      updated[index].bnpcCategory = "OTHERS";
-    }
-    
-    setCategories(updated);
-  };
-
-  // Handle discount scope selection
-  const handleDiscountScopeChange = (index, scope) => {
-    const updated = [...categories];
-    const currentScopes = updated[index].applicableTo || [];
-    
-    if (currentScopes.includes(scope)) {
-      updated[index].applicableTo = currentScopes.filter(s => s !== scope);
-    } else {
-      updated[index].applicableTo = [...currentScopes, scope];
-    }
-    
     setCategories(updated);
   };
 
@@ -274,8 +223,6 @@ function CategoryModal({ isOpen, onClose, onSave, data }) {
         id: categories[0].id,
         categoryName: categories[0].categoryName.trim(),
         isBNPC: categories[0].isBNPC,
-        bnpcCategory: categories[0].isBNPC ? categories[0].bnpcCategory : "OTHERS",
-        applicableTo: categories[0].applicableTo || [],
       };
     } else {
       dataToSave = categories
@@ -283,8 +230,6 @@ function CategoryModal({ isOpen, onClose, onSave, data }) {
         .map((cat) => ({
           categoryName: cat.categoryName.trim(),
           isBNPC: cat.isBNPC,
-          bnpcCategory: cat.isBNPC ? cat.bnpcCategory : "OTHERS",
-          applicableTo: cat.applicableTo || [],
         }));
     }
 
@@ -379,18 +324,18 @@ function CategoryModal({ isOpen, onClose, onSave, data }) {
     );
   };
 
-  // Render BNPC and discount fields for a category
-  const renderDiscountFields = (index) => {
+  // Render BNPC field for a category - SIMPLIFIED (no note)
+  const renderBNPCField = (index) => {
     const category = categories[index];
 
     return (
       <div className="category-discount-section">
         <div className="category-section-header">
           <Shield size={14} />
-          <span>BNPC & Discount Settings</span>
+          <span>BNPC Settings</span>
         </div>
 
-        {/* BNPC Settings */}
+        {/* BNPC Settings - SIMPLIFIED */}
         <div className="category-bnpc-settings">
           <div className="category-checkbox-wrapper">
             <input
@@ -403,44 +348,6 @@ function CategoryModal({ isOpen, onClose, onSave, data }) {
             <label htmlFor={`bnpc-${index}`} className="category-checkbox-label">
               BNPC Category
             </label>
-          </div>
-
-          {category.isBNPC && (
-            <div className="category-bnpc-category-select">
-              <label className="category-select-label">BNPC Category *</label>
-              <select
-                value={category.bnpcCategory || "OTHERS"}
-                onChange={(e) => handleInputChange(index, "bnpcCategory", e.target.value)}
-                className="category-select-input"
-              >
-                {bnpcCategories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat.replace(/_/g, ' ')}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-
-        {/* Discount Applicable */}
-        <div className="category-discount-applicable">
-          <label className="category-applicable-label">Applicable Discounts:</label>
-          <div className="category-scope-checkbox-grid">
-            {discountScopeOptions.map((scope) => (
-              <div key={scope} className="category-scope-checkbox-wrapper">
-                <input
-                  type="checkbox"
-                  id={`${scope}-${index}`}
-                  checked={category.applicableTo?.includes(scope) || false}
-                  onChange={() => handleDiscountScopeChange(index, scope)}
-                  className="category-scope-checkbox"
-                />
-                <label htmlFor={`${scope}-${index}`} className="category-scope-label">
-                  {scope}
-                </label>
-              </div>
-            ))}
           </div>
         </div>
       </div>
@@ -495,7 +402,7 @@ function CategoryModal({ isOpen, onClose, onSave, data }) {
                   </div>
                 )}
               </div>
-              {renderDiscountFields(0)}
+              {renderBNPCField(0)}
             </div>
           ) : (
             // BULK CREATE MODE
@@ -522,6 +429,7 @@ function CategoryModal({ isOpen, onClose, onSave, data }) {
                           }
                           data-index={index}
                           data-field={`${index}-categoryName`}
+                          style={{ width: '100%', boxSizing: 'border-box' }}
                         />
                         {errors[`${index}-categoryName`] && (
                           <div className="category-error-message">
@@ -536,12 +444,13 @@ function CategoryModal({ isOpen, onClose, onSave, data }) {
                           onClick={() => handleRemoveRow(index)}
                           title="Remove this category"
                           type="button"
+                          style={{ flexShrink: 0, marginLeft: '8px' }}
                         >
                           <Trash2 size={16} />
                         </button>
                       )}
                     </div>
-                    {renderDiscountFields(index)}
+                    {renderBNPCField(index)}
                   </div>
                 ))}
               </div>

@@ -13,11 +13,11 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 
 const ReceiptScreen = ({ route, navigation }) => {
   const { orderId, checkoutCode, orderData, cashier } = route.params || {};
-
+  
   // Use the provided data or fallback
   const receiptData = orderData || {};
-  // console.log(receiptData)
-
+  console.log(receiptData)
+  
   // Format date
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -119,9 +119,14 @@ const ReceiptScreen = ({ route, navigation }) => {
   };
 
   const handleDone = () => {
-    navigation.navigate("HomeTabs",{
+    if(receiptData.user){
+      navigation.navigate("HomeTabs",{
       screen:"Home"
-    });
+    })
+    }
+    else{
+      navigation.navigate("Home");
+    }
   };
 
   return (

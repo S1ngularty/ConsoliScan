@@ -17,10 +17,16 @@ import {
   BarChart3,
   ShoppingBag,
   Tag,
+  Percent,
   Package,
   ShoppingCart,
+  PercentCircle,
+  Tags,
+  Coins,
+  CoinsIcon,
+  HandCoins,
 } from "lucide-react";
-import "../../styles/components/SidebarStyle.css";
+import "../../styles/css/SidebarStyle.css";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import ConfirmModalComponent from "../common/ConfirmModalComponent";
@@ -164,6 +170,25 @@ const Sidebar = ({ breadcrumb }) => {
               icon: <Tag size={18} />,
               navigate: "/admin/categories",
               location: "Admin / Categories ",
+            },
+          ],
+        },
+          {
+          name: "Discount Management",
+          icon: <Percent size={22} />,
+          hasDropdown: true,
+          dropdown: [
+            {
+              name: "Promos",
+              icon: <Tags size={18} />,
+              navigate: "/admin/discount/promo",
+              location: "Admin / Discount / Promo ",
+            },
+             {
+              name: "Loyalty Points",
+              icon: <Coins size={18} />,
+              navigate: "/admin/discount/loyalty",
+              location: "Admin / Discount / Loyalty Points ",
             },
           ],
         },

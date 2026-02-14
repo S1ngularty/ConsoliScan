@@ -98,16 +98,20 @@ exports.payOrder = async (request) => {
     {
       status: "PAID",
       paidAt: Date.now(),
-    },
+    },{
+      new:true,
+      runValidators:true
+    }
   ).populate({
     path: "items.product",
     select: "checkoutCode",
   });
-
+  console.log(queue)
   if (!queue) throw new Error("failed to update checkout status");
 
   checkoutEmitter.emitCheckout(checkoutCode, "checkout:paid", {
     status: queue.status,
   });
+  console.log("paid emit")
   return queue;
 };

@@ -11,7 +11,7 @@ export const fetchProducts = async () => {
   });
   if (!result) throw new Error("failed to fetch the products");
   const data = result.data.result;
-
+  
   return data;
 };
 

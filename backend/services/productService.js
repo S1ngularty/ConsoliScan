@@ -35,39 +35,7 @@ const create = async (request) => {
 };
 
 const getAll = async (request) => {
-  const products = await Product.aggregate([
-    {
-      $lookup: {
-        from: "categories",
-        localField: "category",
-        foreignField: "_id",
-        as: "category1",
-      },
-    },
-    {
-      $unwind: "$category1",
-    },
-    {
-      $project: {
-        "category1.__v": 0,
-        "category1.createdAt": 0,
-        "category1.updatedAt": 0,
-        "category1.categoryName": 0,
-      },
-    },
-    {
-      $addFields: {
-        category: "$category1._id",
-      },
-    },
-    {
-      $unset: "category1",
-    },
-
-    {
-      $sort: { name: 1 },
-    },
-  ]);
+  const products = await Product.find().populate("category")
   return products;
 };
 

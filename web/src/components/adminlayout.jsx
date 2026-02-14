@@ -1,0 +1,31 @@
+import React from "react";
+import { Outlet } from "react-router-dom";
+import Sidebar from "./admin/SidebarComponent";
+import "../styles/css/AdminLayoutStyle.css";
+
+function AdminLayout() {  
+  const [path, sethPath ] = React.useState('Admin / Dashboard')
+  return (
+    <div className="admin-layout-wrapper">
+      <Sidebar breadcrumb ={sethPath} />
+
+      <div className="admin-main-container">
+        {/* Optional Header to match ConsoliScan theme */}
+        <header className="admin-top-nav">
+          <div className="breadcrumb">{path}</div>
+          <div className="admin-profile">
+            <span>Admin User</span>
+            <div className="profile-badge">A</div>
+          </div>
+        </header>
+
+        {/* This is where your page content (Outlet) renders */}
+        <main className="admin-content-body">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  );
+}
+
+export default AdminLayout;

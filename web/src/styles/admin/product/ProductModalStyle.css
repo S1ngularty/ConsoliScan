@@ -969,3 +969,22 @@ body.modal-open {
     margin: -6px;
   }
 }
+/* Sale Price Discount Badge */
+.discount-badge {
+  margin-top: 8px;
+  padding: 4px 10px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  animation: fadeInDown 0.4s ease-out;
+}
+
+.discount-badge::before {
+  content: "🔥";
+  font-size: 0.7rem;
+}

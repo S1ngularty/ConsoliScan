@@ -1,5 +1,7 @@
 const Cart = require("../models/cartModel");
 const mongoose = require("mongoose");
+const PromoEngine = require("../services/promoServiceEngine");
+const Promo = require("../models/promoModel");
 
 exports.updateCart = async (request) => {
   if (!request.body) throw new Error("request content is empty");
@@ -18,15 +20,24 @@ exports.updateCart = async (request) => {
 
 exports.getById = async (request) => {
   const { userId } = request.user;
-
-  const cart = await Cart.findOne({ user: userId }).populate({
-    path: "items.product",
-    populate: {
-      path: "category"
-    }
-  });
+  const now = Date.now()
+  const [cart, promos] = await Promise.all([
+    Cart.findOne({ user: userId }).populate({
+      path: "items.product",
+      populate: {
+        path: "category",
+      },
+    }),
+    Promo.find({
+      active: true,
+      startDate: { $lte: now },
+      endDate: { $gte: now },
+    }),
+  ]);
 
   if (!cart) return [];
+
+  const promoSuggestionList = PromoEngine.PromoSuggestion(cart, promos);
 
   const formattedItems = cart.items.map((item) => {
     const product = item.product.toObject();
@@ -39,7 +50,7 @@ exports.getById = async (request) => {
     };
   });
 
-  return formattedItems;
+  return { formattedItems, promoSuggestionList };
 };
 
 exports.clearCart = async (request) => {

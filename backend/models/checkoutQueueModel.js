@@ -27,6 +27,16 @@ const checkoutQueueSchema = new mongoose.Schema(
       default: "guest",
     },
 
+    userEmail: {
+      type: String,
+      default: null,
+    },
+
+    userName: {
+      type: String,
+      default: null,
+    },
+
     cashier: {
       cashierId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -40,7 +50,7 @@ const checkoutQueueSchema = new mongoose.Schema(
     },
 
     /* ======================
-       CUSTOMER VERIFICATION (ADD THIS)
+       CUSTOMER VERIFICATION
     ====================== */
     customerVerification: {
       type: {
@@ -54,10 +64,10 @@ const checkoutQueueSchema = new mongoose.Schema(
       },
       verificationSource: {
         type: String,
-        enum: ["app", "manual", null],
+        enum: ["app", "system", "manual", null],
         default: null,
       },
-      verifiedAt: Date,
+      verificationDate: Date,
       verifiedBy: {
         cashierId: mongoose.Schema.Types.ObjectId,
         name: String,
@@ -65,7 +75,7 @@ const checkoutQueueSchema = new mongoose.Schema(
     },
 
     /* ======================
-       ITEMS SNAPSHOT
+       ITEMS SNAPSHOT (DETAILED)
     ====================== */
     items: [
       {
@@ -84,40 +94,83 @@ const checkoutQueueSchema = new mongoose.Schema(
           type: Number,
           required: true,
         },
-        categoryType: String,
-        isBNPCEligible: Boolean,
-        // Track if product is BNPC eligible
-        isBNPCProduct: Boolean,
-        bnpcCategory: String,
-        discountScopes: [String], // SENIOR, PWD, etc.
+        salePrice: Number,
+        saleActive: Boolean,
+        isBNPCEligible: {
+          type: Boolean,
+          default: false,
+        },
+        isBNPCProduct: {
+          type: Boolean,
+          default: false,
+        },
+        excludedFromDiscount: {
+          type: Boolean,
+          default: false,
+        },
+        category: {
+          id: mongoose.Schema.Types.ObjectId,
+          name: String,
+          isBNPC: Boolean,
+        },
+        unit: String,
+        itemTotal: Number,
       },
     ],
 
     /* ======================
-       BNPC TRACKING (ADD THIS)
+       BNPC PRODUCTS TRACKING
     ====================== */
     bnpcProducts: [
       {
         productId: mongoose.Schema.Types.ObjectId,
         name: String,
         price: Number,
+        salePrice: Number,
+        saleActive: Boolean,
         quantity: Number,
-        bnpcCategory: String,
-        discountScopes: [String],
-        requiresVerification: Boolean,
+        unit: String,
+        category: mongoose.Schema.Types.ObjectId,
+        categoryName: String,
+        isBNPCEligible: {
+          type: Boolean,
+          default: false,
+        },
+        requiresVerification: {
+          type: Boolean,
+          default: true,
+        },
+        itemTotal: Number,
       },
     ],
 
+    hasBNPCItems: {
+      type: Boolean,
+      default: false,
+    },
+
     /* ======================
-       TOTALS SNAPSHOT
+       TOTALS & DISCOUNTS
     ====================== */
     totals: {
       subtotal: {
         type: Number,
         required: true,
       },
-      // Separate BNPC subtotal
-      bnpcSubtotal: {
+      afterOtherDiscounts: Number, // Subtotal after BNPC and promo discounts
+      bnpcEligibleSubtotal: {
+        type: Number,
+        default: 0,
+      },
+      bnpcDiscount: {
+        type: Number,
+        default: 0,
+      },
+      promoDiscount: {
+        type: Number,
+        default: 0,
+      },
+      loyaltyDiscount: {
         type: Number,
         default: 0,
       },
@@ -132,35 +185,31 @@ const checkoutQueueSchema = new mongoose.Schema(
     },
 
     /* ======================
-       DISCOUNT SNAPSHOT
+       DISCOUNT BREAKDOWN
+    ====================== */
+    discountBreakdown: {
+      bnpcDiscount: Number,
+      promoDiscount: Number,
+      loyaltyDiscount: Number,
+      totalDiscount: Number,
+    },
+
+    /* ======================
+       BNPC DISCOUNT SNAPSHOT
     ====================== */
     discountSnapshot: {
       eligible: Boolean,
       eligibleItemsCount: Number,
-      bnpcSubtotal: Number,
+      bnpcEligibleSubtotal: Number,
       cappedBNPCAmount: Number,
       discountApplied: Number,
-      weeklyDiscountUsed: Number,
-      weeklyPurchaseUsed: Number,
-      remainingDiscountCap: Number,
       remainingPurchaseCap: Number,
-    },
-
-    /* ======================
-       USER ELIGIBILITY
-    ====================== */
-    userEligibility: {
-      isPWD: Boolean,
-      isSenior: Boolean,
-      verified: Boolean,
-    },
-
-    /* ======================
-       VOUCHER (OPTIONAL)
-    ====================== */
-    voucher: {
-      code: String,
-      discountAmount: Number,
+      remainingDiscountCap: Number,
+      weeklyPurchaseUsed: Number,
+      weeklyDiscountUsed: Number,
+      weekStart: Date,
+      weekEnd: Date,
+      reason: String,
     },
 
     /* ======================
@@ -169,6 +218,100 @@ const checkoutQueueSchema = new mongoose.Schema(
     weeklyUsageSnapshot: {
       bnpcAmountUsed: Number,
       discountUsed: Number,
+      weekStart: Date,
+      weekEnd: Date,
+      remainingPurchaseCap: Number,
+      remainingDiscountCap: Number,
+      purchaseCap: {
+        type: Number,
+        default: 2500,
+      },
+      discountCap: {
+        type: Number,
+        default: 125,
+      },
+    },
+
+    /* ======================
+       USER ELIGIBILITY DETAILS
+    ====================== */
+    userEligibility: {
+      isPWD: Boolean,
+      isSenior: Boolean,
+      verified: Boolean,
+      verificationIdType: String,
+      discountScope: {
+        type: String,
+        enum: ["PWD", "SENIOR", null],
+        default: null,
+      },
+      weeklyCaps: {
+        purchaseCap: Number,
+        discountCap: Number,
+      },
+      currentUsage: {
+        purchasedUsed: Number,
+        discountUsed: Number,
+        weekStart: Date,
+        weekEnd: Date,
+      },
+    },
+
+    /* ======================
+       PROMO DATA
+    ====================== */
+    promo: {
+      promoId: mongoose.Schema.Types.ObjectId,
+      code: String,
+      name: String,
+      type: {
+        type: String,
+        enum: ["percentage", "fixed"],
+      },
+      value: Number,
+      scope: {
+        type: String,
+        enum: ["cart", "category", "product"],
+      },
+      targetIds: [mongoose.Schema.Types.ObjectId],
+      minPurchase: Number,
+      discountAmount: Number,
+      serverValidated: Boolean,
+      appliedPromoData: mongoose.Schema.Types.Mixed,
+    },
+
+    /* ======================
+       LOYALTY POINTS DATA
+    ====================== */
+    loyaltyPoints: {
+      pointsUsed: Number,
+      pointsValue: Number, // ₱ per point
+      discountAmount: Number,
+      maxAllowedDiscount: Number,
+      maxRedeemPercent: Number,
+      percentageUsed: String,
+      config: {
+        pointsToCurrencyRate: Number,
+        maxRedeemPercent: Number,
+        earnRate: Number,
+      },
+    },
+
+    pointsEarned: Number,
+
+    /* ======================
+       CART SNAPSHOT (REFERENCE)
+    ====================== */
+    cartSnapshot: {
+      itemCount: Number,
+      totalValue: Number,
+      items: [
+        {
+          productId: mongoose.Schema.Types.ObjectId,
+          name: String,
+          quantity: Number,
+        },
+      ],
     },
 
     /* ======================
@@ -191,7 +334,7 @@ const checkoutQueueSchema = new mongoose.Schema(
     paidAt: Date,
 
     /* ======================
-       PAYMENT DATA (ADD THIS)
+       PAYMENT DATA
     ====================== */
     payment: {
       cashReceived: Number,
@@ -216,5 +359,30 @@ const checkoutQueueSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+// Virtual for total items count
+checkoutQueueSchema.virtual("totalItems").get(function() {
+  return this.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+});
+
+// Method to check if queue is expired
+checkoutQueueSchema.methods.isExpired = function() {
+  return new Date() > this.expiresAt;
+};
+
+// Method to check if BNPC discount was applied
+checkoutQueueSchema.methods.hasBNPCDiscount = function() {
+  return this.totals?.bnpcDiscount > 0;
+};
+
+// Method to get discount summary
+checkoutQueueSchema.methods.getDiscountSummary = function() {
+  return {
+    bnpc: this.totals?.bnpcDiscount || 0,
+    promo: this.totals?.promoDiscount || 0,
+    loyalty: this.totals?.loyaltyDiscount || 0,
+    total: this.totals?.discountTotal || 0,
+  };
+};
 
 module.exports = mongoose.model("CheckoutQueue", checkoutQueueSchema);
