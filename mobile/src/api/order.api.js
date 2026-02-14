@@ -2,21 +2,41 @@ import axios from "axios";
 import { API_URL } from "../constants/config";
 import { getToken } from "../utils/authUtil";
 
+const axiosInstance = axios.create({
+  baseURL: API_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+axiosInstance.interceptors.request.use(async (config) => {
+  const token = await getToken();
+  config.headers.Authorization = `Bearer ${token}`;
+
+  return config;
+});
+
 export const confirmOrder = async (transaction) => {
   if (!transaction) return;
   const token = await getToken();
-  if(!token) throw new Error("missing token")
+  if (!token) throw new Error("missing token");
   const response = await fetch(`${API_URL}api/v1/confirmOrder`, {
     method: "POST",
     headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify({ transaction }),
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ transaction }),
   });
 
   if (!response.ok) throw new Error("failed to complete the transaction");
   const result = await response.json();
   return result;
+};
+
+export const fetchOrders = async () => {
+  const response = await axiosInstance.get("api/v1/orders");
+  console.log(response.data)
+  return response.data.result;
 };

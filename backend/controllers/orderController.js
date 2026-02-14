@@ -1,4 +1,5 @@
 const orderService = require("../services/orderService")
+const controllerWrapper = require("../utils/controllerWrapper")
 
 async function confirmOrder(req, res) {
   try {
@@ -18,6 +19,9 @@ async function confirmOrder(req, res) {
   }
 }
 
+const getUser_OrderList = controllerWrapper(orderService.getOrders)
+
 module.exports = {
-  confirmOrder
+  confirmOrder,
+  getUser_OrderList
 };

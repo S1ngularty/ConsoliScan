@@ -58,7 +58,7 @@ const HomeScreen = ({ navigation }) => {
 
         // Fetch home data from API
         const response = await fetchHomeData();
-        console.log("Home data from API:", response);
+        // console.log("Home data from API:", response);
         
         // Set the home data from API response
         setHomeData(response);

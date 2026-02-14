@@ -14,7 +14,7 @@ const EligibilityIntroScreen = ({ navigation }) => {
   const benefits = [
     {
       id: 1,
-      icon: 'tag-percent',
+      icon: 'tag',
       title: 'Up to 20% Discount',
       description: 'Get discounts on all eligible products',
       color: '#00A86B',

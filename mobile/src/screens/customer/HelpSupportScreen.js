@@ -21,7 +21,7 @@ const HelpSupportScreen = ({ navigation }) => {
     {
       id: 'eligibility',
       title: 'Eligibility & Discounts',
-      icon: 'tag-percent',
+      icon: 'tag',
       color: '#00A86B',
       questions: [
         {

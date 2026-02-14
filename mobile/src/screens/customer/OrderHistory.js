@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,178 +9,209 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-
-// Mock data based on your Order schema
-const mockOrders = [
-  {
-    id: 1,
-    orderNumber: 'ORD-2024-001',
-    date: 'Dec 28, 2024 • 10:30 AM',
-    items: [
-      { name: 'Organic Milk 1L', quantity: 2, price: 120.50 },
-      { name: 'Fresh Eggs (Dozen)', quantity: 1, price: 85.00 },
-      { name: 'Toothpaste', quantity: 1, price: 65.00 },
-    ],
-    baseAmount: 391.00,
-    groceryEligibleSubtotal: 326.00,
-    weeklyCapRemainingAtCheckout: 150.00,
-    seniorPwdDiscountAmount: 32.60,
-    pointsUsed: 50,
-    finalAmountPaid: 308.40,
-    pointsEarned: 30,
-    status: 'CONFIRMED',
-  },
-  {
-    id: 2,
-    orderNumber: 'ORD-2024-002',
-    date: 'Dec 25, 2024 • 02:15 PM',
-    items: [
-      { name: 'Rice 5kg', quantity: 1, price: 250.00 },
-      { name: 'Cooking Oil 1L', quantity: 1, price: 120.00 },
-    ],
-    baseAmount: 370.00,
-    groceryEligibleSubtotal: 370.00,
-    weeklyCapRemainingAtCheckout: 0,
-    seniorPwdDiscountAmount: 37.00,
-    pointsUsed: 0,
-    finalAmountPaid: 333.00,
-    pointsEarned: 33,
-    status: 'CONFIRMED',
-  },
-  {
-    id: 3,
-    orderNumber: 'ORD-2024-003',
-    date: 'Dec 22, 2024 • 08:45 PM',
-    items: [
-      { name: 'Soap Bar', quantity: 3, price: 35.00 },
-    ],
-    baseAmount: 105.00,
-    groceryEligibleSubtotal: 0,
-    weeklyCapRemainingAtCheckout: 150.00,
-    seniorPwdDiscountAmount: 0,
-    pointsUsed: 0,
-    finalAmountPaid: 105.00,
-    pointsEarned: 10,
-    status: 'CONFIRMED',
-  },
-];
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { fetchOrders } from "../../api/order.api";
 
 const OrderHistoryScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [orders, setOrders] = useState([]);
-  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [selectedFilter, setSelectedFilter] = useState("all");
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
 
   const filters = [
-    { id: 'all', label: 'All' },
-    { id: 'month', label: 'This Month' },
-    { id: 'week', label: 'This Week' },
-    { id: 'discount', label: 'With Discount' },
+    { id: "all", label: "All" },
+    { id: "week", label: "This Week" },
+    { id: "month", label: "This Month" },
+    { id: "discount", label: "With Discount" },
   ];
 
-  const fetchOrders = async () => {
+  const fetchOrderList = async () => {
     setLoading(true);
-    setTimeout(() => {
-      let filteredOrders = [...mockOrders];
-      
-      if (selectedFilter === 'month') {
-        filteredOrders = filteredOrders.slice(0, 2);
-      } else if (selectedFilter === 'week') {
-        filteredOrders = filteredOrders.slice(0, 1);
-      } else if (selectedFilter === 'discount') {
-        filteredOrders = filteredOrders.filter(order => order.seniorPwdDiscountAmount > 0);
-      }
-      
-      setOrders(filteredOrders);
+    try {
+      const ordersData = await fetchOrders();
+      // console.log('Fetched orders:', ordersData);
+      setOrders(ordersData || []);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      setOrders([]);
+    } finally {
       setLoading(false);
       setRefreshing(false);
-    }, 500);
+    }
   };
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchOrders();
+    fetchOrderList();
   };
 
   useEffect(() => {
-    fetchOrders();
-  }, [selectedFilter]);
+    fetchOrderList();
+  }, []); // Remove selectedFilter dependency since filtering is done client-side
+
+  // Filter orders based on selected filter
+  const getFilteredOrders = () => {
+    if (!orders.length) return [];
+    
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
+    startOfWeek.setHours(0, 0, 0, 0);
+    
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    
+    switch (selectedFilter) {
+      case "week":
+        return orders.filter(order => new Date(order.confirmedAt) >= startOfWeek);
+      case "month":
+        return orders.filter(order => new Date(order.confirmedAt) >= startOfMonth);
+      case "discount":
+        return orders.filter(order => 
+          (order.discountBreakdown?.total || 0) > 0 || 
+          order.seniorPwdDiscountAmount > 0
+        );
+      default:
+        return orders;
+    }
+  };
+
+  const filteredOrders = getFilteredOrders();
 
   const formatPrice = (amount) => {
-    return `₱${amount.toFixed(2)}`;
+    return `₱${(amount || 0).toFixed(2)}`;
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) {
+      return `Today at ${date.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}`;
+    } else if (diffDays === 1) {
+      return `Yesterday at ${date.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}`;
+    } else {
+      return date.toLocaleDateString('en-PH', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
   };
 
   // Local sub-component for Order Cards
-  const OrderCard = ({ order }) => (
-    <View style={styles.orderCard}>
-      <View style={styles.orderHeader}>
-        <View style={styles.storeBadge}>
-          <MaterialCommunityIcons name="shopping" size={16} color="#0f172a" />
-        </View>
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.storeName}>{order.orderNumber}</Text>
-          <Text style={styles.orderDate}>{order.date}</Text>
-        </View>
-        <View style={{ alignItems: "flex-end" }}>
-          <Text style={styles.amountText}>{formatPrice(order.finalAmountPaid)}</Text>
-          {order.pointsEarned > 0 && (
-            <Text style={styles.pointsBadge}>+{order.pointsEarned} pts</Text>
-          )}
-        </View>
-      </View>
+  const OrderCard = ({ order }) => {
+    const totalDiscount = order.discountBreakdown?.total || 
+      order.seniorPwdDiscountAmount || 0;
+    
+    const itemCount = order.items?.length || 0;
+    const pointsEarned = order.loyaltyDiscount?.pointsEarned || order.pointsEarned || 0;
 
-      {/* Items Summary */}
-      <View style={styles.itemsSection}>
-        <View style={styles.itemsHeader}>
-          <MaterialCommunityIcons name="package-variant" size={14} color="#64748b" />
-          <Text style={styles.itemsLabel}>{order.items.length} items</Text>
+    return (
+      <View style={styles.orderCard}>
+        <View style={styles.orderHeader}>
+          <View style={styles.storeBadge}>
+            <MaterialCommunityIcons name="shopping" size={16} color="#0f172a" />
+          </View>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={styles.storeName}>Order #{order.checkoutCode}</Text>
+            <Text style={styles.orderDate}>{formatDate(order.confirmedAt)}</Text>
+          </View>
+          <View style={{ alignItems: "flex-end" }}>
+            <Text style={styles.amountText}>
+              {formatPrice(order.finalAmountPaid)}
+            </Text>
+            {pointsEarned > 0 && (
+              <Text style={styles.pointsBadge}>+{pointsEarned} pts</Text>
+            )}
+          </View>
         </View>
-        <View style={styles.itemsList}>
-          {order.items.map((item, index) => (
-            <View key={index} style={styles.itemRow}>
-              <MaterialCommunityIcons name="circle-small" size={16} color="#64748b" />
-              <Text style={styles.itemName} numberOfLines={1}>
-                {item.name}
+
+        {/* Items Summary */}
+        <View style={styles.itemsSection}>
+          <View style={styles.itemsHeader}>
+            <MaterialCommunityIcons
+              name="package-variant"
+              size={14}
+              color="#64748b"
+            />
+            <Text style={styles.itemsLabel}>{itemCount} items</Text>
+          </View>
+          <View style={styles.itemsList}>
+            {(order.items || []).slice(0, 3).map((item, index) => (
+              <View key={index} style={styles.itemRow}>
+                <MaterialCommunityIcons
+                  name="circle-small"
+                  size={16}
+                  color="#64748b"
+                />
+                <Text style={styles.itemName} numberOfLines={1}>
+                  {item.name}
+                </Text>
+                <Text style={styles.itemQuantity}>x{item.quantity}</Text>
+                <Text style={styles.itemPrice}>
+                  ₱{(item.unitPrice * item.quantity).toFixed(2)}
+                </Text>
+              </View>
+            ))}
+            {(order.items || []).length > 3 && (
+              <Text style={styles.moreItems}>+{order.items.length - 3} more items</Text>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.orderFooter}>
+          {totalDiscount > 0 ? (
+            <View style={styles.chip}>
+              <MaterialCommunityIcons
+                name="tag" 
+                size={12}
+                color="#00A86B"
+              />
+              <Text style={[styles.chipText, styles.discountChipText]}>
+                Discount: {formatPrice(totalDiscount)}
               </Text>
-              <Text style={styles.itemQuantity}>x{item.quantity}</Text>
-              <Text style={styles.itemPrice}>₱{(item.price * item.quantity).toFixed(2)}</Text>
             </View>
-          ))}
+          ) : (
+            <View style={styles.chip}>
+              <MaterialCommunityIcons
+                name="tag"
+                size={12}
+                color="#64748b"
+              />
+              <Text style={styles.chipText}>No discount</Text>
+            </View>
+          )}
+          
+          <View style={[styles.chip, styles.statusChip]}>
+            <View style={[styles.statusDot, styles.completedDot]} />
+            <Text style={styles.chipText}>{order.status?.toLowerCase() || 'confirmed'}</Text>
+          </View>
+          
+          <TouchableOpacity
+            style={styles.detailsButton}
+            onPress={() => {
+              setSelectedOrder(order);
+              setShowDetails(true);
+            }}
+          >
+            <Text style={styles.detailsText}>Details</Text>
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={14}
+              color="#00A86B"
+            />
+          </TouchableOpacity>
         </View>
       </View>
-
-      <View style={styles.orderFooter}>
-        <View style={styles.chip}>
-          <MaterialCommunityIcons name="tag-percent" size={12} color="#64748b" />
-          <Text style={styles.chipText}>
-            {order.seniorPwdDiscountAmount > 0 
-              ? `Discount: ${formatPrice(order.seniorPwdDiscountAmount)}`
-              : 'No discount'
-            }
-          </Text>
-        </View>
-        <View style={[styles.chip, styles.statusChip]}>
-          <View style={[styles.statusDot, styles.completedDot]} />
-          <Text style={styles.chipText}>{order.status.toLowerCase()}</Text>
-        </View>
-        <TouchableOpacity 
-          style={styles.detailsButton}
-          onPress={() => {
-            setSelectedOrder(order);
-            setShowDetails(true);
-          }}
-        >
-          <Text style={styles.detailsText}>Details</Text>
-          <MaterialCommunityIcons name="chevron-right" size={14} color="#00A86B" />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+    );
+  };
 
   // Local sub-component for Filter Chips
   const FilterChip = ({ label, isActive, onPress }) => (
@@ -189,16 +220,22 @@ const OrderHistoryScreen = ({ navigation }) => {
       style={[styles.filterChip, isActive && styles.activeFilterChip]}
       activeOpacity={0.7}
     >
-      <Text style={[styles.filterChipText, isActive && styles.activeFilterChipText]}>
+      <Text
+        style={[styles.filterChipText, isActive && styles.activeFilterChipText]}
+      >
         {label}
       </Text>
     </TouchableOpacity>
   );
 
+  // Calculate stats from filtered orders
   const stats = {
-    totalSpent: `₱${orders.reduce((sum, order) => sum + order.finalAmountPaid, 0).toFixed(2)}`,
-    totalPoints: orders.reduce((sum, order) => sum + order.pointsEarned, 0),
-    avgTransaction: `₱${(orders.reduce((sum, order) => sum + order.finalAmountPaid, 0) / (orders.length || 1)).toFixed(2)}`,
+    totalSpent: formatPrice(filteredOrders.reduce((sum, order) => sum + (order.finalAmountPaid || 0), 0)),
+    totalPoints: filteredOrders.reduce((sum, order) => 
+      sum + (order.loyaltyDiscount?.pointsEarned || order.pointsEarned || 0), 0),
+    avgTransaction: filteredOrders.length > 0 
+      ? formatPrice(filteredOrders.reduce((sum, order) => sum + (order.finalAmountPaid || 0), 0) / filteredOrders.length)
+      : '₱0.00',
   };
 
   const renderEmptyState = () => (
@@ -206,14 +243,13 @@ const OrderHistoryScreen = ({ navigation }) => {
       <MaterialCommunityIcons name="cart-outline" size={64} color="#cbd5e1" />
       <Text style={styles.emptyTitle}>No Orders Yet</Text>
       <Text style={styles.emptyText}>
-        {selectedFilter === 'all' 
-          ? 'You haven\'t placed any orders yet'
-          : 'No orders match your filter'
-        }
+        {selectedFilter === "all"
+          ? "You haven't placed any orders yet"
+          : `No orders found for ${filters.find(f => f.id === selectedFilter)?.label.toLowerCase()} filter`}
       </Text>
       <TouchableOpacity
         style={styles.shopButton}
-        onPress={() => navigation.navigate('Home')}
+        onPress={() => navigation.navigate("Home")}
       >
         <Text style={styles.shopButtonText}>Start Shopping</Text>
       </TouchableOpacity>
@@ -242,9 +278,6 @@ const OrderHistoryScreen = ({ navigation }) => {
           <Text style={styles.headerTitle}>Order History</Text>
           <Text style={styles.headerSubtitle}>Purchase history & receipts</Text>
         </View>
-        <TouchableOpacity style={styles.filterIcon}>
-          <MaterialCommunityIcons name="filter-variant" size={22} color="#0f172a" />
-        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -254,8 +287,8 @@ const OrderHistoryScreen = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* --- STATS OVERVIEW --- */}
-        {/* <View style={styles.statsGrid}>
+        {/* --- STATS OVERVIEW - Uncomment if needed --- */}
+        <View style={styles.statsGrid}>
           <View style={styles.statBox}>
             <Text style={styles.statValue}>{stats.totalSpent}</Text>
             <Text style={styles.statLabel}>Total Spent</Text>
@@ -270,7 +303,7 @@ const OrderHistoryScreen = ({ navigation }) => {
             <Text style={styles.statValue}>{stats.avgTransaction}</Text>
             <Text style={styles.statLabel}>Avg Order</Text>
           </View>
-        </View> */}
+        </View>
 
         {/* --- FILTER CHIPS --- */}
         <ScrollView
@@ -292,22 +325,22 @@ const OrderHistoryScreen = ({ navigation }) => {
         {/* --- ORDERS LIST --- */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recent Orders</Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAll}>View all</Text>
-          </TouchableOpacity>
+          <Text style={styles.orderCount}>{filteredOrders.length} orders</Text>
         </View>
 
-        {orders.length > 0 ? (
-          orders.map((order) => (
-            <OrderCard key={order.id} order={order} />
-          ))
-        ) : (
-          renderEmptyState()
-        )}
+        {filteredOrders.length > 0
+          ? filteredOrders.map((order) => (
+              <OrderCard key={order._id || order.checkoutCode} order={order} />
+            ))
+          : renderEmptyState()}
 
         {/* --- ORDER TIPS --- */}
         <View style={styles.tipsCard}>
-          <MaterialCommunityIcons name="shield-check" size={24} color="#0f172a" />
+          <MaterialCommunityIcons
+            name="shield-check"
+            size={24}
+            color="#0f172a"
+          />
           <View style={{ flex: 1, marginLeft: 16 }}>
             <Text style={styles.tipsTitle}>All orders verified</Text>
             <Text style={styles.tipsText}>
@@ -334,8 +367,26 @@ const OrderDetailsModal = ({ order, visible, onClose }) => {
   if (!visible) return null;
 
   const formatPrice = (amount) => {
-    return `₱${amount.toFixed(2)}`;
+    return `₱${(amount || 0).toFixed(2)}`;
   };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-PH', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const totalDiscount = order.discountBreakdown?.total || order.seniorPwdDiscountAmount || 0;
+  const bnpcDiscount = order.discountBreakdown?.bnpc || order.bnpcDiscount?.total || 0;
+  const promoDiscount = order.discountBreakdown?.promo || order.promoDiscount?.amount || 0;
+  const loyaltyDiscount = order.discountBreakdown?.loyalty || order.loyaltyDiscount?.amount || 0;
+  const pointsUsed = order.loyaltyDiscount?.pointsUsed || 0;
+  const pointsEarned = order.loyaltyDiscount?.pointsEarned || order.pointsEarned || 0;
 
   return (
     <View style={styles.modalOverlay}>
@@ -344,29 +395,42 @@ const OrderDetailsModal = ({ order, visible, onClose }) => {
         <View style={styles.modalHeader}>
           <View>
             <Text style={styles.modalTitle}>Order Details</Text>
-            <Text style={styles.modalSubtitle}>{order.orderNumber}</Text>
+            <Text style={styles.modalSubtitle}>#{order.checkoutCode}</Text>
           </View>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <MaterialCommunityIcons name="close" size={24} color="#0f172a" />
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.modalContent}
+          showsVerticalScrollIndicator={false}
+        >
           {/* Order Info */}
           <View style={styles.modalSection}>
             <View style={styles.infoCard}>
               <View style={styles.infoRow}>
-                <MaterialCommunityIcons name="calendar" size={18} color="#64748b" />
+                <MaterialCommunityIcons
+                  name="calendar"
+                  size={18}
+                  color="#64748b"
+                />
                 <View style={styles.infoText}>
                   <Text style={styles.infoLabel}>Date & Time</Text>
-                  <Text style={styles.infoValue}>{order.date}</Text>
+                  <Text style={styles.infoValue}>{formatDate(order.confirmedAt)}</Text>
                 </View>
               </View>
               <View style={styles.infoRow}>
-                <MaterialCommunityIcons name="check-circle" size={18} color="#00A86B" />
+                <MaterialCommunityIcons
+                  name="check-circle"
+                  size={18}
+                  color="#00A86B"
+                />
                 <View style={styles.infoText}>
                   <Text style={styles.infoLabel}>Status</Text>
-                  <Text style={[styles.infoValue, styles.statusValue]}>Confirmed</Text>
+                  <Text style={[styles.infoValue, styles.statusValue]}>
+                    {order.status || 'Confirmed'}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -374,22 +438,32 @@ const OrderDetailsModal = ({ order, visible, onClose }) => {
 
           {/* Order Items */}
           <View style={styles.modalSection}>
-            <Text style={styles.sectionTitle}>Order Items ({order.items.length})</Text>
+            <Text style={styles.sectionTitle}>
+              Order Items ({(order.items || []).length})
+            </Text>
             <View style={styles.modalItemsList}>
-              {order.items.map((item, index) => (
+              {(order.items || []).map((item, index) => (
                 <View key={index} style={styles.modalItemCard}>
                   <View style={styles.modalItemIcon}>
-                    <MaterialCommunityIcons name="circle-small" size={20} color="#64748b" />
+                    <MaterialCommunityIcons
+                      name="circle-small"
+                      size={20}
+                      color="#64748b"
+                    />
                   </View>
                   <View style={styles.modalItemInfo}>
                     <Text style={styles.modalItemName}>{item.name}</Text>
                     <View style={styles.modalItemDetails}>
-                      <Text style={styles.modalItemQuantity}>Qty: {item.quantity}</Text>
-                      <Text style={styles.modalItemUnitPrice}>₱{item.price.toFixed(2)} each</Text>
+                      <Text style={styles.modalItemQuantity}>
+                        Qty: {item.quantity}  
+                      </Text>
+                      <Text style={styles.modalItemUnitPrice}>
+                        ₱{(item.unitPrice || 0).toFixed(2)} each
+                      </Text>
                     </View>
                   </View>
                   <Text style={styles.modalItemTotal}>
-                    ₱{(item.price * item.quantity).toFixed(2)}
+                    ₱{((item.unitPrice || 0) * item.quantity).toFixed(2)}
                   </Text>
                 </View>
               ))}
@@ -402,76 +476,156 @@ const OrderDetailsModal = ({ order, visible, onClose }) => {
             <View style={styles.pricingCard}>
               <View style={styles.pricingRow}>
                 <Text style={styles.pricingLabel}>Base Amount</Text>
-                <Text style={styles.pricingValue}>{formatPrice(order.baseAmount)}</Text>
+                <Text style={styles.pricingValue}>
+                  {formatPrice(order.baseAmount)}
+                </Text>
               </View>
-              
-              {order.groceryEligibleSubtotal > 0 && (
+
+              {order.bnpcEligibleSubtotal > 0 && (
                 <View style={styles.pricingRow}>
-                  <Text style={styles.pricingLabel}>Eligible Grocery</Text>
-                  <Text style={styles.pricingValue}>{formatPrice(order.groceryEligibleSubtotal)}</Text>
+                  <Text style={styles.pricingLabel}>BNPC Eligible</Text>
+                  <Text style={styles.pricingValue}>
+                    {formatPrice(order.bnpcEligibleSubtotal)}
+                  </Text>
                 </View>
               )}
-              
-              {order.seniorPwdDiscountAmount > 0 && (
+
+              {bnpcDiscount > 0 && (
                 <View style={styles.pricingRow}>
                   <View style={styles.discountRow}>
-                    <MaterialCommunityIcons name="tag-percent" size={14} color="#00A86B" />
-                    <Text style={[styles.pricingLabel, styles.discountLabel]}>Senior/PWD Discount</Text>
+                    <MaterialCommunityIcons
+                      name="tag"
+                      size={14}
+                      color="#00A86B"
+                    />
+                    <Text style={[styles.pricingLabel, styles.discountLabel]}>
+                      BNPC Discount (5%)
+                    </Text>
                   </View>
                   <Text style={[styles.pricingValue, styles.discountValue]}>
-                    -{formatPrice(order.seniorPwdDiscountAmount)}
+                    -{formatPrice(bnpcDiscount)}
                   </Text>
                 </View>
               )}
-              
-              {order.pointsUsed > 0 && (
+
+              {promoDiscount > 0 && (
+                <View style={styles.pricingRow}>
+                  <View style={styles.discountRow}>
+                    <MaterialCommunityIcons
+                      name="sale"
+                      size={14}
+                      color="#FF9800"
+                    />
+                    <Text style={[styles.pricingLabel, styles.promoLabel]}>
+                      Promo {order.promoDiscount?.code || ''}
+                    </Text>
+                  </View>
+                  <Text style={[styles.pricingValue, styles.promoValue]}>
+                    -{formatPrice(promoDiscount)}
+                  </Text>
+                </View>
+              )}
+
+              {loyaltyDiscount > 0 && (
                 <View style={styles.pricingRow}>
                   <View style={styles.pointsRow}>
-                    <MaterialCommunityIcons name="star" size={14} color="#FF9800" />
-                    <Text style={[styles.pricingLabel, styles.pointsLabel]}>Points Used</Text>
+                    <MaterialCommunityIcons
+                      name="star"
+                      size={14}
+                      color="#FFD700"
+                    />
+                    <Text style={[styles.pricingLabel, styles.loyaltyLabel]}>
+                      Loyalty Points
+                    </Text>
                   </View>
-                  <Text style={[styles.pricingValue, styles.pointsValue]}>
-                    -{formatPrice(order.pointsUsed)}
+                  <Text style={[styles.pricingValue, styles.loyaltyValue]}>
+                    -{formatPrice(loyaltyDiscount)}
                   </Text>
                 </View>
               )}
-              
-              {order.weeklyCapRemainingAtCheckout !== undefined && (
-                <View style={styles.pricingRow}>
-                  <Text style={styles.pricingLabel}>Weekly Cap Remaining</Text>
-                  <Text style={styles.pricingValue}>{formatPrice(order.weeklyCapRemainingAtCheckout)}</Text>
+
+              {totalDiscount > 0 && (
+                <View style={styles.totalDiscountRow}>
+                  <Text style={styles.totalDiscountLabel}>Total Discount</Text>
+                  <Text style={styles.totalDiscountValue}>
+                    -{formatPrice(totalDiscount)}
+                  </Text>
                 </View>
               )}
-              
+
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Total Paid</Text>
-                <Text style={styles.totalValue}>{formatPrice(order.finalAmountPaid)}</Text>
+                <Text style={styles.totalValue}>
+                  {formatPrice(order.finalAmountPaid)}
+                </Text>
               </View>
             </View>
           </View>
 
-          {/* Loyalty Points */}
-          <View style={styles.modalSection}>
-            <Text style={styles.sectionTitle}>Loyalty Points</Text>
-            <View style={styles.pointsCard}>
-              <View style={styles.pointsRow}>
-                <MaterialCommunityIcons name="star-circle" size={20} color="#FF9800" />
-                <View style={styles.pointsInfo}>
-                  <Text style={styles.pointsLabel}>Points Earned</Text>
-                  <Text style={styles.pointsValue}>+{order.pointsEarned} points</Text>
+          {/* BNPC Caps (if applicable) */}
+          {order.bnpcCaps && order.bnpcCaps.discountCap?.usedAfter > 0 && (
+            <View style={styles.modalSection}>
+              <Text style={styles.sectionTitle}>BNPC Weekly Caps</Text>
+              <View style={styles.capsCard}>
+                <View style={styles.capRow}>
+                  <Text style={styles.capLabel}>Discount Used This Week</Text>
+                  <Text style={styles.capValue}>
+                    ₱{order.bnpcCaps.discountCap.usedAfter.toFixed(2)} / 125
+                  </Text>
                 </View>
+                <View style={styles.capRow}>
+                  <Text style={styles.capLabel}>Purchase Used This Week</Text>
+                  <Text style={styles.capValue}>
+                    ₱{order.bnpcCaps.purchaseCap.usedAfter.toFixed(2)} / 2500
+                  </Text>
+                </View>
+                {order.bnpcCaps.weekEnd && (
+                  <Text style={styles.capNote}>
+                    Resets: {new Date(order.bnpcCaps.weekEnd).toLocaleDateString()}
+                  </Text>
+                )}
               </View>
-              {order.pointsUsed > 0 && (
-                <View style={styles.pointsRow}>
-                  <MaterialCommunityIcons name="star" size={20} color="#00A86B" />
-                  <View style={styles.pointsInfo}>
-                    <Text style={styles.pointsLabel}>Points Used</Text>
-                    <Text style={styles.pointsValue}>-{order.pointsUsed} points</Text>
-                  </View>
-                </View>
-              )}
             </View>
-          </View>
+          )}
+
+          {/* Loyalty Points */}
+          {(pointsUsed > 0 || pointsEarned > 0) && (
+            <View style={styles.modalSection}>
+              <Text style={styles.sectionTitle}>Loyalty Points</Text>
+              <View style={styles.pointsCard}>
+                {pointsUsed > 0 && (
+                  <View style={styles.pointsRow}>
+                    <MaterialCommunityIcons
+                      name="star-minus"
+                      size={20}
+                      color="#DC2626"
+                    />
+                    <View style={styles.pointsInfo}>
+                      <Text style={styles.pointsLabel}>Points Used</Text>
+                      <Text style={[styles.pointsValue, styles.pointsUsedValue]}>
+                        -{pointsUsed} points
+                      </Text>
+                    </View>
+                  </View>
+                )}
+                {pointsEarned > 0 && (
+                  <View style={styles.pointsRow}>
+                    <MaterialCommunityIcons
+                      name="star-plus"
+                      size={20}
+                      color="#00A86B"
+                    />
+                    <View style={styles.pointsInfo}>
+                      <Text style={styles.pointsLabel}>Points Earned</Text>
+                      <Text style={[styles.pointsValue, styles.pointsEarnedValue]}>
+                        +{pointsEarned} points
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
         </ScrollView>
 
         {/* Actions */}
@@ -513,16 +667,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontWeight: "500",
   },
-  filterIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#f1f5f9",
-  },
   scrollContent: {
     paddingBottom: 100,
   },
@@ -545,7 +689,7 @@ const styles = StyleSheet.create({
     marginBottom: 25,
   },
   statBox: {
-    flexGrow: 1,
+    flex: 1,
     backgroundColor: "#fff",
     marginHorizontal: 4,
     padding: 16,
@@ -610,10 +754,10 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#0f172a",
   },
-  seeAll: {
-    color: "#00A86B",
-    fontWeight: "700",
+  orderCount: {
     fontSize: 13,
+    color: "#64748b",
+    fontWeight: "600",
   },
 
   // Order Card
@@ -664,8 +808,9 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 10,
     overflow: "hidden",
+    textAlign: "center",
   },
-  
+
   // Items Section
   itemsSection: {
     marginBottom: 16,
@@ -708,6 +853,12 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#0f172a",
   },
+  moreItems: {
+    fontSize: 12,
+    color: "#94a3b8",
+    fontStyle: "italic",
+    marginTop: 4,
+  },
 
   // Order Footer
   orderFooter: {
@@ -731,6 +882,9 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#64748b",
     marginLeft: 6,
+  },
+  discountChipText: {
+    color: "#00A86B",
   },
   statusDot: {
     width: 6,
@@ -961,11 +1115,36 @@ const styles = StyleSheet.create({
   discountValue: {
     color: "#00A86B",
   },
-  pointsLabel: {
+  promoLabel: {
     color: "#FF9800",
   },
-  pointsValue: {
+  promoValue: {
     color: "#FF9800",
+  },
+  loyaltyLabel: {
+    color: "#FFD700",
+  },
+  loyaltyValue: {
+    color: "#FFD700",
+  },
+  totalDiscountRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: 8,
+    marginTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: "#e2e8f0",
+  },
+  totalDiscountLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#0f172a",
+  },
+  totalDiscountValue: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#059669",
   },
   totalRow: {
     flexDirection: "row",
@@ -986,16 +1165,37 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#0f172a",
   },
+  capsCard: {
+    backgroundColor: "#f8fafc",
+    borderRadius: 16,
+    padding: 16,
+    gap: 8,
+  },
+  capRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  capLabel: {
+    fontSize: 14,
+    color: "#64748b",
+  },
+  capValue: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#0f172a",
+  },
+  capNote: {
+    fontSize: 12,
+    color: "#94a3b8",
+    fontStyle: "italic",
+    marginTop: 4,
+  },
   pointsCard: {
     backgroundColor: "#f8fafc",
     borderRadius: 16,
     padding: 16,
     gap: 16,
-  },
-  pointsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
   },
   pointsInfo: {
     flex: 1,
@@ -1009,7 +1209,12 @@ const styles = StyleSheet.create({
   pointsValue: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#0f172a",
+  },
+  pointsUsedValue: {
+    color: "#DC2626",
+  },
+  pointsEarnedValue: {
+    color: "#00A86B",
   },
   modalActions: {
     flexDirection: "row",

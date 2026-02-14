@@ -281,7 +281,7 @@ const EligibilityStatusScreen = ({ navigation }) => {
             <Text style={styles.sectionTitle}>Current Benefits</Text>
             <View style={styles.benefitsCard}>
               <View style={styles.benefitItem}>
-                <MaterialCommunityIcons name="tag-percent" size={24} color="#00A86B" />
+                <MaterialCommunityIcons name="tag" size={24} color="#00A86B" />
                 <View style={styles.benefitContent}>
                   <Text style={styles.benefitTitle}>20% Discount</Text>
                   <Text style={styles.benefitDescription}>

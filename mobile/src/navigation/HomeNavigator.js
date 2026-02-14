@@ -8,6 +8,7 @@ import HomeScreen from "../screens/customer/HomeScreen";
 import TransactionsScreen from "../screens/customer/TransactionScreen";
 import MenuScreen from "../screens/customer/MenuScreen"; // Changed from ProfileScreen
 import CartScreen from "../screens/customer/CartScreen";
+import OrderHistoryScreen from "../screens/customer/OrderHistory";
 
 const Tab = createBottomTabNavigator();
 
@@ -101,7 +102,7 @@ export default function HomeNavigator() {
       />
       <Tab.Screen
         name="Transactions"
-        component={TransactionsScreen}
+        component={OrderHistoryScreen}
         options={{ title: "History" }}
       />
       <Tab.Screen
