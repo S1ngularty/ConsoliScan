@@ -8,7 +8,7 @@ const orderSchema = new mongoose.Schema(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      default:null
+      default: null
     },
 
     cashier: {
@@ -17,9 +17,9 @@ const orderSchema = new mongoose.Schema(
       required: true
     },
 
-    appUser:{
-      type:Boolean,
-      default:true
+    appUser: {
+      type: Boolean,
+      default: true
     },
 
     /* ======================
@@ -37,14 +37,36 @@ const orderSchema = new mongoose.Schema(
       default: "regular"
     },
 
+    customerScope: {
+      type: String,
+      enum: ["SENIOR", "PWD", null],
+      default: null
+    },
+
     verificationSource: {
       type: String,
       enum: ["system", "manual", "none"],
       default: "none"
     },
 
+    systemVerified: {
+      type: Boolean,
+      default: false
+    },
+
+    systemVerificationType: {
+      type: String,
+      enum: ["senior", "pwd", "regular", null],
+      default: null
+    },
+
+    manualOverride: {
+      type: Boolean,
+      default: false
+    },
+
     /* ======================
-       ITEMS
+       ITEMS (ENHANCED)
     ======================= */
     items: [
       {
@@ -56,6 +78,7 @@ const orderSchema = new mongoose.Schema(
           type: String,
           required: true
         },
+        sku: String,
         quantity: {
           type: Number,
           required: true,
@@ -66,18 +89,68 @@ const orderSchema = new mongoose.Schema(
           required: true,
           min: 0
         },
-        categoryType: String,
-        isGroceryDiscountEligible: {
+        salePrice: Number,
+        saleActive: {
           type: Boolean,
           default: false
+        },
+        categoryType: String,
+        isBNPCEligible: {
+          type: Boolean,
+          default: false
+        },
+        isBNPCProduct: {
+          type: Boolean,
+          default: false
+        },
+        excludedFromDiscount: {
+          type: Boolean,
+          default: false
+        },
+        category: {
+          id: mongoose.Schema.Types.ObjectId,
+          name: String,
+          isBNPC: Boolean
+        },
+        unit: {
+          type: String,
+          default: "pc"
+        },
+        itemTotal: {
+          type: Number,
+          min: 0
         },
         promoApplied: {
           type: Boolean,
           default: false
-        },
-        sku: String
+        }
       }
     ],
+
+    /* ======================
+       BNPC PRODUCTS TRACKING
+    ======================= */
+    bnpcProducts: [
+      {
+        productId: mongoose.Schema.Types.ObjectId,
+        name: String,
+        quantity: Number,
+        price: Number,
+        salePrice: Number,
+        saleActive: Boolean,
+        unit: String,
+        category: mongoose.Schema.Types.ObjectId,
+        categoryName: String,
+        isBNPCEligible: Boolean,
+        requiresVerification: Boolean,
+        itemTotal: Number
+      }
+    ],
+
+    hasBNPCItems: {
+      type: Boolean,
+      default: false
+    },
 
     /* ======================
        AMOUNTS & DISCOUNTS
@@ -89,8 +162,8 @@ const orderSchema = new mongoose.Schema(
       min: 0
     },
 
-    // Subtotal eligible for senior / PWD discount
-    groceryEligibleSubtotal: {
+    // Subtotal eligible for BNPC discount
+    bnpcEligibleSubtotal: {
       type: Number,
       default: 0,
       min: 0
@@ -103,12 +176,50 @@ const orderSchema = new mongoose.Schema(
         default: 0,
         min: 0
       },
+      serverCalculated: {
+        type: Number,
+        default: 0,
+        min: 0
+      },
       additionalApplied: {
         type: Number,
         default: 0,
         min: 0
       },
       total: {
+        type: Number,
+        default: 0,
+        min: 0
+      }
+    },
+
+    // Promo discount
+    promoDiscount: {
+      code: String,
+      amount: {
+        type: Number,
+        default: 0,
+        min: 0
+      },
+      serverValidated: {
+        type: Boolean,
+        default: false
+      }
+    },
+
+    // Loyalty points discount
+    loyaltyDiscount: {
+      pointsUsed: {
+        type: Number,
+        default: 0,
+        min: 0
+      },
+      amount: {
+        type: Number,
+        default: 0,
+        min: 0
+      },
+      pointsEarned: {
         type: Number,
         default: 0,
         min: 0
@@ -129,11 +240,13 @@ const orderSchema = new mongoose.Schema(
       min: 0
     },
 
-    // Loyalty points used
-    pointsUsed: {
-      type: Number,
-      default: 0,
-      min: 0
+    // Complete discount breakdown
+    discountBreakdown: {
+      bnpc: { type: Number, default: 0 },
+      promo: { type: Number, default: 0 },
+      loyalty: { type: Number, default: 0 },
+      voucher: { type: Number, default: 0 },
+      total: { type: Number, default: 0 }
     },
 
     // Final amount after all discounts
@@ -143,12 +256,20 @@ const orderSchema = new mongoose.Schema(
       min: 0
     },
 
-    // Loyalty points earned
+    // Loyalty points earned (legacy)
     pointsEarned: {
       type: Number,
-      required: true,
       default: 0,
       min: 0
+    },
+
+    /* ======================
+       SERVER CALCULATIONS SNAPSHOT
+    ======================= */
+    serverCalculations: {
+      discountSnapshot: mongoose.Schema.Types.Mixed,
+      weeklyUsageSnapshot: mongoose.Schema.Types.Mixed,
+      totals: mongoose.Schema.Types.Mixed
     },
 
     /* ======================
@@ -215,6 +336,9 @@ const orderSchema = new mongoose.Schema(
           min: 0
         }
       },
+      // Week range
+      weekStart: Date,
+      weekEnd: Date,
       // Remaining weekly cap (legacy field)
       weeklyCapRemainingAtCheckout: {
         type: Number,
@@ -296,7 +420,10 @@ const orderSchema = new mongoose.Schema(
 
 // Virtual for total discount (convenience)
 orderSchema.virtual('totalDiscount').get(function() {
-  return this.bnpcDiscount.total + this.voucherDiscount;
+  return (this.bnpcDiscount?.total || 0) + 
+         (this.promoDiscount?.amount || 0) + 
+         (this.loyaltyDiscount?.amount || 0) + 
+         (this.voucherDiscount || 0);
 });
 
 // Virtual for net amount (base - discounts)
@@ -304,11 +431,23 @@ orderSchema.virtual('netAmount').get(function() {
   return this.baseAmount - this.totalDiscount;
 });
 
-// Index for faster queries
-orderSchema.index({ user: 1, confirmedAt: -1 });
-orderSchema.index({ cashier: 1, confirmedAt: -1 });
-orderSchema.index({ status: 1 });
-orderSchema.index({ customerType: 1 });
-orderSchema.index({ confirmedAt: -1 });
+// Virtual for discount breakdown summary
+orderSchema.virtual('discountSummary').get(function() {
+  return {
+    bnpc: this.bnpcDiscount?.total || 0,
+    promo: this.promoDiscount?.amount || 0,
+    loyalty: this.loyaltyDiscount?.amount || 0,
+    voucher: this.voucherDiscount || 0,
+    total: this.totalDiscount
+  };
+});
+
+// Virtual for verification status
+orderSchema.virtual('verificationStatus').get(function() {
+  if (this.systemVerified) return 'system';
+  if (this.manualOverride) return 'manual';
+  return 'none';
+});
+
 
 module.exports = mongoose.model("Order", orderSchema);

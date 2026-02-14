@@ -10,51 +10,55 @@ async function confirmOrder(request) {
   if (!request.body) throw new Error("empty content request");
   const { orderId } = request.params;
   const { userId } = request.user;
-  // console.log(request.body);
+  
+  // Validate required fields
+  if (!request.body.transaction) {
+    throw new Error("Transaction data required");
+  }
+  
   let orderData = { ...request.body.transaction, cashier: userId };
-
-  // console.log(
-  //   orderData?.user,
-  //   orderData?.appUser,
-  //   orderData?.groceryEligibleSubtotal > 0,
-  //   orderData?.bnpcDiscount?.autoCalculated > 0,
-  //   orderData?.seniorPwdDiscountAmount > 0,
-  //   orderData?.bookletUpdated,
-  // );
-
+  
+  // Validate booklet update for eligible customers
+  if (["senior", "pwd"].includes(orderData.customerType) && !orderData.bookletUpdated) {
+    throw new Error("Booklet must be updated for BNPC discounts");
+  }
+  
+  // Process BNPC discount
   orderData = await logBNPC_discountUsage(orderData);
-  orderData.pointsEarned = await managePoints(orderData) 
-
+  
+  // Manage points
+  orderData.pointsEarned = await managePoints(orderData);
+  
+  // Create order
   const order = await Order.create(orderData);
-
+  
+  // Blockchain logging
   const blockchainResult = await blockchainService.logConfirmedOrder(order);
-
   order.blockchainTxId = blockchainResult.txId;
   order.blockchainHash = blockchainResult.hash;
-
   await order.save();
-
-  CheckoutQueue.findByIdAndDelete(orderId);
-
-  const bulkOps = order.items.map((item) => ({
-    updateOne: {
-      filter: {
-        _id: item.product,
+  
+  // Cleanup
+  await CheckoutQueue.findByIdAndDelete(orderId);
+  
+  // Update stock
+  if (order.items.length > 0) {
+    const bulkOps = order.items.map((item) => ({
+      updateOne: {
+        filter: { _id: item.product },
+        update: { $inc: { stockQuantity: -item.quantity } },
       },
-      update: {
-        $inc: { stockQuantity: -item.quantity },
-      },
-    },
-  }));
-
-  Product.bulkWrite(bulkOps);
-
+    }));
+    await Product.bulkWrite(bulkOps);
+  }
+  
+  // Emit socket event
   emitCheckout(order.checkoutCode, "checkout:complete", {
     orderId: order._id,
     orderData: order,
     status: "COMPLETE",
   });
-
+  
   return order;
 }
 

@@ -13,7 +13,9 @@ import { confirmOrder } from "../../api/order.api";
 
 const OrderSummaryScreen = ({ route, navigation }) => {
   const { transactionData, orderDetails } = route.params;
-  console.log(transactionData.appUser)
+  console.log("OrderSummary - transactionData:", transactionData);
+  console.log("OrderSummary - orderDetails:", orderDetails);
+  
   // Format date for display
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -27,95 +29,162 @@ const OrderSummaryScreen = ({ route, navigation }) => {
   };
 
   // Calculate item count and total quantity
-  const { itemCount, totalQuantity } = useMemo(() => {
-    const items = orderDetails?.items || [];
+  const { itemCount, totalQuantity, bnpcEligibleCount, bnpcEligibleQuantity } = useMemo(() => {
+    const items = orderDetails?.items || transactionData?.items || [];
+    const bnpcEligible = items.filter((item) => item.isBNPCEligible || false);
+    
     return {
       itemCount: items.length,
       totalQuantity: items.reduce((sum, item) => sum + (item.quantity || 0), 0),
+      bnpcEligibleCount: bnpcEligible.length,
+      bnpcEligibleQuantity: bnpcEligible.reduce((sum, item) => sum + (item.quantity || 0), 0),
     };
-  }, [orderDetails]);
+  }, [orderDetails, transactionData]);
+
+  // Get customer display name
+  const getCustomerDisplay = () => {
+    const type = transactionData.customerType;
+    if (type === "senior") return "Senior Citizen";
+    if (type === "pwd") return "PWD";
+    if (type === "regular") return "Regular";
+    return transactionData.customerScope || "Regular";
+  };
+
+  // Get verification badge color
+  const getVerificationColor = () => {
+    if (transactionData.verificationSource === "system") return "#3B82F6";
+    if (transactionData.verificationSource === "manual") return "#F59E0B";
+    return "#6B7280";
+  };
 
   const handleComplete = async () => {
     try {
       // Prepare order data for MongoDB with all transaction log details
       const orderData = {
         // Core relationships
-        user: orderDetails.user || null,
-        cashier: transactionData.cashier?.cashierId || orderDetails.cashier?.cashierId || null,
-        appUser: transactionData.appUser,
+        user: orderDetails?.user || transactionData?.user || null,
+        cashier: transactionData.cashier?.cashierId || orderDetails?.cashier?.cashierId || null,
+        appUser: transactionData.appUser || false,
+        
         // Order metadata
         checkoutCode: transactionData.checkoutCode,
         customerType: transactionData.customerType || 'regular',
+        customerScope: transactionData.customerScope || null,
         verificationSource: transactionData.verificationSource || 'manual',
+        systemVerified: transactionData.systemVerified || false,
+        systemVerificationType: transactionData.systemVerificationType.toLowerCase() || null,
+        manualOverride: transactionData.manualOverride || false,
 
         // Items with full details
-        items: orderDetails.items?.map((item) => ({
+        items: (orderDetails?.items || transactionData?.items || []).map((item) => ({
           product: item.product?._id || item.product || null,
           name: item.name || item.product?.name || "Product",
-          quantity: item.quantity || 1,
-          unitPrice: item.unitPrice || 0,
-          categoryType: item.categoryType || item.bnpcCategory || null,
-          isGroceryDiscountEligible: item.isBNPCEligible || false,
-          promoApplied: false,
           sku: item.sku || item.product?.sku || `PROD-${item.product?._id?.slice(-6)}`,
-        })) || [],
+          quantity: item.quantity || 1,
+          unitPrice: item.unitPrice || item.price || 0,
+          salePrice: item.salePrice || null,
+          saleActive: item.saleActive || false,
+          categoryType: item.categoryType || item.bnpcCategory || null,
+          isBNPCEligible: item.isBNPCEligible || false,
+          isBNPCProduct: item.isBNPCProduct || false,
+          excludedFromDiscount: item.excludedFromDiscount || false,
+          category: item.category || null,
+          unit: item.unit || "pc",
+          itemTotal: item.itemTotal || (item.quantity * (item.unitPrice || item.price || 0)),
+        })),
 
         // Amounts & discounts
-        baseAmount: transactionData.amounts.subtotal || 0,
-        groceryEligibleSubtotal: transactionData.amounts.bnpcSubtotal || 0,
+        baseAmount: transactionData.amounts?.subtotal || 0,
+        bnpcEligibleSubtotal: transactionData.amounts?.bnpcEligibleSubtotal || 0,
 
         // BNPC discount breakdown
         bnpcDiscount: {
-          autoCalculated: transactionData.amounts.discount || 0,
+          autoCalculated: transactionData.amounts?.bnpcDiscount || 0,
+          serverCalculated: transactionData.amounts?.serverBnpcDiscount || 0,
           additionalApplied: 0,
-          total: transactionData.amounts.discount || 0,
+          total: transactionData.amounts?.bnpcDiscount || 0,
+        },
+
+        // Promo discount
+        promoDiscount: {
+          code: transactionData.promo?.code || null,
+          amount: transactionData.amounts?.promoDiscount || 0,
+          serverValidated: true,
+        },
+
+        // Loyalty points discount
+        loyaltyDiscount: {
+          pointsUsed: transactionData.loyalty?.pointsUsed || 0,
+          amount: transactionData.amounts?.loyaltyDiscount || 0,
+          pointsEarned: transactionData.loyalty?.pointsEarned || 0,
         },
 
         // Legacy field (for backward compatibility)
-        seniorPwdDiscountAmount: transactionData.amounts.discount || 0,
+        seniorPwdDiscountAmount: transactionData.amounts?.bnpcDiscount || 0,
 
         // Voucher discount
-        voucherDiscount: transactionData.amounts.voucherDiscount || 0,
+        voucherDiscount: transactionData.amounts?.voucherDiscount || 0,
 
-        // Loyalty points
-        pointsUsed: 0, // Not in your data
-        finalAmountPaid: transactionData.amounts.finalTotal || 0,
-        pointsEarned: Math.floor((transactionData.amounts.finalTotal || 0) / 10),
+        // Total discount breakdown
+        discountBreakdown: {
+          bnpc: transactionData.amounts?.bnpcDiscount || 0,
+          promo: transactionData.amounts?.promoDiscount || 0,
+          loyalty: transactionData.amounts?.loyaltyDiscount || 0,
+          voucher: transactionData.amounts?.voucherDiscount || 0,
+          total: transactionData.amounts?.totalDiscount || 0,
+        },
+
+        finalAmountPaid: transactionData.amounts?.finalTotal || 0,
+        pointsEarned: transactionData.loyalty?.pointsEarned || 
+          Math.floor((transactionData.amounts?.finalTotal || 0) / 10),
 
         // Cash transaction
         cashTransaction: {
-          cashReceived: transactionData.amounts.cashReceived || 0,
-          changeDue: transactionData.amounts.changeDue || 0,
+          cashReceived: transactionData.amounts?.cashReceived || 0,
+          changeDue: transactionData.amounts?.changeDue || 0,
         },
 
         // BNPC caps & compliance
         bnpcCaps: {
           discountCap: {
             weeklyCap: 125,
-            usedBefore: transactionData.caps.bookletUsedBefore || 0,
-            remainingAtCheckout: transactionData.caps.remainingDiscountCap || 125,
-            usedAfter: transactionData.caps.bookletUsedAfter || transactionData.caps.bookletUsedBefore || 0,
+            usedBefore: transactionData.caps?.bookletUsedBefore || 0,
+            remainingAtCheckout: transactionData.caps?.remainingDiscountCap || 125,
+            usedAfter: transactionData.caps?.bookletUsedAfter || 
+                      (transactionData.caps?.bookletUsedBefore || 0) + 
+                      (transactionData.amounts?.bnpcDiscount || 0),
           },
           purchaseCap: {
             weeklyCap: 2500,
-            usedBefore: 0,
-            remainingAtCheckout: transactionData.caps.remainingPurchaseCap || 2500,
-            usedAfter: transactionData.caps.purchaseUsedAfter || transactionData.amounts.bnpcSubtotal || 0,
+            usedBefore: transactionData.caps?.purchaseUsedBefore || 0,
+            remainingAtCheckout: transactionData.caps?.remainingPurchaseCap || 2500,
+            usedAfter: transactionData.caps?.purchaseUsedAfter || 
+                      (transactionData.caps?.purchaseUsedBefore || 0) + 
+                      (transactionData.amounts?.bnpcEligibleSubtotal || 0),
           },
-          weeklyCapRemainingAtCheckout: transactionData.caps.remainingDiscountCap || 125,
+          weekStart: transactionData.caps?.weekStart,
+          weekEnd: transactionData.caps?.weekEnd,
+          weeklyCapRemainingAtCheckout: transactionData.caps?.remainingDiscountCap || 125,
         },
+
+        // Server calculations snapshot
+        serverCalculations: transactionData.serverCalculations || null,
+
+        // BNPC products
+        bnpcProducts: (transactionData.bnpcProducts || []).map(p => ({
+          productId: p.productId,
+          name: p.name,
+          quantity: p.quantity,
+          price: p.price,
+          itemTotal: p.itemTotal,
+        })),
 
         // Item statistics
         itemStats: {
-          totalItems: orderDetails.items?.length || 0,
-          totalQuantity: orderDetails.items?.reduce(
-            (sum, item) => sum + (item.quantity || 0),
-            0,
-          ) || 0,
-          bnpcEligibleItems: orderDetails.items?.filter((i) => i.isBNPCEligible).length || 0,
-          bnpcEligibleQuantity: orderDetails.items
-            ?.filter((i) => i.isBNPCEligible)
-            .reduce((sum, item) => sum + (item.quantity || 0), 0) || 0,
+          totalItems: itemCount,
+          totalQuantity: totalQuantity,
+          bnpcEligibleItems: bnpcEligibleCount,
+          bnpcEligibleQuantity: bnpcEligibleQuantity,
         },
 
         // Order state
@@ -123,7 +192,7 @@ const OrderSummaryScreen = ({ route, navigation }) => {
         confirmedAt: new Date().toISOString(),
 
         // Booklet compliance
-        bookletUpdated: false,
+        bookletUpdated: true,
         bookletUpdateReminder: "Physical booklet must be updated with new total",
       };
 
@@ -195,13 +264,23 @@ const OrderSummaryScreen = ({ route, navigation }) => {
           <View style={styles.infoRow}>
             <View style={styles.infoItem}>
               <Text style={styles.infoLabel}>Customer</Text>
-              <Text style={styles.infoValue}>
-                {transactionData.customerType === "senior"
-                  ? "Senior Citizen"
-                  : transactionData.customerType === "pwd"
-                    ? "PWD"
-                    : "Regular"}
-              </Text>
+              <View style={styles.customerTypeRow}>
+                <Text style={styles.infoValue}>
+                  {getCustomerDisplay()}
+                </Text>
+                {transactionData.systemVerified && !transactionData.manualOverride && (
+                  <View style={styles.appVerifiedChip}>
+                    <Ionicons name="checkmark-circle" size={12} color="#10B981" />
+                    <Text style={styles.appVerifiedChipText}>App</Text>
+                  </View>
+                )}
+                {transactionData.manualOverride && (
+                  <View style={styles.manualChip}>
+                    <Ionicons name="person" size={12} color="#F59E0B" />
+                    <Text style={styles.manualChipText}>Manual</Text>
+                  </View>
+                )}
+              </View>
             </View>
             <View style={styles.infoDivider} />
             <View style={styles.infoItem}>
@@ -233,30 +312,27 @@ const OrderSummaryScreen = ({ route, navigation }) => {
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>BNPC Eligible</Text>
-              <Text style={styles.statValue}>
-                {orderDetails.items?.filter((i) => i.isBNPCEligible).length ||
-                  0}
-              </Text>
+              <Text style={styles.statValue}>{bnpcEligibleCount}</Text>
             </View>
           </View>
 
           {/* Items List */}
           <View style={styles.itemsList}>
-            {orderDetails.items?.map((item, index) => (
+            {(orderDetails?.items || transactionData?.items || []).map((item, index) => (
               <View key={index} style={styles.itemRow}>
                 <View style={styles.itemInfo}>
                   <Text style={styles.itemName} numberOfLines={1}>
                     {item.name || item.product?.name || "Product"}
                   </Text>
                   <Text style={styles.itemDetails}>
-                    {item.quantity} × ₱{item.unitPrice?.toFixed(2)}
+                    {item.quantity} × ₱{(item.unitPrice || item.price || 0).toFixed(2)}
                     {item.isBNPCEligible && (
                       <Text style={styles.bnpcBadge}> • BNPC</Text>
                     )}
                   </Text>
                 </View>
                 <Text style={styles.itemTotal}>
-                  ₱{(item.quantity * item.unitPrice).toFixed(2)}
+                  ₱{(item.itemTotal || (item.quantity * (item.unitPrice || item.price || 0))).toFixed(2)}
                 </Text>
               </View>
             ))}
@@ -278,17 +354,58 @@ const OrderSummaryScreen = ({ route, navigation }) => {
               </Text>
             </View>
 
+            {/* BNPC Eligible Subtotal (if different from regular) */}
+            {transactionData.amounts.bnpcEligibleSubtotal > 0 && 
+             transactionData.amounts.bnpcEligibleSubtotal !== transactionData.amounts.subtotal && (
+              <View style={styles.amountRow}>
+                <Text style={styles.amountLabel}>BNPC Eligible</Text>
+                <Text style={styles.amountValue}>
+                  ₱{transactionData.amounts.bnpcEligibleSubtotal.toFixed(2)}
+                </Text>
+              </View>
+            )}
+
             {/* BNPC Discount */}
-            {transactionData.amounts.discount > 0 && (
+            {transactionData.amounts.bnpcDiscount > 0 && (
               <View style={styles.amountRow}>
                 <View style={styles.discountRow}>
                   <Ionicons name="pricetag" size={14} color="#059669" />
                   <Text style={styles.amountLabel}>
-                    BNPC Discount ({transactionData.customerType?.toUpperCase() || 'REGULAR'})
+                    BNPC Discount (5%)
                   </Text>
                 </View>
                 <Text style={[styles.amountValue, styles.discountValue]}>
-                  -₱{transactionData.amounts.discount.toFixed(2)}
+                  -₱{transactionData.amounts.bnpcDiscount.toFixed(2)}
+                </Text>
+              </View>
+            )}
+
+            {/* Promo Discount */}
+            {transactionData.amounts.promoDiscount > 0 && (
+              <View style={styles.amountRow}>
+                <View style={styles.discountRow}>
+                  <Ionicons name="pricetag" size={14} color="#FF9800" />
+                  <Text style={styles.amountLabel}>
+                    Promo {transactionData.promo?.code || ''}
+                  </Text>
+                </View>
+                <Text style={[styles.amountValue, styles.promoValue]}>
+                  -₱{transactionData.amounts.promoDiscount.toFixed(2)}
+                </Text>
+              </View>
+            )}
+
+            {/* Loyalty Discount */}
+            {transactionData.amounts.loyaltyDiscount > 0 && (
+              <View style={styles.amountRow}>
+                <View style={styles.discountRow}>
+                  <Ionicons name="star" size={14} color="#FFD700" />
+                  <Text style={styles.amountLabel}>
+                    Loyalty Points ({transactionData.loyalty?.pointsUsed || 0} pts)
+                  </Text>
+                </View>
+                <Text style={[styles.amountValue, styles.loyaltyValue]}>
+                  -₱{transactionData.amounts.loyaltyDiscount.toFixed(2)}
                 </Text>
               </View>
             )}
@@ -303,7 +420,27 @@ const OrderSummaryScreen = ({ route, navigation }) => {
               </View>
             )}
 
+            {/* Server Calculated Reference (if different) */}
+            {transactionData.amounts.serverBnpcDiscount > 0 && 
+             transactionData.amounts.serverBnpcDiscount !== transactionData.amounts.bnpcDiscount && (
+              <View style={styles.referenceRow}>
+                <Text style={styles.referenceText}>
+                  System calculated: ₱{transactionData.amounts.serverBnpcDiscount.toFixed(2)}
+                </Text>
+              </View>
+            )}
+
             <View style={styles.divider} />
+
+            {/* Total Discount */}
+            {transactionData.amounts.totalDiscount > 0 && (
+              <View style={styles.totalDiscountRow}>
+                <Text style={styles.totalDiscountLabel}>Total Discount</Text>
+                <Text style={styles.totalDiscountValue}>
+                  -₱{transactionData.amounts.totalDiscount.toFixed(2)}
+                </Text>
+              </View>
+            )}
 
             {/* Final Total */}
             <View style={styles.totalRow}>
@@ -332,7 +469,7 @@ const OrderSummaryScreen = ({ route, navigation }) => {
         </View>
 
         {/* BNPC Caps Summary */}
-        {transactionData.amounts.discount > 0 && (
+        {transactionData.amounts.bnpcDiscount > 0 && (
           <View style={styles.card}>
             <View style={styles.sectionHeader}>
               <Ionicons name="document-text" size={18} color="#374151" />
@@ -349,7 +486,7 @@ const OrderSummaryScreen = ({ route, navigation }) => {
               <View style={styles.capRow}>
                 <Text style={styles.capLabel}>Discount Applied</Text>
                 <Text style={styles.capValue}>
-                  ₱{transactionData.amounts.discount.toFixed(2)}
+                  ₱{transactionData.amounts.bnpcDiscount.toFixed(2)}
                 </Text>
               </View>
               <View style={styles.capDividerFull} />
@@ -358,7 +495,8 @@ const OrderSummaryScreen = ({ route, navigation }) => {
                   New Booklet Total
                 </Text>
                 <Text style={[styles.capValue, styles.capValueBold]}>
-                  ₱{transactionData.caps.bookletUsedAfter.toFixed(2)}
+                  ₱{(transactionData.caps.bookletUsedAfter || 
+                     (transactionData.caps.bookletUsedBefore + transactionData.amounts.bnpcDiscount)).toFixed(2)}
                 </Text>
               </View>
               <View style={styles.capNote}>
@@ -367,6 +505,17 @@ const OrderSummaryScreen = ({ route, navigation }) => {
                   Update physical booklet with new total
                 </Text>
               </View>
+              
+              {/* Week Range */}
+              {(transactionData.caps.weekStart || transactionData.caps.weekEnd) && (
+                <View style={styles.weekRangeContainer}>
+                  <Ionicons name="calendar" size={12} color="#6B7280" />
+                  <Text style={styles.weekRangeText}>
+                    Week: {transactionData.caps.weekStart ? new Date(transactionData.caps.weekStart).toLocaleDateString() : ''} - 
+                    {transactionData.caps.weekEnd ? new Date(transactionData.caps.weekEnd).toLocaleDateString() : ''}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
         )}
@@ -379,15 +528,46 @@ const OrderSummaryScreen = ({ route, navigation }) => {
           </View>
 
           <View style={styles.pointsGrid}>
+            {transactionData.loyalty?.pointsUsed > 0 && (
+              <View style={styles.pointRow}>
+                <Text style={styles.pointLabel}>Points Used</Text>
+                <Text style={[styles.pointValue, styles.pointsUsed]}>
+                  -{transactionData.loyalty.pointsUsed}
+                </Text>
+              </View>
+            )}
             <View style={styles.pointRow}>
               <Text style={styles.pointLabel}>Points Earned</Text>
               <Text style={styles.pointValue}>
-                +{Math.floor(transactionData.amounts.finalTotal / 10)}
+                +{transactionData.loyalty?.pointsEarned || 
+                   Math.floor(transactionData.amounts.finalTotal / 10)}
               </Text>
             </View>
-            {/* Remove points used since not in your data */}
           </View>
         </View>
+
+        {/* BNPC Products List (if any) */}
+        {transactionData.bnpcProducts && transactionData.bnpcProducts.length > 0 && (
+          <View style={styles.card}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="cube" size={18} color="#374151" />
+              <Text style={styles.sectionTitle}>BNPC Products</Text>
+            </View>
+
+            <View style={styles.bnpcList}>
+              {transactionData.bnpcProducts.map((product, index) => (
+                <View key={index} style={styles.bnpcItem}>
+                  <Text style={styles.bnpcItemName} numberOfLines={1}>
+                    {product.name}
+                  </Text>
+                  <Text style={styles.bnpcItemDetails}>
+                    {product.quantity} × ₱{product.price?.toFixed(2)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Verification Source */}
         <View style={styles.card}>
@@ -399,7 +579,7 @@ const OrderSummaryScreen = ({ route, navigation }) => {
                   : "person"
               }
               size={16}
-              color="#6B7280"
+              color={getVerificationColor()}
             />
             <Text style={styles.verificationText}>
               Verified via{" "}
@@ -409,6 +589,13 @@ const OrderSummaryScreen = ({ route, navigation }) => {
                 ? "Manual"
                 : "System"}
             </Text>
+            {transactionData.systemVerified && (
+              <View style={[styles.verificationBadge, { backgroundColor: getVerificationColor() + '20' }]}>
+                <Text style={[styles.verificationBadgeText, { color: getVerificationColor() }]}>
+                  {transactionData.systemVerificationType?.toUpperCase() || 'VERIFIED'}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -503,6 +690,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: "#374151",
+  },
+  customerTypeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  appVerifiedChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E8F5E9",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    gap: 2,
+  },
+  appVerifiedChipText: {
+    fontSize: 10,
+    color: "#10B981",
+    fontWeight: "600",
+  },
+  manualChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF3C7",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    gap: 2,
+  },
+  manualChipText: {
+    fontSize: 10,
+    color: "#F59E0B",
+    fontWeight: "600",
   },
   infoDivider: {
     width: 1,
@@ -608,10 +828,43 @@ const styles = StyleSheet.create({
     color: "#059669",
     fontWeight: "600",
   },
+  promoValue: {
+    color: "#FF9800",
+    fontWeight: "600",
+  },
+  loyaltyValue: {
+    color: "#FFD700",
+    fontWeight: "600",
+  },
+  referenceRow: {
+    marginBottom: 8,
+    paddingLeft: 18,
+  },
+  referenceText: {
+    fontSize: 11,
+    color: "#6B7280",
+    fontStyle: "italic",
+  },
   divider: {
     height: 1,
     backgroundColor: "#E5E7EB",
     marginVertical: 12,
+  },
+  totalDiscountRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  totalDiscountLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#374151",
+  },
+  totalDiscountValue: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#059669",
   },
   totalRow: {
     flexDirection: "row",
@@ -702,6 +955,16 @@ const styles = StyleSheet.create({
     marginLeft: 6,
     fontStyle: "italic",
   },
+  weekRangeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    gap: 4,
+  },
+  weekRangeText: {
+    fontSize: 11,
+    color: "#6B7280",
+  },
   pointsGrid: {
     backgroundColor: "#F9FAFB",
     borderRadius: 6,
@@ -725,15 +988,46 @@ const styles = StyleSheet.create({
   pointsUsed: {
     color: "#DC2626",
   },
+  bnpcList: {
+    maxHeight: 150,
+  },
+  bnpcItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+  },
+  bnpcItemName: {
+    fontSize: 13,
+    color: "#374151",
+    flex: 1,
+    marginRight: 8,
+  },
+  bnpcItemDetails: {
+    fontSize: 12,
+    color: "#6B7280",
+  },
   verificationRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 8,
   },
   verificationText: {
     fontSize: 13,
     color: "#6B7280",
     marginLeft: 6,
+  },
+  verificationBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  verificationBadgeText: {
+    fontSize: 10,
+    fontWeight: "600",
   },
   actionBar: {
     flexDirection: "row",

@@ -19,15 +19,19 @@ function endOfWeek(date) {
 
 exports.logBNPC_discountUsage = async (orderData) => {
   if (
-    !["pwd", "senior"].includes(orderData.customerType) &&
-    !orderData?.user &&
-    !orderData?.appUser &&
-    !orderData?.groceryEligibleSubtotal > 0 && // only apply if > 0
-    !orderData?.bnpcDiscount?.autoCalculated > 0 &&
-    !orderData?.seniorPwdDiscountAmount > 0
-    // orderData?.bookletUpdated
+    !["pwd", "senior"].includes(orderData.customerType) ||
+    !orderData?.user ||
+    !orderData?.appUser ||
+    orderData?.groceryEligibleSubtotal <= 0 ||
+    (orderData?.bnpcDiscount?.autoCalculated <= 0 &&
+      orderData?.seniorPwdDiscountAmount <= 0)
   )
     return orderData;
+
+  // if (orderData.bookletUpdated !== true) {
+  //   throw new Error("Booklet must be updated before confirming order");
+  // }
+
   const MAX_DISCOUNT = 125;
   const MAX_PURCHASE = 2500;
 
@@ -53,7 +57,7 @@ exports.logBNPC_discountUsage = async (orderData) => {
 
   const remainingPurchaseAllowance = MAX_PURCHASE - usage.purchasedUsed;
   const eligiblePurchase = Math.min(
-    orderData.groceryEligibleSubtotal,
+    orderData.bnpcEligibleSubtotal,
     remainingPurchaseAllowance,
   );
 
@@ -80,22 +84,54 @@ exports.logBNPC_discountUsage = async (orderData) => {
 };
 
 exports.managePoints = async (orderData) => {
-  if (!orderData?.user && !orderData?.appUser) return;
-  const config = await getConfig();
-  let pointsEarned = config.earnRate * orderData?.finalAmountPaid;
-  const user = await User.findById(orderData.user);
-
-  user.loyaltyPoints += pointsEarned;
-  user.loyaltyPoints -= orderData.pointsUsed;
-
-  user.loyaltyHistory ??= [];
-
-  user.loyaltyHistory.push(
-    { event: "redeem", points: orderData.pointsUsed, date: Date.now() },
-    { event: "earn", points: pointsEarned, date: Date.now() },
-  );
+  if (!orderData?.user && !orderData?.appUser) return; 
+  // console.log(orderData)
   
-  await user.save();
+  const config = await getConfig();
+  
+  // FIX: Get pointsUsed from the correct location
+  const pointsUsed = orderData.loyaltyDiscount?.pointsUsed 
+  const finalAmount = orderData.finalAmountPaid || orderData.amounts?.finalTotal || 0;
+  const pointsEarned = (config?.earnRate || 0.1) * finalAmount;
+  
+  const user = await User.findById(orderData.user);
+  console.log('User current points:', user.loyaltyPoints);
+  console.log('Points used:', pointsUsed);
+  console.log('Points earned:', pointsEarned);
+  
+  // Validate points
+  if (pointsUsed > 0 && user.loyaltyPoints < pointsUsed) {
+    throw new Error(`Insufficient loyalty points. Available: ${user.loyaltyPoints}, Requested: ${pointsUsed}`);
+  }
 
+  // Ensure all values are numbers before calculation
+  const currentPoints = Number(user.loyaltyPoints) || 0;
+  const usedPoints = Number(pointsUsed) || 0;
+  const earnedPoints = Number(pointsEarned) || 0;
+  
+  user.loyaltyPoints = ((currentPoints - usedPoints) + earnedPoints).toFixed(2);
+
+  // Initialize and update history
+  user.loyaltyHistory = user.loyaltyHistory || [];
+  
+  if (usedPoints > 0) {
+    user.loyaltyHistory.push({ 
+      event: "redeem", 
+      points: usedPoints, 
+      date: new Date() 
+    });
+  }
+  
+  if (earnedPoints > 0) {
+    user.loyaltyHistory.push({ 
+      event: "earn", 
+      points: earnedPoints, 
+      date: new Date() 
+    });
+  }
+
+  await user.save();
+  console.log('New points total:', user.loyaltyPoints);
+  
   return user.loyaltyPoints;
 };
