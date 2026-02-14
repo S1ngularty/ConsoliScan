@@ -6,17 +6,18 @@ import {
   TouchableOpacity,
   StyleSheet,
   StatusBar,
-  FlatList,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { fetchOrders } from "../../api/order.api";
+import { fetchOrders, downloadReceipt } from "../../api/order.api";
 
 const OrderHistoryScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [downloadingId, setDownloadingId] = useState(null);
   const [orders, setOrders] = useState([]);
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -33,10 +34,11 @@ const OrderHistoryScreen = ({ navigation }) => {
     setLoading(true);
     try {
       const ordersData = await fetchOrders();
-      // console.log('Fetched orders:', ordersData);
+      console.log('Fetched orders:', ordersData);
       setOrders(ordersData || []);
     } catch (error) {
       console.error('Error fetching orders:', error);
+      Alert.alert('Error', 'Failed to load orders. Please try again.');
       setOrders([]);
     } finally {
       setLoading(false);
@@ -51,7 +53,31 @@ const OrderHistoryScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchOrderList();
-  }, []); // Remove selectedFilter dependency since filtering is done client-side
+  }, []);
+
+  // Handle receipt download
+ const handleDownloadReceipt = async (orderId, checkoutCode) => {
+  setDownloadingId(orderId);
+  try {
+    const result = await downloadReceipt(orderId, checkoutCode);
+    if (result.success) {
+      Alert.alert(
+        "Success",
+        "Receipt downloaded successfully",
+        [{ text: "OK" }]
+      );
+    }
+  } catch (error) {
+    console.error('Download error:', error);
+    Alert.alert(
+      "Error",
+      error.message || "Failed to download receipt. Please try again.",
+      [{ text: "OK" }]
+    );
+  } finally {
+    setDownloadingId(null);
+  }
+};
 
   // Filter orders based on selected filter
   const getFilteredOrders = () => {
@@ -105,13 +131,14 @@ const OrderHistoryScreen = ({ navigation }) => {
     }
   };
 
-  // Local sub-component for Order Cards
+  // Order Card Component
   const OrderCard = ({ order }) => {
     const totalDiscount = order.discountBreakdown?.total || 
       order.seniorPwdDiscountAmount || 0;
     
     const itemCount = order.items?.length || 0;
     const pointsEarned = order.loyaltyDiscount?.pointsEarned || order.pointsEarned || 0;
+    const isDownloading = downloadingId === order._id;
 
     return (
       <View style={styles.orderCard}>
@@ -170,7 +197,7 @@ const OrderHistoryScreen = ({ navigation }) => {
           {totalDiscount > 0 ? (
             <View style={styles.chip}>
               <MaterialCommunityIcons
-                name="tag" 
+                name="tag"
                 size={12}
                 color="#00A86B"
               />
@@ -209,11 +236,30 @@ const OrderHistoryScreen = ({ navigation }) => {
             />
           </TouchableOpacity>
         </View>
+
+        {/* Receipt Download Button */}
+        <TouchableOpacity
+          style={styles.downloadButton}
+          onPress={() => handleDownloadReceipt(order._id, order.checkoutCode)}
+          disabled={isDownloading}
+        >
+          {isDownloading ? (
+            <>
+              <ActivityIndicator size="small" color="#00A86B" />
+              <Text style={styles.downloadButtonText}>Downloading...</Text>
+            </>
+          ) : (
+            <>
+              <MaterialCommunityIcons name="file-pdf-box" size={18} color="#00A86B" />
+              <Text style={styles.downloadButtonText}>Download Receipt</Text>
+            </>
+          )}
+        </TouchableOpacity>
       </View>
     );
   };
 
-  // Local sub-component for Filter Chips
+  // Filter Chip Component
   const FilterChip = ({ label, isActive, onPress }) => (
     <TouchableOpacity
       onPress={onPress}
@@ -272,7 +318,7 @@ const OrderHistoryScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
 
-      {/* --- HEADER --- */}
+      {/* Header */}
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>Order History</Text>
@@ -287,7 +333,7 @@ const OrderHistoryScreen = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* --- STATS OVERVIEW - Uncomment if needed --- */}
+        {/* Stats Overview */}
         <View style={styles.statsGrid}>
           <View style={styles.statBox}>
             <Text style={styles.statValue}>{stats.totalSpent}</Text>
@@ -305,7 +351,7 @@ const OrderHistoryScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* --- FILTER CHIPS --- */}
+        {/* Filter Chips */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -322,7 +368,7 @@ const OrderHistoryScreen = ({ navigation }) => {
           ))}
         </ScrollView>
 
-        {/* --- ORDERS LIST --- */}
+        {/* Orders List */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recent Orders</Text>
           <Text style={styles.orderCount}>{filteredOrders.length} orders</Text>
@@ -334,7 +380,7 @@ const OrderHistoryScreen = ({ navigation }) => {
             ))
           : renderEmptyState()}
 
-        {/* --- ORDER TIPS --- */}
+        {/* Tips Card */}
         <View style={styles.tipsCard}>
           <MaterialCommunityIcons
             name="shield-check"
@@ -356,6 +402,8 @@ const OrderHistoryScreen = ({ navigation }) => {
           order={selectedOrder}
           visible={showDetails}
           onClose={() => setShowDetails(false)}
+          onDownload={handleDownloadReceipt}
+          downloadingId={downloadingId}
         />
       )}
     </SafeAreaView>
@@ -363,7 +411,7 @@ const OrderHistoryScreen = ({ navigation }) => {
 };
 
 // Order Details Modal Component
-const OrderDetailsModal = ({ order, visible, onClose }) => {
+const OrderDetailsModal = ({ order, visible, onClose, onDownload, downloadingId }) => {
   if (!visible) return null;
 
   const formatPrice = (amount) => {
@@ -387,6 +435,7 @@ const OrderDetailsModal = ({ order, visible, onClose }) => {
   const loyaltyDiscount = order.discountBreakdown?.loyalty || order.loyaltyDiscount?.amount || 0;
   const pointsUsed = order.loyaltyDiscount?.pointsUsed || 0;
   const pointsEarned = order.loyaltyDiscount?.pointsEarned || order.pointsEarned || 0;
+  const isDownloading = downloadingId === order._id;
 
   return (
     <View style={styles.modalOverlay}>
@@ -455,7 +504,7 @@ const OrderDetailsModal = ({ order, visible, onClose }) => {
                     <Text style={styles.modalItemName}>{item.name}</Text>
                     <View style={styles.modalItemDetails}>
                       <Text style={styles.modalItemQuantity}>
-                        Qty: {item.quantity}  
+                        Qty: {item.quantity}
                       </Text>
                       <Text style={styles.modalItemUnitPrice}>
                         ₱{(item.unitPrice || 0).toFixed(2)} each
@@ -634,9 +683,23 @@ const OrderDetailsModal = ({ order, visible, onClose }) => {
             <MaterialCommunityIcons name="close" size={18} color="#64748b" />
             <Text style={styles.closeModalText}>Close</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.shareButton}>
-            <MaterialCommunityIcons name="share" size={18} color="#fff" />
-            <Text style={styles.shareButtonText}>Share</Text>
+          
+          <TouchableOpacity
+            style={styles.downloadReceiptButton}
+            onPress={() => onDownload(order._id, order.checkoutCode)}
+            disabled={isDownloading}
+          >
+            {isDownloading ? (
+              <>
+                <ActivityIndicator size="small" color="#fff" />
+                <Text style={styles.downloadReceiptButtonText}>Downloading...</Text>
+              </>
+            ) : (
+              <>
+                <MaterialCommunityIcons name="file-pdf-box" size={18} color="#fff" />
+                <Text style={styles.downloadReceiptButtonText}>Download Receipt</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -680,8 +743,6 @@ const styles = StyleSheet.create({
     color: "#64748b",
     marginTop: 12,
   },
-
-  // Stats Grid
   statsGrid: {
     flexDirection: "row",
     paddingHorizontal: 24,
@@ -711,8 +772,6 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
-
-  // Filter Chips
   filterScroll: {
     marginBottom: 25,
   },
@@ -740,8 +799,6 @@ const styles = StyleSheet.create({
   activeFilterChipText: {
     color: "#fff",
   },
-
-  // Section Header
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -759,8 +816,6 @@ const styles = StyleSheet.create({
     color: "#64748b",
     fontWeight: "600",
   },
-
-  // Order Card
   orderCard: {
     backgroundColor: "#fff",
     marginHorizontal: 24,
@@ -810,8 +865,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     textAlign: "center",
   },
-
-  // Items Section
   itemsSection: {
     marginBottom: 16,
     paddingBottom: 16,
@@ -859,12 +912,11 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     marginTop: 4,
   },
-
-  // Order Footer
   orderFooter: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    marginBottom: 12,
   },
   chip: {
     flexDirection: "row",
@@ -905,8 +957,24 @@ const styles = StyleSheet.create({
     color: "#00A86B",
     marginRight: 2,
   },
-
-  // Empty State
+  downloadButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 12,
+    paddingVertical: 10,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  downloadButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#00A86B",
+    marginLeft: 4,
+  },
   emptyContainer: {
     alignItems: "center",
     paddingVertical: 60,
@@ -937,8 +1005,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#fff",
   },
-
-  // Tips Card
   tipsCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -960,8 +1026,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#64748b",
   },
-
-  // Modal Styles
   modalOverlay: {
     position: "absolute",
     top: 0,
@@ -1239,7 +1303,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#64748b",
   },
-  shareButton: {
+  downloadReceiptButton: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
@@ -1249,7 +1313,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 8,
   },
-  shareButtonText: {
+  downloadReceiptButtonText: {
     fontSize: 14,
     fontWeight: "700",
     color: "#fff",
