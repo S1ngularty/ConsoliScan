@@ -103,7 +103,7 @@ export default function HomeNavigator() {
       <Tab.Screen
         name="Transactions"
         component={OrderHistoryScreen}
-        options={{ title: "History" }}
+        options={{ title: "History"}}
       />
       <Tab.Screen
         name="Menu" // Changed from Profile

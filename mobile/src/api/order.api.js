@@ -47,7 +47,7 @@ export const fetchOrders = async () => {
 // FIXED VERSION - Using arrayBuffer() instead of bytes()
 export const downloadReceipt = async (orderId, checkoutCode) => {
   try {
-    console.log(`Downloading receipt for order: ${orderId}, code: ${checkoutCode}`);
+    // console.log(`Downloading receipt for order: ${orderId}, code: ${checkoutCode}`);
     
     const token = await getToken();
     if (!token) throw new Error("No authentication token found");
@@ -56,7 +56,7 @@ export const downloadReceipt = async (orderId, checkoutCode) => {
     const receiptsDir = new Directory(Paths.document, "receipts");
     if (!receiptsDir.exists) {
       await receiptsDir.create();
-      console.log('Created receipts directory');
+      // console.log('Created receipts directory');
     }
 
     // Create a unique filename with timestamp to avoid conflicts
@@ -66,7 +66,7 @@ export const downloadReceipt = async (orderId, checkoutCode) => {
 
     // Build the URL
     const url = `${API_URL}api/v1/receipts/generate/${orderId}`;
-    console.log('Downloading from:', url);
+    // console.log('Downloading from:', url);
 
     // Download using fetch
     const response = await fetch(url, {
@@ -86,7 +86,7 @@ export const downloadReceipt = async (orderId, checkoutCode) => {
 
     // Get the PDF as arrayBuffer (works in React Native)
     const arrayBuffer = await response.arrayBuffer();
-    console.log('Received array buffer size:', arrayBuffer.byteLength);
+    // console.log('Received array buffer size:', arrayBuffer.byteLength);
     
     // Convert ArrayBuffer to Uint8Array for File.write
     const uint8Array = new Uint8Array(arrayBuffer);
@@ -94,9 +94,9 @@ export const downloadReceipt = async (orderId, checkoutCode) => {
     // Write to file
     await file.write(uint8Array);
 
-    console.log('File saved at:', file.uri);
-    console.log('File exists:', file.exists);
-    console.log('File size:', file.size);
+    // console.log('File saved at:', file.uri);
+    // console.log('File exists:', file.exists);
+    // console.log('File size:', file.size);
 
     // Share/Save the file
     if (await Sharing.isAvailableAsync()) {
@@ -106,7 +106,7 @@ export const downloadReceipt = async (orderId, checkoutCode) => {
         UTI: "com.adobe.pdf",
       });
     } else {
-      console.log("Sharing not available, file saved at:", file.uri);
+      // console.log("Sharing not available, file saved at:", file.uri);
       Alert.alert("Success", `Receipt saved to device`);
     }
 
@@ -120,7 +120,7 @@ export const downloadReceipt = async (orderId, checkoutCode) => {
 // ALTERNATIVE VERSION - Using blob and FileReader (fallback)
 export const downloadReceiptWithBlob = async (orderId, checkoutCode) => {
   try {
-    console.log(`Downloading receipt for order: ${orderId}, code: ${checkoutCode}`);
+    // console.log(`Downloading receipt for order: ${orderId}, code: ${checkoutCode}`);
     
     const token = await getToken();
     if (!token) throw new Error("No authentication token found");
@@ -178,7 +178,7 @@ export const downloadReceiptWithBlob = async (orderId, checkoutCode) => {
     // Write base64 to file
     await file.write(base64, { encoding: 'base64' });
 
-    console.log('File saved at:', file.uri);
+    // console.log('File saved at:', file.uri);
 
     // Share/Save the file
     if (await Sharing.isAvailableAsync()) {
