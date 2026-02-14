@@ -1,5 +1,6 @@
 const User = require("../models/userModel");
 const LoyaltyConfig = require("../models/loyaltyConfigModel");
+const Promo = require("../models/promoModel");
 const { getConfig } = require("../services/loyaltyConfigService");
 
 function startOfWeek(date) {
@@ -37,7 +38,7 @@ exports.logBNPC_discountUsage = async (orderData) => {
 
   const user = await User.findById(orderData.user);
   const now = new Date();
-  console.log("user:", user.eligibiltyDiscountUsage);
+  // console.log("user:", user.eligibiltyDiscountUsage);
 
   let usage = user?.eligibiltyDiscountUsage?.discountUsed
     ? user.eligibiltyDiscountUsage
@@ -84,54 +85,93 @@ exports.logBNPC_discountUsage = async (orderData) => {
 };
 
 exports.managePoints = async (orderData) => {
-  if (!orderData?.user && !orderData?.appUser) return; 
+  if (!orderData?.user && !orderData?.appUser) return;
   // console.log(orderData)
-  
+
   const config = await getConfig();
-  
+
   // FIX: Get pointsUsed from the correct location
-  const pointsUsed = orderData.loyaltyDiscount?.pointsUsed 
-  const finalAmount = orderData.finalAmountPaid || orderData.amounts?.finalTotal || 0;
+  const pointsUsed = orderData.loyaltyDiscount?.pointsUsed;
+  const finalAmount =
+    orderData.finalAmountPaid || orderData.amounts?.finalTotal || 0;
   const pointsEarned = (config?.earnRate || 0.1) * finalAmount;
-  
+
   const user = await User.findById(orderData.user);
-  console.log('User current points:', user.loyaltyPoints);
-  console.log('Points used:', pointsUsed);
-  console.log('Points earned:', pointsEarned);
-  
+  console.log("User current points:", user.loyaltyPoints);
+  console.log("Points used:", pointsUsed);
+  console.log("Points earned:", pointsEarned);
+
   // Validate points
   if (pointsUsed > 0 && user.loyaltyPoints < pointsUsed) {
-    throw new Error(`Insufficient loyalty points. Available: ${user.loyaltyPoints}, Requested: ${pointsUsed}`);
+    throw new Error(
+      `Insufficient loyalty points. Available: ${user.loyaltyPoints}, Requested: ${pointsUsed}`,
+    );
   }
 
   // Ensure all values are numbers before calculation
   const currentPoints = Number(user.loyaltyPoints) || 0;
   const usedPoints = Number(pointsUsed) || 0;
   const earnedPoints = Number(pointsEarned) || 0;
-  
-  user.loyaltyPoints = ((currentPoints - usedPoints) + earnedPoints).toFixed(2);
+
+  user.loyaltyPoints = currentPoints - usedPoints;
+  user.loyaltyPoints += earnedPoints;
 
   // Initialize and update history
   user.loyaltyHistory = user.loyaltyHistory || [];
-  
+
   if (usedPoints > 0) {
-    user.loyaltyHistory.push({ 
-      event: "redeem", 
-      points: usedPoints, 
-      date: new Date() 
+    user.loyaltyHistory.push({
+      event: "redeem",
+      points: usedPoints,
+      date: new Date(),
     });
   }
-  
+
   if (earnedPoints > 0) {
-    user.loyaltyHistory.push({ 
-      event: "earn", 
-      points: earnedPoints, 
-      date: new Date() 
+    user.loyaltyHistory.push({
+      event: "earn",
+      points: earnedPoints,
+      date: new Date(),
     });
   }
 
   await user.save();
-  console.log('New points total:', user.loyaltyPoints);
-  
+  console.log("New points total:", user.loyaltyPoints.toFixed(2));
+
   return user.loyaltyPoints;
+};
+
+exports.promoUpdateUsage = async (orderData) => {
+  // console.log(
+  //   "code:",
+  //   orderData?.promoDiscount?.code,
+  //   "validated:",
+  //   orderData?.promoDiscount?.serverValidated,
+  // );
+
+  if (
+    !orderData?.promoDiscount?.code ||
+    !orderData?.promoDiscount?.serverValidated
+  )
+    return;
+
+  const promoCode = orderData.promoDiscount.code;
+  const now = new Date();
+
+  const promo = await Promo.findOneAndUpdate(
+    {
+      code: promoCode,
+      startDate: { $lte: now },
+      endDate: { $gte: now },
+      $expr: { $lt: ["$usedCount", "$usageLimit"] },
+    },
+    { $inc: { usedCount: 1 } },
+    { new: true },
+  );
+  // console.log(promo);
+  if (!promo) {
+    throw new Error("Promo expired or usage limit reached");
+  }
+
+  return;
 };
