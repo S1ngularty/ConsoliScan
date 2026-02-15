@@ -1,4 +1,3 @@
-// screens/cashier/QRScannerScreen.jsx
 import React, { useState, useRef, useEffect } from "react";
 import {
   View,
@@ -9,7 +8,7 @@ import {
   Alert,
   Modal,
   Animated,
-  Dimensions,
+  Easing,
   StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -18,114 +17,125 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { getCheckoutDetails } from "../../api/checkout.api";
 
-const { width, height } = Dimensions.get("window");
+// ─── Frame size constant — everything is derived from this ───────────────────
+const FRAME_SIZE = 260;
+const CORNER_LEN = 28;
+const CORNER_W = 3;
 
 const QRScannerScreen = () => {
   const navigation = useNavigation();
   const [facing, setFacing] = useState("back");
   const [permission, requestPermission] = useCameraPermissions();
   const [isLoading, setIsLoading] = useState(false);
-  const [scannedData, setScannedData] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [error, setError] = useState("");
   const [lastScanTime, setLastScanTime] = useState(0);
 
-  const scanAnimation = useRef(new Animated.Value(0)).current;
-  const cameraRef = useRef(null);
+  // Scan line — native driver only (translateY)
+  const scanAnim = useRef(new Animated.Value(0)).current;
+  // Success modal scale — native driver
+  const modalScale = useRef(new Animated.Value(0.85)).current;
+  const modalOpacity = useRef(new Animated.Value(0)).current;
 
-  // Animation for scan line
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(scanAnimation, {
+        Animated.timing(scanAnim, {
           toValue: 1,
-          duration: 2000,
+          duration: 1800,
+          easing: Easing.inOut(Easing.quad),
           useNativeDriver: true,
         }),
-        Animated.timing(scanAnimation, {
+        Animated.timing(scanAnim, {
           toValue: 0,
-          duration: 2000,
+          duration: 1800,
+          easing: Easing.inOut(Easing.quad),
           useNativeDriver: true,
         }),
       ]),
     ).start();
   }, []);
 
-  if (!permission) {
-    return <View />;
-  }
+  // Animate success modal in
+  useEffect(() => {
+    if (showSuccessModal) {
+      Animated.parallel([
+        Animated.spring(modalScale, {
+          toValue: 1,
+          useNativeDriver: true,
+          bounciness: 5,
+          speed: 14,
+        }),
+        Animated.timing(modalOpacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      modalScale.setValue(0.85);
+      modalOpacity.setValue(0);
+    }
+  }, [showSuccessModal]);
+
+  // ── Permission screens ──────────────────────────────────────────────────────
+  if (!permission) return <View />;
 
   if (!permission.granted) {
     return (
       <SafeAreaView style={styles.permissionContainer}>
-        <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
-        <MaterialCommunityIcons name="camera-off" size={80} color="#64748B" />
+        <StatusBar backgroundColor="#fff" barStyle="dark-content" />
+        <View style={styles.permissionIconWrap}>
+          <MaterialCommunityIcons name="camera-off" size={40} color="#94a3b8" />
+        </View>
         <Text style={styles.permissionTitle}>Camera Access Required</Text>
         <Text style={styles.permissionText}>
           We need camera access to scan customer QR codes
         </Text>
         <TouchableOpacity
-          style={styles.permissionButton}
+          style={styles.permissionBtn}
           onPress={requestPermission}
         >
-          <Text style={styles.permissionButtonText}>Grant Permission</Text>
+          <Text style={styles.permissionBtnText}>Grant Permission</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
   }
 
+  // ── Scan handler ────────────────────────────────────────────────────────────
   const handleBarCodeScanned = async ({ data }) => {
-    // Add 2-second delay between scans to prevent spamming
-    const currentTime = Date.now();
-    if (currentTime - lastScanTime < 2000) {
-      return; // Ignore scan if less than 2 seconds since last scan
-    }
-    setLastScanTime(currentTime);
+    const now = Date.now();
+    if (now - lastScanTime < 2000) return;
+    setLastScanTime(now);
+
     const checkoutCode = data.trim();
 
     try {
       setIsLoading(true);
-      setError("");
-      
-      if (!checkoutCode) {
-        throw new Error("Invalid QR code");
-      }
 
-      if (!/^CHK-[A-Z0-9]{8}$/i.test(checkoutCode)) {
+      if (!checkoutCode) throw new Error("Invalid QR code");
+      if (!/^CHK-[A-Z0-9]{8}$/i.test(checkoutCode))
         throw new Error("Invalid checkout code format. Expected: CHK-XXXXXXXX");
-      }
 
-      const OrderDetails = await getCheckoutDetails(checkoutCode);
-      console.log(OrderDetails)
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const response = await getCheckoutDetails(checkoutCode);
+      await new Promise((r) => setTimeout(r, 1000));
 
-      const response = OrderDetails;
-
-      if (response.status === "PAID") {
+      if (response.status === "PAID")
         throw new Error("This order has already been paid");
-      }
-
-      if (response.status === "CANCELLED") {
+      if (response.status === "CANCELLED")
         throw new Error("This order has been cancelled");
-      }
-
-      if (response.status === "EXPIRED") {
+      if (response.status === "EXPIRED")
         throw new Error("This checkout code has expired");
-      }
 
-      setScannedData(response);
       setShowSuccessModal(true);
 
-      // Navigate to order details after delay
       setTimeout(() => {
         setShowSuccessModal(false);
         navigation.navigate("OrderDetails", {
           checkoutData: response,
           checkoutCode,
         });
-      }, 1500);
+      }, 1600);
     } catch (err) {
-      setError(err.message || "Failed to validate checkout code");
       Alert.alert("Scan Failed", err.message || "Please try scanning again", [
         { text: "OK", onPress: () => setIsLoading(false) },
       ]);
@@ -134,477 +144,434 @@ const QRScannerScreen = () => {
     }
   };
 
-  const toggleCameraFacing = () => {
-    setFacing((current) => (current === "back" ? "front" : "back"));
-  };
+  // ── Camera overlay — uses flex layout, no hardcoded pixel math ─────────────
+  const renderOverlay = () => (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {/* Top dim */}
+      <View style={styles.dimTop} />
 
-  const renderCameraOverlay = () => {
-    return (
-      <View style={StyleSheet.absoluteFill}>
-        {/* Dimmed Top and Bottom Areas */}
-        <View style={[styles.dimmedArea, styles.dimmedTop]} />
-        <View style={[styles.dimmedArea, styles.dimmedBottom]} />
-        <View style={[styles.dimmedArea, styles.dimmedLeft]} />
-        <View style={[styles.dimmedArea, styles.dimmedRight]} />
+      {/* Middle row: left dim | clear frame | right dim */}
+      <View style={styles.dimMiddle}>
+        <View style={styles.dimSide} />
 
-        {/* Scan Frame */}
-        <View style={styles.scanFrameContainer}>
-          <View style={styles.scanFrame}>
-            <View style={styles.cornerTL} />
-            <View style={styles.cornerTR} />
-            <View style={styles.cornerBL} />
-            <View style={styles.cornerBR} />
+        {/* Scan frame */}
+        <View style={styles.scanFrame}>
+          {/* Corners */}
+          <View style={[styles.corner, styles.cornerTL]} />
+          <View style={[styles.corner, styles.cornerTR]} />
+          <View style={[styles.corner, styles.cornerBL]} />
+          <View style={[styles.corner, styles.cornerBR]} />
 
-            {/* Animated Scan Line */}
-            <Animated.View
-              style={[
-                styles.scanLine,
-                {
-                  transform: [
-                    {
-                      translateY: scanAnimation.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0, 250],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            />
-          </View>
+          {/* Animated scan line — translateY only, native driver ✓ */}
+          <Animated.View
+            style={[
+              styles.scanLine,
+              {
+                transform: [
+                  {
+                    translateY: scanAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, FRAME_SIZE - 2],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          />
         </View>
 
-        {/* Instructions */}
-        <View style={styles.instructionsContainer}>
-          <View style={styles.instructionsIconContainer}>
-            <MaterialCommunityIcons name="qrcode-scan" size={24} color="#FFFFFF" />
+        <View style={styles.dimSide} />
+      </View>
+
+      {/* Bottom dim — contains instructions */}
+      <View style={styles.dimBottom}>
+        <View style={styles.instructionsWrap}>
+          <View style={styles.instructionsIconWrap}>
+            <MaterialCommunityIcons name="qrcode-scan" size={20} color="#fff" />
           </View>
           <Text style={styles.instructionsText}>
-            Align customer's QR code within the frame
+            Align QR code within the frame
           </Text>
           <Text style={styles.instructionsSubtext}>
-            Ensure the QR code is well-lit and fully visible
+            Ensure the code is well-lit and fully visible
           </Text>
-        </View>
-
-        {/* Example Code */}
-        <View style={styles.exampleContainer}>
-          <Text style={styles.exampleText}>Example: CHK-206B0097</Text>
+          <View style={styles.examplePill}>
+            <Text style={styles.exampleText}>e.g. CHK-206B0097</Text>
+          </View>
         </View>
       </View>
-    );
-  };
+    </View>
+  );
 
+  // ── Main render ─────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor="#000000" barStyle="light-content" />
-      
+    <View style={styles.container}>
+      <StatusBar backgroundColor="#000" barStyle="light-content" />
+
       {/* Header */}
-      <View style={styles.header}>
+      <SafeAreaView edges={["top"]} style={styles.header}>
         <TouchableOpacity
-          style={styles.backButton}
+          style={styles.headerBtn}
           onPress={() => navigation.goBack()}
         >
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
+          <MaterialCommunityIcons name="chevron-left" size={24} color="#fff" />
         </TouchableOpacity>
-        
-        <View style={styles.headerCenter}>
-          <Text style={styles.title}>Scan Customer QR</Text>
-          <Text style={styles.subtitle}>Position QR code within frame</Text>
-        </View>
-        
-        <TouchableOpacity
-          style={styles.cameraToggle}
-          onPress={toggleCameraFacing}
-        >
-          <MaterialCommunityIcons name="camera-flip" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
 
-      {/* Camera View */}
-      <View style={styles.cameraContainer}>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Scan QR Code</Text>
+          <Text style={styles.headerSubtitle}>Position within the frame</Text>
+        </View>
+
+        <TouchableOpacity
+          style={styles.headerBtn}
+          onPress={() => setFacing((f) => (f === "back" ? "front" : "back"))}
+        >
+          <MaterialCommunityIcons
+            name="camera-flip-outline"
+            size={22}
+            color="#fff"
+          />
+        </TouchableOpacity>
+      </SafeAreaView>
+
+      {/* Camera */}
+      <View style={styles.cameraWrap}>
         <CameraView
-          ref={cameraRef}
-          style={styles.camera}
+          style={StyleSheet.absoluteFill}
           facing={facing}
-          barcodeScannerSettings={{
-            barcodeTypes: ["qr"],
-          }}
+          barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
           onBarcodeScanned={isLoading ? undefined : handleBarCodeScanned}
         />
-
-        {/* Overlay rendered separately */}
-        {renderCameraOverlay()}
+        {renderOverlay()}
       </View>
 
-      {/* Loading Overlay */}
+      {/* Footer */}
+      <SafeAreaView edges={["bottom"]} style={styles.footer}>
+        <TouchableOpacity
+          style={styles.manualBtn}
+          onPress={() => navigation.navigate("ManualEntry")}
+          activeOpacity={0.75}
+        >
+          <MaterialCommunityIcons
+            name="keyboard-outline"
+            size={20}
+            color="#fff"
+          />
+          <Text style={styles.manualBtnText}>Enter Code Manually</Text>
+        </TouchableOpacity>
+        <Text style={styles.footerNote}>
+          Scan the QR code shown on the customer's device after checkout
+        </Text>
+      </SafeAreaView>
+
+      {/* Loading overlay */}
       {isLoading && (
         <View style={styles.loadingOverlay}>
-          <View style={styles.loadingContent}>
-            <ActivityIndicator size="large" color="#FFFFFF" />
-            <Text style={styles.loadingText}>Validating order...</Text>
-          </View>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={styles.loadingText}>Validating order…</Text>
         </View>
       )}
 
-      {/* Footer */}
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.manualEntryButton}
-          onPress={() => navigation.navigate("ManualEntry")}
-          activeOpacity={0.8}
-        >
-          <View style={styles.manualEntryIcon}>
-            <MaterialCommunityIcons name="keyboard-outline" size={22} color="#64748B" />
-          </View>
-          <Text style={styles.manualEntryText}>Enter Code Manually</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.footerNote}>
-          Scan the QR code shown on customer's device after checkout
-        </Text>
-      </View>
-
       {/* Success Modal */}
-      <Modal visible={showSuccessModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.successModal}>
-            <View style={styles.successIcon}>
+      <Modal visible={showSuccessModal} transparent animationType="none">
+        <View style={styles.modalBackdrop}>
+          <Animated.View
+            style={[
+              styles.successCard,
+              { opacity: modalOpacity, transform: [{ scale: modalScale }] },
+            ]}
+          >
+            {/* Icon */}
+            <View style={styles.successIconWrap}>
               <MaterialCommunityIcons
                 name="check-circle"
-                size={60}
+                size={52}
                 color="#00A86B"
               />
             </View>
+
             <Text style={styles.successTitle}>Order Retrieved!</Text>
-            <Text style={styles.successText}>
-              Redirecting to order details...
+            <Text style={styles.successSubtitle}>
+              Redirecting to order details…
             </Text>
-            <View style={styles.successSpinner}>
+
+            <View style={styles.successSpinnerRow}>
               <ActivityIndicator color="#00A86B" size="small" />
+              <Text style={styles.successSpinnerText}>Loading…</Text>
             </View>
-          </View>
+          </Animated.View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 
+// ─── Styles ──────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#000000",
-  },
+  container: { flex: 1, backgroundColor: "#000" },
+
+  // ── Permission screen — matches card / #F8F9FA system ──────────────────────
   permissionContainer: {
     flex: 1,
+    backgroundColor: "#F8F9FA",
     justifyContent: "center",
     alignItems: "center",
-    padding: 40,
-    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 40,
+  },
+  permissionIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 24,
   },
   permissionTitle: {
     fontSize: 20,
-    fontWeight: "700",
-    color: "#1E293B",
-    marginTop: 24,
-    marginBottom: 12,
+    fontWeight: "800",
+    color: "#0f172a",
+    marginBottom: 10,
     textAlign: "center",
   },
   permissionText: {
-    fontSize: 15,
-    color: "#64748B",
+    fontSize: 14,
+    color: "#64748b",
     textAlign: "center",
-    marginBottom: 32,
     lineHeight: 22,
+    marginBottom: 32,
   },
-  permissionButton: {
+  permissionBtn: {
     backgroundColor: "#00A86B",
     paddingHorizontal: 32,
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderRadius: 12,
-    minWidth: 200,
-    alignItems: "center",
   },
-  permissionButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
-  },
+  permissionBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+
+  // ── Header ─────────────────────────────────────────────────────────────────
   header: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#000000",
+    backgroundColor: "#000",
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.1)",
+    borderBottomColor: "rgba(255,255,255,0.08)",
   },
-  backButton: {
-    padding: 8,
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: "center",
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#FFFFFF",
-  },
-  subtitle: {
-    fontSize: 12,
-    color: "#94A3B8",
-    marginTop: 2,
-  },
-  cameraToggle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 10,
-  },
-  cameraContainer: {
-    flex: 1,
-    position: "relative",
-  },
-  camera: {
-    flex: 1,
-  },
-  dimmedArea: {
-    position: "absolute",
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-  },
-  dimmedTop: {
-    top: 0,
-    left: 0,
-    right: 0,
-    height: (height - 320) / 2 - 60, // Adjust based on header
-  },
-  dimmedBottom: {
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 140, // Footer area
-  },
-  dimmedLeft: {
-    top: (height - 320) / 2 - 60,
-    left: 0,
-    width: (width - 280) / 2,
-    height: 320,
-  },
-  dimmedRight: {
-    top: (height - 320) / 2 - 60,
-    right: 0,
-    width: (width - 280) / 2,
-    height: 320,
-  },
-  scanFrameContainer: {
-    position: "absolute",
-    top: (height - 320) / 2 - 60,
-    left: (width - 280) / 2,
-    width: 280,
-    height: 320,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  scanFrame: {
-    width: 280,
-    height: 280,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.2)",
+  headerBtn: {
+    width: 36,
+    height: 36,
     borderRadius: 12,
-    position: "relative",
-    backgroundColor: "rgba(0, 168, 107, 0.05)",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerCenter: { flex: 1, alignItems: "center" },
+  headerTitle: { fontSize: 16, fontWeight: "700", color: "#fff" },
+  headerSubtitle: { fontSize: 12, color: "#94a3b8", marginTop: 2 },
+
+  // ── Camera area ────────────────────────────────────────────────────────────
+  cameraWrap: { flex: 1 },
+
+  // ── Overlay — flex-based, no hardcoded pixel math ──────────────────────────
+  dimTop: { backgroundColor: "rgba(0,0,0,0.65)", height: "20%" },
+  dimMiddle: { flexDirection: "row", height: FRAME_SIZE },
+  dimSide: { flex: 1, backgroundColor: "rgba(0,0,0,0.65)" },
+  dimBottom: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    paddingTop: 28,
+  },
+
+  // ── Scan frame ─────────────────────────────────────────────────────────────
+  scanFrame: {
+    width: FRAME_SIZE,
+    height: FRAME_SIZE,
+    borderRadius: 12,
+    backgroundColor: "rgba(0,168,107,0.04)",
+    overflow: "hidden",
+  },
+
+  // Corners — positioned on the frame itself
+  corner: {
+    position: "absolute",
+    width: CORNER_LEN,
+    height: CORNER_LEN,
+    borderColor: "#00A86B",
   },
   cornerTL: {
-    position: "absolute",
-    top: -2,
-    left: -2,
-    width: 30,
-    height: 30,
-    borderTopWidth: 3,
-    borderLeftWidth: 3,
-    borderColor: "#00A86B",
-    borderTopLeftRadius: 8,
+    top: -1,
+    left: -1,
+    borderTopWidth: CORNER_W,
+    borderLeftWidth: CORNER_W,
+    borderTopLeftRadius: 10,
   },
   cornerTR: {
-    position: "absolute",
-    top: -2,
-    right: -2,
-    width: 30,
-    height: 30,
-    borderTopWidth: 3,
-    borderRightWidth: 3,
-    borderColor: "#00A86B",
-    borderTopRightRadius: 8,
+    top: -1,
+    right: -1,
+    borderTopWidth: CORNER_W,
+    borderRightWidth: CORNER_W,
+    borderTopRightRadius: 10,
   },
   cornerBL: {
-    position: "absolute",
-    bottom: -2,
-    left: -2,
-    width: 30,
-    height: 30,
-    borderBottomWidth: 3,
-    borderLeftWidth: 3,
-    borderColor: "#00A86B",
-    borderBottomLeftRadius: 8,
+    bottom: -1,
+    left: -1,
+    borderBottomWidth: CORNER_W,
+    borderLeftWidth: CORNER_W,
+    borderBottomLeftRadius: 10,
   },
   cornerBR: {
-    position: "absolute",
-    bottom: -2,
-    right: -2,
-    width: 30,
-    height: 30,
-    borderBottomWidth: 3,
-    borderRightWidth: 3,
-    borderColor: "#00A86B",
-    borderBottomRightRadius: 8,
+    bottom: -1,
+    right: -1,
+    borderBottomWidth: CORNER_W,
+    borderRightWidth: CORNER_W,
+    borderBottomRightRadius: 10,
   },
+
+  // Scan line — full width of the frame, native translateY
   scanLine: {
-    width: 280,
-    height: 2,
-    backgroundColor: "#00A86B",
     position: "absolute",
     top: 0,
-    opacity: 0.8,
-  },
-  instructionsContainer: {
-    position: "absolute",
-    bottom: 180,
     left: 0,
     right: 0,
-    alignItems: "center",
-    paddingHorizontal: 24,
+    height: 2,
+    backgroundColor: "#00A86B",
+    opacity: 0.85,
+    shadowColor: "#00A86B",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 4,
   },
-  instructionsIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+
+  // ── Instructions (inside dimBottom) ────────────────────────────────────────
+  instructionsWrap: { alignItems: "center", paddingHorizontal: 32 },
+  instructionsIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.1)",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 12,
   },
   instructionsText: {
-    fontSize: 16,
-    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#fff",
     textAlign: "center",
-    fontWeight: "600",
-    marginBottom: 4,
+    marginBottom: 6,
   },
   instructionsSubtext: {
-    fontSize: 14,
-    color: "#94A3B8",
+    fontSize: 13,
+    color: "#94a3b8",
     textAlign: "center",
+    marginBottom: 16,
   },
-  exampleContainer: {
-    position: "absolute",
-    top: (height - 320) / 2 + 240,
-    left: 0,
-    right: 0,
+  examplePill: {
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  exampleText: { fontSize: 12, color: "#94a3b8", fontStyle: "italic" },
+
+  // ── Footer ─────────────────────────────────────────────────────────────────
+  footer: {
+    backgroundColor: "#000",
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 8,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.08)",
     alignItems: "center",
   },
-  exampleText: {
-    fontSize: 14,
-    color: "#94A3B8",
-    fontStyle: "italic",
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    overflow: "hidden",
+  manualBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    paddingHorizontal: 24,
+    paddingVertical: 13,
+    borderRadius: 12,
+    width: "100%",
+    justifyContent: "center",
+    marginBottom: 14,
   },
+  manualBtnText: { color: "#fff", fontSize: 15, fontWeight: "600" },
+  footerNote: {
+    fontSize: 12,
+    color: "#64748b",
+    textAlign: "center",
+    lineHeight: 18,
+  },
+
+  // ── Loading overlay ─────────────────────────────────────────────────────────
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.85)",
+    backgroundColor: "rgba(0,0,0,0.88)",
     justifyContent: "center",
     alignItems: "center",
     zIndex: 10,
   },
-  loadingContent: {
-    alignItems: "center",
-  },
   loadingText: {
-    color: "#FFFFFF",
-    fontSize: 16,
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "600",
     marginTop: 16,
-    fontWeight: "500",
   },
-  footer: {
-    paddingHorizontal: 24,
-    paddingVertical: 20,
-    backgroundColor: "#000000",
-    alignItems: "center",
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255, 255, 255, 0.1)",
-  },
-  manualEntryButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: 12,
-    marginBottom: 16,
-    width: "100%",
-    justifyContent: "center",
-  },
-  manualEntryIcon: {
-    marginRight: 12,
-  },
-  manualEntryText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  footerNote: {
-    fontSize: 13,
-    color: "#94A3B8",
-    textAlign: "center",
-    lineHeight: 18,
-  },
-  modalOverlay: {
+
+  // ── Success modal — matches card design system ──────────────────────────────
+  modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.9)",
+    backgroundColor: "rgba(0,0,0,0.85)",
     justifyContent: "center",
     alignItems: "center",
-    padding: 24,
+    padding: 32,
   },
-  successModal: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
+  successCard: {
+    backgroundColor: "#fff",
+    borderRadius: 24, // matches card borderRadius
     padding: 32,
     alignItems: "center",
     width: "100%",
     maxWidth: 320,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
+    borderWidth: 1,
+    borderColor: "#f1f5f9", // matches card borderColor
   },
-  successIcon: {
-    marginBottom: 24,
+  successIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    backgroundColor: "rgba(0,168,107,0.08)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
   },
   successTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#1E293B",
-    marginBottom: 12,
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#0f172a",
+    marginBottom: 8,
     textAlign: "center",
   },
-  successText: {
-    fontSize: 16,
-    color: "#64748B",
+  successSubtitle: {
+    fontSize: 14,
+    color: "#64748b",
     textAlign: "center",
-    marginBottom: 24,
-    lineHeight: 22,
+    marginBottom: 20,
+    lineHeight: 20,
   },
-  successSpinner: {
-    marginTop: 8,
-  },
+  successSpinnerRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  successSpinnerText: { fontSize: 13, color: "#94a3b8", fontWeight: "600" },
 });
 
 export default QRScannerScreen;

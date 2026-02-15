@@ -28,7 +28,6 @@ export default function CustomerStackNavigator() {
         name="EligibilityStatus"
         component={EligibilityStatusScreen}
       />
-      <Stack.Screen name="History" component={OrderHistoryScreen} />
       <Stack.Screen name="Saved" component={SavedItemsScreen} />
       <Stack.Screen name="Shared" component={SharedNavigation} />
     </Stack.Navigator>

@@ -101,7 +101,7 @@ export default function HomeNavigator() {
         options={{ title: "Cart" }}
       />
       <Tab.Screen
-        name="Transactions"
+        name="History"
         component={OrderHistoryScreen}
         options={{ title: "History"}}
       />
