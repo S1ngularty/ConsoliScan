@@ -37,7 +37,7 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
           switch (routeName) {
             case "Home":
               return isFocused ? "home" : "home-outline";
-            case "Transactions":
+            case "History":
               return isFocused ? "receipt" : "receipt-outline";
             case "Cart":
               return isFocused ? "cart" : "cart-outline";
