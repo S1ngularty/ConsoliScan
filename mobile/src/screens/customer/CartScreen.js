@@ -69,7 +69,7 @@ const CartScreen = ({ navigation, route }) => {
   useEffect(() => {
     (async () => {
       userState.role === "user" && dispatch(getCartFromServer());
-      await fetchLoyaltyPointsData();
+      userState.role === "user" && await fetchLoyaltyPointsData();
     })();
   }, [userState.role]);
 
@@ -1081,7 +1081,7 @@ const CartScreen = ({ navigation, route }) => {
         )}
 
         {/* ── Loyalty Points Card ── */}
-        {cart.length > 0 && loyaltyConfig.enabled && (
+        {cart.length > 0 && loyaltyConfig.enabled && userState.role === "user" &&(
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <View

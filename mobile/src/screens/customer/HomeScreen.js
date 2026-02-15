@@ -353,7 +353,7 @@ const HeroPoints = ({ points, navigation }) => {
             size={15}
             color="#00A86B"
           />
-          <Text style={styles.rewardText}>Redeem for rewards</Text>
+          <Text style={styles.rewardText}>Learn How to use points</Text>
           <MaterialCommunityIcons
             name="chevron-right"
             size={15}
@@ -750,7 +750,7 @@ const HomeScreen = ({ navigation }) => {
             description="Get extra 5% off BNPC items"
             icon="account-heart-outline"
             color="#00A86B"
-            onPress={() => navigation.navigate("Eligibility")}
+            onPress={() => navigation.navigate("EligibilityIntro")}
           />
           <OfferCard
             title="Scan & Save"
@@ -799,7 +799,7 @@ const HomeScreen = ({ navigation }) => {
         <FadeSlideCard delay={300} style={styles.tipsCard}>
           <TouchableOpacity
             style={{ flexDirection: "row", alignItems: "center" }}
-            onPress={() => navigation.navigate("Shared", { screen: "Scan" })}
+            onPress={() => navigation.navigate("Shared", { screen: "Help" })}
             activeOpacity={0.7}
           >
             <MaterialCommunityIcons

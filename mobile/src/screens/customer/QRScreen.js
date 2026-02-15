@@ -90,20 +90,20 @@ export default function CheckoutQRScreen({ route, navigation }) {
     });
 
     socket.on("checkout:state", (data) => {
-      console.log("checkout:state", data);
+      // console.log("checkout:state", data);
       setStatus(data.status || "PROCESSING");
       setTotals(data.totals);
     });
 
     socket.on("checkout:scanned", ({ cashier, status, totals }) => {
-      console.log("checkout:scanned", cashier, status, totals);
+      // console.log("checkout:scanned", cashier, status, totals);
       setStatus("SCANNED");
       setCashier(cashier);
       if (totals) setTotals(totals);
     });
 
     socket.on("checkout:locked", ({ checkoutData }) => {
-      console.log("checkout:locked", checkoutData);
+      // console.log("checkout:locked", checkoutData);
       setStatus("LOCKED");
       if (checkoutData?.totals) setTotals(checkoutData.totals);
     });

@@ -159,7 +159,7 @@ const ScanningScreen = ({ navigation }) => {
             style={styles.cartButton}
             activeOpacity={0.7}
             onPress={() => {
-              console.log(userState.role);
+              // console.log(userState.role);
               if(userState.role==="user"){
                 navigation.navigate("HomeTabs",{
                   screen:"Cart"
