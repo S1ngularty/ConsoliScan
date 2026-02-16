@@ -40,7 +40,7 @@ export const confirmOrder = async (transaction) => {
 
 export const fetchOrders = async () => {
   const response = await axiosInstance.get("api/v1/orders");
-  console.log(response.data);
+  // console.log(response.data);
   return response.data.result;
 };
 
