@@ -15,7 +15,6 @@ export default function NotificationManager() {
     if (status !== "granted") return;
 
     const token = (await Notifications.getExpoPushTokenAsync()).data;
-
     console.log("Push token:", token);
 
     if (Platform.OS === "android") {
@@ -24,7 +23,16 @@ export default function NotificationManager() {
         importance: Notifications.AndroidImportance.MAX,
       });
     }
+
+    // ✅ Local test notification
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Local Test",
+        body: "Notifications are working 🎉",
+      },
+      trigger: null,
+    });
   }
 
-  return null; // no UI needed
+  return null;
 }

@@ -28,7 +28,9 @@
         "backgroundColor": "#00A86B"
       },
       "edgeToEdgeEnabled": true,
-      "permissions": ["android.permission.CAMERA"],
+      "permissions": [
+        "android.permission.CAMERA"
+      ],
       "googleServicesFile": "./google-services.json"
     },
     "web": {
@@ -51,6 +53,7 @@
       "eas": {
         "projectId": "04973f2e-c179-411e-bd1f-40e3685bf9cb"
       }
-    }
+    },
+    "owner": "singurity"
   }
 }

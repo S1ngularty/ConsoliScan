@@ -40,3 +40,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+google-services.json
+singularity-9b3ba-firebase-adminsdk-fbsvc-b55b3740cb.json
