@@ -13,8 +13,8 @@
   background: white;
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-soft);
-  padding: 20px 32px;
-  max-width: 1100px;
+  padding: 24px 40px; /* Increased padding */
+  max-width: 1200px; /* Increased max-width */
   margin: 0 auto;
   width: 100%;
 }
@@ -22,15 +22,15 @@
 .navbar__brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   font-weight: 800;
 }
 
 .brand__name {
-  font-size: 35px;
-  font-weight: bold; /* Increased from 24px */
+  font-size: 32px; /* Increased font size */
   color: var(--green);
   letter-spacing: 0.3px;
+  font-weight: 900; /* Made bolder */
 }
 
 .brand__dotset {

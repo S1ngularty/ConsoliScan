@@ -1,16 +1,17 @@
 import React from "react";
 import "../styles/css/global.css";
-import "../styles/css/navbar.css";
+import "../styles/css/NavBar.css";
 import "../styles/css/hero.css";
 import "../styles/css/carousel.css";
 import "../styles/css/appDownloadBanner.css";
 import "../styles/css/footer.css";
 
-import Navbar from "../styles/components/Navbar";
-import Hero from "../styles/components/Hero";
-import Carousel from "../styles/components/Carousel";
-import AppDownloadBanner from "../styles/components/AppDownloadBanner";
-import Footer from "../styles/components/Footer";
+import Navbar from "../components/home components/Navbar";
+import Hero from "../components/home components/Hero";
+import Carousel from "../components/home components/Carousel";
+import AppDownloadBanner from "../components/home components/AppDownloadBanner";
+import Footer from "../components/home components/Footer";
+import ChatBot from "../components/home components/ChatBot";
 
 const Home = () => {
   return (
@@ -20,6 +21,7 @@ const Home = () => {
       <Carousel />
       <AppDownloadBanner />
       <Footer />
+      <ChatBot />
     </div>
   );
 };
