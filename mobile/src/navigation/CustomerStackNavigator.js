@@ -5,9 +5,10 @@ import UserProfileScreen from "../screens/customer/UserProfileScreen";
 import EligibilityIntroScreen from "../screens/customer/EligibilityIntroScreen";
 import EligibilityStatusScreen from "../screens/customer/EligibilityStatusScreen";
 import EligibilityApplyScreen from "../screens/customer/EligibilityApplyScreen";
-import OrderHistoryScreen from "../screens/customer/OrderHistory";
 import SavedItemsScreen from "../screens/customer/SaveItemsScreen";
 import SharedNavigation from "./SharedNavigation";
+import ExchangeScreen from "../screens/customer/ExchangeScreen";
+import ExchangeScannerScreen from "../screens/customer/ExchangeScannerScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -30,6 +31,8 @@ export default function CustomerStackNavigator() {
       />
       <Stack.Screen name="Saved" component={SavedItemsScreen} />
       <Stack.Screen name="Shared" component={SharedNavigation} />
+      <Stack.Screen name="Exchange" component={ExchangeScreen} />
+      <Stack.Screen name="ExchangeScanner" component={ExchangeScannerScreen} />
     </Stack.Navigator>
   );
 }

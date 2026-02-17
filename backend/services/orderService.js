@@ -83,10 +83,12 @@ async function getOrders(request) {
   const orderList = orders.map((order) => ({
     ...order,
     items: order.items.map((item) => ({
+      product:item.product,
       name: item.name,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       itemTotal: item.itemTotal,
+      status: item.status,
     })),
     pointsEarned: order.loyaltyDiscount.pointsEarned,
     baseAmount: order.baseAmount,
