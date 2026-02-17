@@ -37,10 +37,12 @@ export async function verifyTokenApi(token) {
 
   const data = result.data.result;
 
-  return data
+  return data;
 }
 
 export async function registerApi(userData) {
   const isSuccess = await axios.post(`${API_URL}api/v1/register`, userData);
+  if (isSuccess.data?.result?.token)await storeToken(isSuccess.data.result.token);
+
   return isSuccess.data.result;
 }
