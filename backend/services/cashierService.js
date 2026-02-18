@@ -539,6 +539,138 @@ async function getLowStockAlerts(request) {
   };
 }
 
+/**
+ * Get cashier profile information
+ * GET /api/v1/cashier/profile
+ */
+async function getProfile(request) {
+  const { userId } = request.user;
+  const User = require("../models/userModel");
+  const mongoose = require("mongoose");
+
+  console.log("=== getProfile called ===");
+  console.log("userId:", userId);
+  console.log("userId type:", typeof userId);
+
+  const user = await User.findById(userId).select(
+    "name email contactNumber avatar role address street city state country zipCode createdAt",
+  );
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  // Get cashier statistics
+  const Order = require("../models/orderModel");
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Convert userId to ObjectId for aggregation
+  const cashierObjectId = new mongoose.Types.ObjectId(userId);
+  console.log("cashierObjectId:", cashierObjectId);
+
+  const [totalTransactions, totalSales, todayTransactions] = await Promise.all([
+    Order.countDocuments({ cashier: cashierObjectId, status: "CONFIRMED" }),
+    Order.aggregate([
+      {
+        $match: {
+          cashier: cashierObjectId,
+          status: "CONFIRMED",
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$finalAmountPaid" },
+        },
+      },
+    ]),
+    Order.countDocuments({
+      cashier: cashierObjectId,
+      status: "CONFIRMED",
+      confirmedAt: { $gte: today },
+    }),
+  ]);
+
+  console.log("totalTransactions:", totalTransactions);
+  console.log("totalSales aggregation result:", totalSales);
+  console.log("todayTransactions:", todayTransactions);
+
+  return {
+    user: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      contactNumber: user.contactNumber,
+      avatar: user.avatar,
+      role: user.role,
+      address: user.address,
+      street: user.street,
+      city: user.city,
+      state: user.state,
+      country: user.country,
+      zipCode: user.zipCode,
+      joinedDate: user.createdAt,
+    },
+    stats: {
+      totalTransactions,
+      totalSales: totalSales.length > 0 ? totalSales[0].total : 0,
+      todayTransactions,
+    },
+  };
+}
+
+/**
+ * Update cashier profile
+ * PUT /api/v1/cashier/profile
+ */
+async function updateProfile(request) {
+  const { userId } = request.user;
+  const User = require("../models/userModel");
+  const { uploadImage, deleteAssets } = require("../utils/cloundinaryUtil");
+  const { createLog } = require("./activityLogsService");
+
+  if (!request.body) {
+    throw new Error("No update data provided");
+  }
+
+  // Handle avatar upload
+  if (request.file) {
+    const uploadResult = await uploadImage([request.file], "cashier-avatars");
+    request.body.avatar = uploadResult;
+  }
+
+  const currentUser = await User.findById(userId);
+  if (!currentUser) {
+    throw new Error("User not found");
+  }
+
+  // Update user
+  const updatedUser = await User.findByIdAndUpdate(userId, request.body, {
+    new: true,
+    runValidators: true,
+  }).select(
+    "name email contactNumber avatar role address street city state country zipCode",
+  );
+
+  // Delete old avatar if new one was uploaded
+  if (request.file && currentUser.avatar?.public_id) {
+    deleteAssets([currentUser.avatar.public_id]);
+  }
+
+  createLog(
+    userId,
+    "UPDATE_PROFILE",
+    "SUCCESS",
+    `Cashier ${updatedUser.name} updated their profile`,
+  );
+
+  return {
+    user: updatedUser,
+    message: "Profile updated successfully",
+  };
+}
+
 module.exports = {
   getDashboardStats,
   getRecentTransactions,
@@ -549,4 +681,6 @@ module.exports = {
   getSalesReports,
   getTransactionHistory,
   getLowStockAlerts,
+  getProfile,
+  updateProfile,
 };

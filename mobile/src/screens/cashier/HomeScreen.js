@@ -16,10 +16,12 @@ import {
   getDashboardStats,
   getRecentTransactions,
 } from "../../api/cashier.api";
+import ScanMethodModal from "../../components/cashier/ScanMethodModal";
 
 const { width } = Dimensions.get("window");
 
 const HomeScreen = ({ navigation }) => {
+  const [scanModalVisible, setScanModalVisible] = useState(false);
   const [currentTime, setCurrentTime] = useState("");
   const [greeting, setGreeting] = useState("");
   const [stats, setStats] = useState({
@@ -127,6 +129,11 @@ const HomeScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
+      <ScanMethodModal
+        visible={scanModalVisible}
+        onClose={() => setScanModalVisible(false)}
+        navigation={navigation}
+      />
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.openDrawer()}
@@ -221,7 +228,7 @@ const HomeScreen = ({ navigation }) => {
                 icon="shopping-cart"
                 title="New Transaction"
                 subtitle="Start scanning items"
-                onPress={() => navigation.navigate("QRScanning")}
+                onPress={() => setScanModalVisible(true)}
                 color="#00A86B"
               />
 

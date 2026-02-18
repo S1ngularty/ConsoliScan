@@ -7,6 +7,8 @@
 
 const express = require("express");
 const router = express.Router();
+const multer = require("multer");
+const upload = multer({ storage: multer.memoryStorage() });
 const authMiddleware = require("../middlewares/authMiddleware");
 const cashierController = require("../controllers/cashierController");
 
@@ -58,5 +60,19 @@ router
 router
   .route("/cashier/low-stock-alerts")
   .get(authMiddleware.verifyToken, cashierController.getLowStockAlerts);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CASHIER PROFILE ROUTES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+// Get and update cashier profile
+router
+  .route("/cashier/profile")
+  .get(authMiddleware.verifyToken, cashierController.getProfile)
+  .put(
+    authMiddleware.verifyToken,
+    upload.single("avatar"),
+    cashierController.updateProfile,
+  );
 
 module.exports = router;

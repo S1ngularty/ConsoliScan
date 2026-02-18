@@ -65,6 +65,18 @@ const getTransactionHistory = controllerWrapper(
  */
 const getLowStockAlerts = controllerWrapper(cashierService.getLowStockAlerts);
 
+/**
+ * GET /api/v1/cashier/profile
+ * Get cashier profile information
+ */
+const getProfile = controllerWrapper(cashierService.getProfile);
+
+/**
+ * PUT /api/v1/cashier/profile
+ * Update cashier profile
+ */
+const updateProfile = controllerWrapper(cashierService.updateProfile);
+
 module.exports = {
   getDashboardStats,
   getRecentTransactions,
@@ -75,4 +87,6 @@ module.exports = {
   getSalesReports,
   getTransactionHistory,
   getLowStockAlerts,
+  getProfile,
+  updateProfile,
 };

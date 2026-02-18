@@ -157,3 +157,54 @@ export const getLowStockAlerts = async (threshold = 10) => {
   );
   return response.data.result;
 };
+
+/**
+ * Get cashier profile with statistics
+ * @returns {Object} Profile data and performance stats
+ */
+export const getProfile = async () => {
+  const response = await axiosInstance.get("api/v1/cashier/profile");
+  return response.data.result;
+};
+
+/**
+ * Update cashier profile
+ * @param {Object} data - Profile data (name, email, contactNumber, address, avatar)
+ * @returns {Object} Updated profile
+ */
+export const updateProfile = async (data) => {
+  const token = await getToken();
+  if (!token) throw new Error("No token available");
+
+  const formData = new FormData();
+
+  for (const [key, value] of Object.entries(data)) {
+    if (value === undefined || value === null) continue;
+
+    // Handle avatar image upload
+    if (key === "avatar" && typeof value === "object" && value.uri) {
+      formData.append("avatar", {
+        uri: value.uri,
+        name: value.name || "avatar.jpg",
+        type: value.type || "image/jpeg",
+      });
+    } else if (typeof value !== "object") {
+      formData.append(key, String(value));
+    }
+  }
+
+  const response = await fetch(`${API_URL}api/v1/cashier/profile`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to update profile");
+  }
+
+  const result = await response.json();
+  return result.result;
+};
