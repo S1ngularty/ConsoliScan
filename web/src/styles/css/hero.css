@@ -10,7 +10,7 @@
   border-radius: 30px;
   padding: 28px;
    box-shadow: var(--shadow-soft);
-  max-width: 1250px; /* Wider than navbar (1100px) */
+  max-width: 1350px; /* Increased width */
   margin: 0 auto;    /* Centered */
   width: 100%;
 }
