@@ -363,7 +363,68 @@ async function completeExchange(request) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   4. GET EXCHANGE STATUS  (Customer — polls or checks after WS event)
+   4. VALIDATE REPLACEMENT ITEM  (Cashier — scans & validates replacement barcode)
+   POST /api/exchanges/:exchangeId/validate-replacement
+   Body: { replacementBarcode }
+   ═══════════════════════════════════════════════════════════════════════════ */
+async function validateReplacementItem(request) {
+  const { userId } = request.user; // cashier's userId
+  const { exchangeId } = request.params;
+  const { replacementBarcode } = request.body;
+
+  if (!replacementBarcode) throw new Error("replacementBarcode is required");
+
+  /* ── Load exchange ── */
+  const exchange = await Exchange.findById(exchangeId);
+  if (!exchange) throw new Error("Exchange not found");
+  if (exchange.status !== "VALIDATED") {
+    throw new Error(
+      `Exchange must be VALIDATED before validating replacement. Current: ${exchange.status}`,
+    );
+  }
+
+  /* ── Look up product by barcode ── */
+  const replacement = await Product.findOne({
+    barcode: replacementBarcode,
+    deletedAt: null,
+  });
+  if (!replacement) throw new Error("Product not found by barcode");
+
+  /* ── Stock check ── */
+  if (replacement.stockQuantity < 1) {
+    throw new Error("Product is out of stock");
+  }
+
+  /* ── Price match validation ── */
+  const replacementPrice =
+    replacement.saleActive && replacement.salePrice
+      ? replacement.salePrice
+      : replacement.price;
+
+  const priceDifference = Math.abs(replacementPrice - exchange.price);
+  if (priceDifference > 0.01) {
+    throw new Error(
+      `Price mismatch. Original price: ₱${exchange.price.toFixed(2)}, Replacement: ₱${replacementPrice.toFixed(2)}${replacement.saleActive ? " (on sale)" : ""}. Items must be the same price.`,
+    );
+  }
+
+  /* ── All validations passed ── */
+  return {
+    isValid: true,
+    product: {
+      _id: replacement._id,
+      name: replacement.name,
+      sku: replacement.sku,
+      barcode: replacement.barcode,
+      price: replacementPrice,
+      stockQuantity: replacement.stockQuantity,
+    },
+    message: "Replacement item validated successfully",
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   5. GET EXCHANGE STATUS  (Customer — polls or checks after WS event)
    GET /api/exchanges/:exchangeId
    ═══════════════════════════════════════════════════════════════════════════ */
 async function getExchangeStatus(request) {
@@ -469,6 +530,7 @@ async function verifyReplacementPrice(request) {
 module.exports = {
   initiateExchange,
   validateExchangeQR,
+  validateReplacementItem,
   completeExchange,
   getExchangeStatus,
   getCustomerExchanges,

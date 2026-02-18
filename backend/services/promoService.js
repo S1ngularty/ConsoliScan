@@ -48,10 +48,23 @@ exports.apply = async (request) => {
     populate: {
       path: "category",
     },
-  })
+  });
 
   // console.log(cart.items[0].product.category)
   const promoResult = PromoEngine(cart, promoCode);
 
-  return promoResult ;
+  return promoResult;
+};
+
+exports.applyGuestPromo = async (request) => {
+  const { promoCode } = request.params;
+  const { cart } = request.body;
+
+  if (!cart) throw new Error("cart data is required");
+  if (!cart.items || cart.items.length === 0)
+    throw new Error("cart must contain items");
+
+  const promoResult = PromoEngine(cart, promoCode);
+
+  return promoResult;
 };

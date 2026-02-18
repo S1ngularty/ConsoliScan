@@ -56,6 +56,11 @@ router
   .route("/exchanges/validate-qr")
   .post(authMiddlware.verifyToken, exchangeController.validateQR);
 
+// Cashier scans replacement barcode → validates product validity
+router
+  .route("/exchanges/:exchangeId/validate-replacement")
+  .post(authMiddlware.verifyToken, exchangeController.validateReplacementItem);
+
 // Cashier scans replacement barcode → completes exchange + inventory update
 router
   .route("/exchanges/:exchangeId/complete")

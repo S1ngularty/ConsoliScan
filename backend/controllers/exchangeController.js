@@ -114,6 +114,28 @@ async function validateQR(req, res) {
 }
 
 /**
+ * POST /api/exchanges/:exchangeId/validate-replacement
+ * Cashier scans replacement barcode — validates product validity.
+ */
+async function validateReplacementItem(req, res) {
+  try {
+    const result = await exchangeService.validateReplacementItem(req);
+    res.status(200).json({
+      success: true,
+      isValid: result.isValid,
+      product: result.product,
+      message: result.message,
+    });
+  } catch (error) {
+    console.error(
+      "[ExchangeController] validateReplacementItem:",
+      error.message,
+    );
+    res.status(400).json({ success: false, message: error.message });
+  }
+}
+
+/**
  * POST /api/exchanges/:exchangeId/complete
  * Cashier scans replacement barcode — completes exchange, updates inventory.
  */
@@ -140,5 +162,6 @@ module.exports = {
   cancelExchange,
   verifyReplacementPrice,
   validateQR,
+  validateReplacementItem,
   completeExchange,
 };

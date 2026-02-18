@@ -89,6 +89,23 @@ export const completeExchange = async (exchangeId, replacementBarcode) => {
 };
 
 /**
+ * Cashier: Validate replacement item - scan and verify product is valid.
+ * @param {string} exchangeId
+ * @param {string} replacementBarcode - scanned product barcode
+ */
+export const validateReplacementItem = async (
+  exchangeId,
+  replacementBarcode,
+) => {
+  const response = await axiosInstance.post(
+    `api/v1/exchanges/${exchangeId}/validate-replacement`,
+    { replacementBarcode },
+  );
+  // { success, isValid, product, message }
+  return response.data;
+};
+
+/**
  * Customer: Verify if scanned product matches the exchange price.
  * @param {string} exchangeId
  * @param {string} barcode - scanned product barcode

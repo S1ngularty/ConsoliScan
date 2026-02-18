@@ -27,7 +27,7 @@ import {
 import { debounceCartSync } from "../../features/slices/cart/cartDebounce";
 import { checkout } from "../../api/checkout.api";
 import { getToken } from "../../utils/authUtil";
-import { applyPromo } from "../../api/promo.api";
+import { applyPromo, applyGuestPromo } from "../../api/promo.api";
 import { fetchHomeData } from "../../api/user.api";
 import { getConfig } from "../../api/loyalty.api";
 
@@ -69,7 +69,7 @@ const CartScreen = ({ navigation, route }) => {
   useEffect(() => {
     (async () => {
       userState.role === "user" && dispatch(getCartFromServer());
-      userState.role === "user" && await fetchLoyaltyPointsData();
+      userState.role === "user" && (await fetchLoyaltyPointsData());
     })();
   }, [userState.role]);
 
@@ -428,9 +428,35 @@ const CartScreen = ({ navigation, route }) => {
 
   const handleSelectPromo = async (promo) => {
     try {
-      const res = await applyPromo(promo.code);
+      let res;
+
+      // For guest users, use applyGuestPromo with cart data
+      if (userState.role === "guest") {
+        const cartData = {
+          items: cart.map((item) => {
+            const n = normalizeCartItem(item);
+            return {
+              product: {
+                _id: n.product._id,
+                name: n.product.name,
+                price: n.product.price,
+                category: n.product.category,
+              },
+              qty: n.selectedQuantity,
+            };
+          }),
+        };
+        res = await applyGuestPromo(promo.code, cartData);
+      } else {
+        // For authenticated users, use applyPromo
+        res = await applyPromo(promo.code);
+      }
+
       if (!res.valid) {
-        Alert.alert("Invalid Promo", "This promo code is not valid");
+        Alert.alert(
+          "Invalid Promo",
+          res.reason || "This promo code is not valid",
+        );
         return;
       }
       const pd = res.promo;
@@ -1081,109 +1107,111 @@ const CartScreen = ({ navigation, route }) => {
         )}
 
         {/* ── Loyalty Points Card ── */}
-        {cart.length > 0 && loyaltyConfig.enabled && userState.role === "user" &&(
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <View
-                style={[
-                  styles.iconBadge,
-                  { backgroundColor: "rgba(180,83,9,0.1)" },
-                ]}
-              >
-                <MaterialCommunityIcons
-                  name="trophy"
-                  size={18}
-                  color="#B45309"
-                />
-              </View>
-              <Text style={[styles.cardTitle, { marginLeft: 12 }]}>
-                Loyalty Points
-              </Text>
-            </View>
-
-            {/* Balance pill */}
-            <View style={styles.balanceRow}>
-              <Text style={styles.balanceLabel}>Available</Text>
-              <Text style={styles.balanceValue}>
-                {availablePoints.toLocaleString()} pts
-              </Text>
-            </View>
-
-            {appliedPoints > 0 ? (
-              <View style={styles.appliedRow}>
-                <View style={styles.appliedInfo}>
-                  <MaterialCommunityIcons
-                    name="check-circle"
-                    size={18}
-                    color="#00A86B"
-                  />
-                  <View style={{ marginLeft: 12 }}>
-                    <Text style={styles.appliedCode}>
-                      {appliedPoints} points applied
-                    </Text>
-                    <Text style={[styles.appliedValue, { color: "#059669" }]}>
-                      -₱{pointsDiscount.toFixed(2)}
-                    </Text>
-                  </View>
-                </View>
-                <TouchableOpacity
-                  style={styles.removeChip}
-                  onPress={handleRemoveLoyaltyPoints}
+        {cart.length > 0 &&
+          loyaltyConfig.enabled &&
+          userState.role === "user" && (
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View
+                  style={[
+                    styles.iconBadge,
+                    { backgroundColor: "rgba(180,83,9,0.1)" },
+                  ]}
                 >
-                  <Text style={styles.removeChipText}>Remove</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <>
-                <View style={styles.inputRow}>
-                  <TextInput
-                    style={styles.pointsInput}
-                    placeholder="Enter points"
-                    placeholderTextColor="#94a3b8"
-                    value={loyaltyPoints}
-                    onChangeText={handleLoyaltyPointsChange}
-                    keyboardType="numeric"
-                    maxLength={6}
+                  <MaterialCommunityIcons
+                    name="trophy"
+                    size={18}
+                    color="#B45309"
                   />
+                </View>
+                <Text style={[styles.cardTitle, { marginLeft: 12 }]}>
+                  Loyalty Points
+                </Text>
+              </View>
+
+              {/* Balance pill */}
+              <View style={styles.balanceRow}>
+                <Text style={styles.balanceLabel}>Available</Text>
+                <Text style={styles.balanceValue}>
+                  {availablePoints.toLocaleString()} pts
+                </Text>
+              </View>
+
+              {appliedPoints > 0 ? (
+                <View style={styles.appliedRow}>
+                  <View style={styles.appliedInfo}>
+                    <MaterialCommunityIcons
+                      name="check-circle"
+                      size={18}
+                      color="#00A86B"
+                    />
+                    <View style={{ marginLeft: 12 }}>
+                      <Text style={styles.appliedCode}>
+                        {appliedPoints} points applied
+                      </Text>
+                      <Text style={[styles.appliedValue, { color: "#059669" }]}>
+                        -₱{pointsDiscount.toFixed(2)}
+                      </Text>
+                    </View>
+                  </View>
                   <TouchableOpacity
-                    style={[
-                      styles.applyBtn,
-                      (!loyaltyPoints.trim() || !loyaltyConfig.enabled) &&
-                        styles.applyBtnDisabled,
-                    ]}
-                    onPress={handleApplyLoyaltyPoints}
-                    disabled={!loyaltyPoints.trim() || !loyaltyConfig.enabled}
+                    style={styles.removeChip}
+                    onPress={handleRemoveLoyaltyPoints}
                   >
-                    <Text style={styles.applyBtnText}>Apply</Text>
+                    <Text style={styles.removeChipText}>Remove</Text>
                   </TouchableOpacity>
                 </View>
-                {loyaltyPoints ? (
-                  <Text style={styles.hintText}>
-                    Max {maxPointsAllowed} pts = ₱
-                    {(
-                      maxPointsAllowed * loyaltyConfig.pointsToCurrencyRate
-                    ).toFixed(2)}
-                  </Text>
-                ) : null}
-              </>
-            )}
+              ) : (
+                <>
+                  <View style={styles.inputRow}>
+                    <TextInput
+                      style={styles.pointsInput}
+                      placeholder="Enter points"
+                      placeholderTextColor="#94a3b8"
+                      value={loyaltyPoints}
+                      onChangeText={handleLoyaltyPointsChange}
+                      keyboardType="numeric"
+                      maxLength={6}
+                    />
+                    <TouchableOpacity
+                      style={[
+                        styles.applyBtn,
+                        (!loyaltyPoints.trim() || !loyaltyConfig.enabled) &&
+                          styles.applyBtnDisabled,
+                      ]}
+                      onPress={handleApplyLoyaltyPoints}
+                      disabled={!loyaltyPoints.trim() || !loyaltyConfig.enabled}
+                    >
+                      <Text style={styles.applyBtnText}>Apply</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {loyaltyPoints ? (
+                    <Text style={styles.hintText}>
+                      Max {maxPointsAllowed} pts = ₱
+                      {(
+                        maxPointsAllowed * loyaltyConfig.pointsToCurrencyRate
+                      ).toFixed(2)}
+                    </Text>
+                  ) : null}
+                </>
+              )}
 
-            <View
-              style={[
-                styles.chip,
-                { backgroundColor: "rgba(180,83,9,0.08)", marginTop: 12 },
-              ]}
-            >
-              <MaterialCommunityIcons name="gift" size={13} color="#B45309" />
-              <Text style={[styles.chipText, { color: "#B45309" }]}>
-                You'll earn {pointsEarned} pts with this purchase
-                {loyaltyConfig.earnRate > 0
-                  ? ` (₱1 = ${loyaltyConfig.earnRate} pts)`
-                  : ""}
-              </Text>
+              <View
+                style={[
+                  styles.chip,
+                  { backgroundColor: "rgba(180,83,9,0.08)", marginTop: 12 },
+                ]}
+              >
+                <MaterialCommunityIcons name="gift" size={13} color="#B45309" />
+                <Text style={[styles.chipText, { color: "#B45309" }]}>
+                  You'll earn {pointsEarned} pts with this purchase
+                  {loyaltyConfig.earnRate > 0
+                    ? ` (₱1 = ${loyaltyConfig.earnRate} pts)`
+                    : ""}
+                </Text>
+              </View>
             </View>
-          </View>
-        )}
+          )}
 
         {/* ── Order Summary ── */}
         {cart.length > 0 && (

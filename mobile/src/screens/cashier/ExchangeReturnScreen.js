@@ -21,7 +21,11 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { io } from "socket.io-client";
 
 // API functions
-import { validateExchangeQR, completeExchange } from "../../api/exchange.api";
+import {
+  validateExchangeQR,
+  validateReplacementItem,
+  completeExchange,
+} from "../../api/exchange.api";
 import { SOCKET_API } from "../../constants/config";
 import { getToken } from "../../utils/authUtil";
 
@@ -84,7 +88,8 @@ const StepIndicator = ({ currentStep }) => {
   const steps = [
     { key: "SCAN_QR", label: "Scan QR", icon: "qrcode" },
     { key: "VALIDATE", label: "Verify", icon: "check-circle" },
-    { key: "SCAN_BARCODE", label: "Barcode", icon: "barcode" },
+    { key: "SCAN_BARCODE", label: "Scan Item", icon: "barcode" },
+    { key: "VALIDATE_REPLACEMENT", label: "Validate", icon: "check-circle" },
     { key: "COMPLETE", label: "Done", icon: "check-decagram" },
   ];
 
@@ -138,7 +143,7 @@ const StepIndicator = ({ currentStep }) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 const ExchangeReturnScreen = ({ route, navigation }) => {
   const [permission, requestPermission] = useCameraPermissions();
-  const [step, setStep] = useState("SCAN_QR"); // SCAN_QR, VALIDATE, SCAN_BARCODE, COMPLETE
+  const [step, setStep] = useState("SCAN_QR"); // SCAN_QR, VALIDATE, SCAN_BARCODE, VALIDATE_REPLACEMENT, COMPLETE
   const [scanMode, setScanMode] = useState("qr"); // qr or barcode
   const [cameraFacing, setCameraFacing] = useState("back");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -148,6 +153,7 @@ const ExchangeReturnScreen = ({ route, navigation }) => {
   const [exchange, setExchange] = useState(null);
   const [orderInfo, setOrderInfo] = useState(null);
   const [itemInfo, setItemInfo] = useState(null);
+  const [validatedReplacement, setValidatedReplacement] = useState(null);
   const [replacement, setReplacement] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -260,7 +266,7 @@ const ExchangeReturnScreen = ({ route, navigation }) => {
     [isProcessing],
   );
 
-  // Handle barcode scan (complete exchange)
+  // Handle barcode scan (validate replacement)
   const handleBarcodeScanned = useCallback(
     ({ data }) => {
       const now = Date.now();
@@ -276,21 +282,24 @@ const ExchangeReturnScreen = ({ route, navigation }) => {
       (async () => {
         try {
           console.log(
-            `Completing exchange ${exchange._id} with barcode ${barcodeValue}`,
+            `Validating replacement ${exchange._id} with barcode ${barcodeValue}`,
           );
-          const result = await completeExchange(exchange._id, barcodeValue);
+          const result = await validateReplacementItem(
+            exchange._id,
+            barcodeValue,
+          );
 
           if (!result.success) {
             flash(false);
-            setErrorMessage(result.message || "Exchange completion failed");
+            setErrorMessage(result.message || "Replacement validation failed");
             setIsProcessing(false);
             return;
           }
 
-          // Success
+          // Success: store validated replacement and move to confirmation step
           flash(true);
-          setReplacement(result.replacement);
-          setStep("COMPLETE");
+          setValidatedReplacement(result.product);
+          setStep("VALIDATE_REPLACEMENT");
           setIsProcessing(false);
         } catch (error) {
           flash(false);
@@ -453,6 +462,7 @@ const ExchangeReturnScreen = ({ route, navigation }) => {
               setExchange(null);
               setOrderInfo(null);
               setItemInfo(null);
+              setValidatedReplacement(null);
             }}
             style={styles.headerBackBtn}
           >
@@ -608,7 +618,11 @@ const ExchangeReturnScreen = ({ route, navigation }) => {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            onPress={() => setStep("VALIDATE")}
+            onPress={() => {
+              setStep("VALIDATE");
+              setValidatedReplacement(null);
+              setErrorMessage("");
+            }}
             style={styles.headerBackBtn}
           >
             <MaterialCommunityIcons
@@ -712,6 +726,242 @@ const ExchangeReturnScreen = ({ route, navigation }) => {
     );
   }
 
+  // ── VALIDATE REPLACEMENT STEP ────────────────────────────────────────────
+  if (step === "VALIDATE_REPLACEMENT" && validatedReplacement) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
+
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => {
+              setStep("SCAN_BARCODE");
+              setValidatedReplacement(null);
+              setErrorMessage("");
+            }}
+            style={styles.headerBackBtn}
+          >
+            <MaterialCommunityIcons
+              name="arrow-left"
+              size={24}
+              color="#0F172A"
+            />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Confirm Replacement</Text>
+          <View style={{ width: 40 }} />
+        </View>
+
+        {/* Step Indicator */}
+        <StepIndicator currentStep="VALIDATE_REPLACEMENT" />
+
+        <ScrollView
+          style={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Original item card */}
+          {itemInfo && (
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <MaterialCommunityIcons
+                  name="package-remove"
+                  size={20}
+                  color="#EF4444"
+                />
+                <Text style={styles.cardTitle}>Original Item</Text>
+              </View>
+              <View style={styles.cardContent}>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Name</Text>
+                  <Text style={styles.infoValue} numberOfLines={2}>
+                    {itemInfo.name}
+                  </Text>
+                </View>
+                <View style={styles.divider} />
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Price</Text>
+                  <Text style={styles.infoValue}>
+                    ₱{itemInfo.unitPrice?.toFixed(2)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Validated replacement item card */}
+          {validatedReplacement && (
+            <View
+              style={[styles.card, { borderColor: "#10B981", borderWidth: 2 }]}
+            >
+              <View style={styles.cardHeader}>
+                <MaterialCommunityIcons
+                  name="check-circle"
+                  size={20}
+                  color="#10B981"
+                />
+                <Text style={[styles.cardTitle, { color: "#10B981" }]}>
+                  Replacement Item (Validated)
+                </Text>
+              </View>
+              <View style={styles.cardContent}>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Name</Text>
+                  <Text style={styles.infoValue} numberOfLines={2}>
+                    {validatedReplacement.name}
+                  </Text>
+                </View>
+                <View style={styles.divider} />
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>SKU</Text>
+                  <Text style={styles.infoValue}>
+                    {validatedReplacement.sku}
+                  </Text>
+                </View>
+                <View style={styles.divider} />
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Price</Text>
+                  <Text
+                    style={[
+                      styles.infoValue,
+                      { color: "#10B981", fontWeight: "700" },
+                    ]}
+                  >
+                    ₱{validatedReplacement.price?.toFixed(2)}
+                  </Text>
+                </View>
+                <View style={styles.divider} />
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Stock Available</Text>
+                  <Text
+                    style={[
+                      styles.infoValue,
+                      { color: "#10B981", fontWeight: "600" },
+                    ]}
+                  >
+                    {validatedReplacement.stockQuantity} units
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Validation success message */}
+          <View
+            style={[
+              styles.card,
+              {
+                backgroundColor: "#F0FDF4",
+                borderColor: "#10B981",
+                borderWidth: 1,
+              },
+            ]}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: "#10B981",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  marginRight: 12,
+                }}
+              >
+                <MaterialCommunityIcons
+                  name="check"
+                  size={24}
+                  color="#ffffff"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontWeight: "600",
+                    color: "#10B981",
+                  }}
+                >
+                  Product Validation Successful
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: "#059669",
+                    marginTop: 2,
+                  }}
+                >
+                  Item is in stock and price matches
+                </Text>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Action buttons */}
+        <View style={styles.actionButtonContainer}>
+          <TouchableOpacity
+            style={styles.proceedButton}
+            onPress={async () => {
+              setIsProcessing(true);
+              setErrorMessage("");
+              try {
+                const result = await completeExchange(
+                  exchange._id,
+                  validatedReplacement.barcode,
+                );
+                if (!result.success) {
+                  flash(false);
+                  setErrorMessage(
+                    result.message || "Exchange completion failed",
+                  );
+                  setIsProcessing(false);
+                  return;
+                }
+                flash(true);
+                setReplacement(result.replacement);
+                setStep("COMPLETE");
+                setIsProcessing(false);
+              } catch (error) {
+                flash(false);
+                setErrorMessage(error.message || "Failed to complete exchange");
+                setIsProcessing(false);
+              }
+            }}
+            activeOpacity={0.8}
+            disabled={isProcessing}
+          >
+            <LinearGradient
+              colors={["#10B981", "#059669"]}
+              style={styles.gradientButton}
+            >
+              <MaterialCommunityIcons
+                name="check-circle"
+                size={20}
+                color="#fff"
+              />
+              <Text style={styles.buttonText}>Complete Exchange</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+
+        {isProcessing && (
+          <View
+            style={{
+              position: "absolute",
+              bottom: 80,
+              left: 0,
+              right: 0,
+              alignItems: "center",
+            }}
+          >
+            <ActivityIndicator size="large" color="#10B981" />
+          </View>
+        )}
+      </SafeAreaView>
+    );
+  }
+
   // ── COMPLETE STEP ──────────────────────────────────────────────────────────
   if (step === "COMPLETE" && replacement) {
     return (
@@ -809,6 +1059,7 @@ const ExchangeReturnScreen = ({ route, navigation }) => {
               setExchange(null);
               setOrderInfo(null);
               setItemInfo(null);
+              setValidatedReplacement(null);
               setReplacement(null);
               setErrorMessage("");
             }}
