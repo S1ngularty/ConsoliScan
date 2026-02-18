@@ -16,7 +16,7 @@ const Navbar = () => {
 
         <nav className="navbar__links" aria-label="Primary">
           <Link to="/" className="nav__link">Home</Link>
-          <a href="#" className="nav__link">About Us</a>
+          <Link to="/about-us" className="nav__link">About Us</Link>
           <a href="#" className="nav__link">Tips</a>
         </nav>
 
