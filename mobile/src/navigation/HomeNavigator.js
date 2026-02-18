@@ -8,6 +8,7 @@ import HomeScreen from "../screens/customer/HomeScreen";
 import TransactionsScreen from "../screens/customer/TransactionScreen";
 import MenuScreen from "../screens/customer/MenuScreen"; // Changed from ProfileScreen
 import CartScreen from "../screens/customer/CartScreen";
+import OrderHistoryScreen from "../screens/customer/OrderHistory";
 
 const Tab = createBottomTabNavigator();
 
@@ -36,7 +37,7 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
           switch (routeName) {
             case "Home":
               return isFocused ? "home" : "home-outline";
-            case "Transactions":
+            case "History":
               return isFocused ? "receipt" : "receipt-outline";
             case "Cart":
               return isFocused ? "cart" : "cart-outline";
@@ -100,9 +101,9 @@ export default function HomeNavigator() {
         options={{ title: "Cart" }}
       />
       <Tab.Screen
-        name="Transactions"
-        component={TransactionsScreen}
-        options={{ title: "History" }}
+        name="History"
+        component={OrderHistoryScreen}
+        options={{ title: "History"}}
       />
       <Tab.Screen
         name="Menu" // Changed from Profile

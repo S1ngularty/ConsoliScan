@@ -8,6 +8,7 @@ import QRScanValidationScreen from "../screens/cashier/QRScanValidationScreen";
 import PaymentScreen from "../screens/cashier/PaymentScreen";
 import OrderSummaryScreen from "../screens/cashier/OrderSummaryScreen";
 import BarcodeScanningScreen from "../screens/cashier/BarcodeScanningScreen";
+import ExchangeReturnScreen from "../screens/cashier/ExchangeReturnScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -26,6 +27,7 @@ export default function CashierStackNavigator() {
       />
       <Stack.Screen name="Payment" component={PaymentScreen} />
       <Stack.Screen name="OrderSummary" component={OrderSummaryScreen} />
+      <Stack.Screen name="ExchangeReturn" component={ExchangeReturnScreen} />
     </Stack.Navigator>
   );
 }

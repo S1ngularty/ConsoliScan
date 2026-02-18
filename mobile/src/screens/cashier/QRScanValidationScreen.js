@@ -1,5 +1,4 @@
-// screens/cashier/QRScanValidationScreen.jsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,19 +7,69 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
-  Dimensions,
   Animated,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
+  Easing,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useNavigation, useRoute } from "@react-navigation/native";
 
-const { width, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const SCAN_FRAME_SIZE = 250;
-const SCAN_DELAY_MS = 1000; // 1 second delay between scans
-const RESULTS_PANEL_HEIGHT = SCREEN_HEIGHT * 0.5; // Take up half the screen
+const FRAME_SIZE = 240;
+const CORNER_LEN = 26;
+const CORNER_W = 3;
+const SCAN_DELAY_MS = 1200;
 
+// ─── Animated progress bar (JS-driven width) ─────────────────────────────────
+const AnimatedBar = ({ pct, color = "#00A86B", height = 6 }) => {
+  const w = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(w, {
+      toValue: Math.min(Math.max(pct, 0), 100),
+      duration: 500,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: false,
+    }).start();
+  }, [pct]);
+  return (
+    <View style={[styles.barTrack, { height }]}>
+      <Animated.View
+        style={[
+          styles.barFill,
+          {
+            height,
+            backgroundColor: color,
+            width: w.interpolate({
+              inputRange: [0, 100],
+              outputRange: ["0%", "100%"],
+            }),
+          },
+        ]}
+      />
+    </View>
+  );
+};
+
+// ─── Flash feedback (native opacity) ────────────────────────────────────────
+const useScanFeedback = () => {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const colorRef = useRef("#00A86B");
+
+  const flash = useCallback((success) => {
+    colorRef.current = success ? "#00A86B" : "#DC2626";
+    opacity.setValue(0.85);
+    Animated.timing(opacity, {
+      toValue: 0,
+      duration: 600,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  return { opacity, colorRef, flash };
+};
+
+// ─── Main screen ─────────────────────────────────────────────────────────────
 const QRScanValidationScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
@@ -30,51 +79,189 @@ const QRScanValidationScreen = () => {
   const [scannedItems, setScannedItems] = useState([]);
   const [remainingItems, setRemainingItems] = useState([...orderItems]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [cameraFacing, setCameraFacing] = useState('back');
+  const [lastResult, setLastResult] = useState(null); // { success, message }
+  const [cameraFacing, setCameraFacing] = useState("back");
   const [scanComplete, setScanComplete] = useState(false);
-  
-  const scanAnimation = useRef(new Animated.Value(0)).current;
-  const cameraRef = useRef(null);
+
   const lastScanTime = useRef(0);
   const scanTimeout = useRef(null);
+  const scanAnim = useRef(new Animated.Value(0)).current;
+  const { opacity: flashOpacity, colorRef, flash } = useScanFeedback();
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (scanTimeout.current) {
-        clearTimeout(scanTimeout.current);
-      }
-    };
-  }, []);
-
-  // Animation for scan line
+  // Scan line loop
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(scanAnimation, {
+        Animated.timing(scanAnim, {
           toValue: 1,
-          duration: 2000,
+          duration: 1800,
+          easing: Easing.inOut(Easing.quad),
           useNativeDriver: true,
         }),
-        Animated.timing(scanAnimation, {
+        Animated.timing(scanAnim, {
           toValue: 0,
-          duration: 2000,
+          duration: 1800,
+          easing: Easing.inOut(Easing.quad),
           useNativeDriver: true,
         }),
-      ])
+      ]),
     ).start();
+    return () => {
+      if (scanTimeout.current) clearTimeout(scanTimeout.current);
+    };
   }, []);
 
-  // Check if all items are scanned
   useEffect(() => {
-    if (remainingItems.length === 0 && orderItems.length > 0) {
+    if (remainingItems.length === 0 && orderItems.length > 0)
       setScanComplete(true);
-    }
-  }, [remainingItems.length, orderItems.length]);
+  }, [remainingItems.length]);
 
+  // ── THE FIX: always call setIsProcessing(false) regardless of match ─────
+  const handleBarCodeScanned = useCallback(
+    ({ data }) => {
+      const now = Date.now();
+      if (now - lastScanTime.current < SCAN_DELAY_MS || isProcessing) return;
+      lastScanTime.current = now;
+
+      const scannedCode = data?.trim();
+      if (!scannedCode) return;
+
+      setIsProcessing(true);
+      setLastResult(null);
+
+      const itemIndex = remainingItems.findIndex(
+        (item) => item.product?.barcode === scannedCode,
+      );
+
+      if (itemIndex === -1) {
+        // ── WRONG BARCODE — immediately reset, show error feedback ──────────
+        flash(false);
+        setLastResult({ success: false, message: "Barcode not in this order" });
+        setIsProcessing(false); // <-- was missing in original
+        return;
+      }
+
+      // ── VALID SCAN ───────────────────────────────────────────────────────
+      const item = remainingItems[itemIndex];
+      flash(true);
+
+      setScannedItems((prev) => {
+        const idx = prev.findIndex((s) => s.sku === item.sku);
+        if (idx !== -1) {
+          const updated = [...prev];
+          if (updated[idx].scannedQuantity < item.quantity) {
+            updated[idx] = {
+              ...updated[idx],
+              scannedQuantity: updated[idx].scannedQuantity + 1,
+            };
+            if (updated[idx].scannedQuantity === item.quantity) {
+              setRemainingItems((r) => r.filter((_, i) => i !== itemIndex));
+            }
+            setLastResult({ success: true, message: `${item.name} ✓` });
+          } else {
+            flash(false);
+            setLastResult({ success: false, message: `Already fully scanned` });
+          }
+          return updated;
+        } else {
+          if (item.quantity === 1) {
+            setRemainingItems((r) => r.filter((_, i) => i !== itemIndex));
+          }
+          setLastResult({ success: true, message: `${item.name} ✓` });
+          return [
+            ...prev,
+            {
+              ...item,
+              scannedQuantity: 1,
+              scannedAt: new Date().toISOString(),
+            },
+          ];
+        }
+      });
+
+      scanTimeout.current = setTimeout(
+        () => setIsProcessing(false),
+        SCAN_DELAY_MS,
+      );
+    },
+    [remainingItems, isProcessing, flash],
+  );
+
+  const handleCompleteValidation = () => {
+    const totalScanned = scannedItems.reduce(
+      (s, i) => s + i.scannedQuantity,
+      0,
+    );
+    const totalOrder = orderItems.reduce((s, i) => s + i.quantity, 0);
+    const result = {
+      isValidated: remainingItems.length === 0,
+      validationMethod: "qr_scan",
+      validationDate: new Date().toISOString(),
+      scannedCount: totalScanned,
+      totalCount: totalOrder,
+      scannedItems,
+      remainingItems,
+    };
+
+    if (remainingItems.length > 0) {
+      Alert.alert(
+        "Incomplete Scan",
+        `${remainingItems.length} item(s) still unscanned. Complete anyway?`,
+        [
+          { text: "Keep Scanning", style: "cancel" },
+          {
+            text: "Complete",
+            onPress: () =>
+              navigation.navigate("OrderDetails", {
+                validationResult: result,
+                checkoutCode,
+                checkoutData: route.params?.checkoutData,
+              }),
+          },
+        ],
+      );
+      return;
+    }
+    navigation.navigate("OrderDetails", {
+      validationResult: result,
+      checkoutCode,
+      checkoutData: route.params?.checkoutData,
+    });
+  };
+
+  const handleBack = () => {
+    if (scannedItems.length > 0) {
+      Alert.alert("Exit Validation", "Scan progress will be lost. Exit?", [
+        { text: "Stay", style: "cancel" },
+        {
+          text: "Exit",
+          style: "destructive",
+          onPress: () => navigation.goBack(),
+        },
+      ]);
+    } else {
+      navigation.goBack();
+    }
+  };
+
+  const getItemProgress = (item) => {
+    const si = scannedItems.find((s) => s.sku === item.sku);
+    const qty = si ? si.scannedQuantity : 0;
+    return {
+      scannedQuantity: qty,
+      pct: (qty / item.quantity) * 100,
+      isComplete: qty >= item.quantity,
+    };
+  };
+
+  const totalScanned = scannedItems.reduce((s, i) => s + i.scannedQuantity, 0);
+  const totalOrder = orderItems.reduce((s, i) => s + i.quantity, 0);
+  const overallPct = totalOrder > 0 ? (totalScanned / totalOrder) * 100 : 0;
+
+  // ── Permission screens ──────────────────────────────────────────────────
   if (!permission) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={styles.loadingFull}>
         <ActivityIndicator size="large" color="#00A86B" />
       </View>
     );
@@ -83,254 +270,30 @@ const QRScanValidationScreen = () => {
   if (!permission.granted) {
     return (
       <SafeAreaView style={styles.permissionContainer}>
-        <MaterialCommunityIcons name="camera-off" size={80} color="#64748B" />
+        <View style={styles.permissionIconWrap}>
+          <MaterialCommunityIcons name="camera-off" size={36} color="#94a3b8" />
+        </View>
         <Text style={styles.permissionTitle}>Camera Access Required</Text>
         <Text style={styles.permissionText}>
           We need camera access to scan product barcodes
         </Text>
         <TouchableOpacity
-          style={styles.permissionButton}
+          style={styles.permissionBtn}
           onPress={requestPermission}
         >
-          <MaterialCommunityIcons name="camera" size={20} color="#FFFFFF" />
-          <Text style={styles.permissionButtonText}>Grant Permission</Text>
+          <MaterialCommunityIcons name="camera" size={18} color="#fff" />
+          <Text style={styles.permissionBtnText}>Grant Permission</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
   }
 
-  const handleBarCodeScanned = ({ data }) => {
-    // Prevent multiple scans in quick succession
-    const currentTime = Date.now();
-    const timeSinceLastScan = currentTime - lastScanTime.current;
-    
-    if (timeSinceLastScan < SCAN_DELAY_MS || isProcessing) {
-      console.log(`Scan ignored - too soon: ${timeSinceLastScan}ms since last scan`);
-      return;
-    }
-    
-    lastScanTime.current = currentTime;
-    setIsProcessing(true);
-
-    const scannedCode = data?.trim();
-
-    if (!scannedCode) {
-      setIsProcessing(false);
-      return;
-    }
-
-    console.log('Scanned barcode:', scannedCode);
-
-    // Find the item in remaining items using the barcode
-    const itemIndex = remainingItems.findIndex(item => {
-      // Check if the barcode matches
-      const itemBarcode = item.product?.barcode;
-      return itemBarcode === scannedCode;
-    });
-
-    if (itemIndex !== -1) {
-      // Valid scan
-      const item = remainingItems[itemIndex];
-      console.log('Valid scan for item:', item.name);
-      
-      // Check if this SKU has already been scanned
-      const existingIndex = scannedItems.findIndex(
-        scanned => scanned.sku === item.sku
-      );
-
-      if (existingIndex !== -1) {
-        // Update existing scanned item
-        const updatedScannedItems = [...scannedItems];
-        const scannedItem = updatedScannedItems[existingIndex];
-        
-        if (scannedItem.scannedQuantity < item.quantity) {
-          scannedItem.scannedQuantity += 1;
-          setScannedItems(updatedScannedItems);
-          
-          // Check if we've scanned all of this SKU
-          if (scannedItem.scannedQuantity === item.quantity) {
-            setRemainingItems(prev => prev.filter((_, idx) => idx !== itemIndex));
-          }
-        } else {
-          // Already scanned required quantity
-          Alert.alert(
-            'Already Scanned',
-            `All ${item.quantity} units of ${item.name} have been scanned.`,
-            [{ text: 'OK' }]
-          );
-        }
-      } else {
-        // First time scanning this SKU
-        const newScannedItem = {
-          ...item,
-          scannedQuantity: 1,
-          scannedAt: new Date().toISOString(),
-        };
-        
-        setScannedItems([...scannedItems, newScannedItem]);
-        
-        // If quantity is 1, remove from remaining items
-        if (item.quantity === 1) {
-          setRemainingItems(prev => prev.filter((_, idx) => idx !== itemIndex));
-        }
-      }
-
-      // Success feedback with delay
-      scanTimeout.current = setTimeout(() => {
-        setIsProcessing(false);
-      }, SCAN_DELAY_MS);
-
-    } 
-  };
-
-  const handleToggleCamera = () => {
-    setCameraFacing(current => (current === 'back' ? 'front' : 'back'));
-  };
-
-  const handleCompleteValidation = () => {
-    if (remainingItems.length > 0) {
-      Alert.alert(
-        'Incomplete Scan',
-        `You still have ${remainingItems.length} item(s) to scan. Are you sure you want to complete?`,
-        [
-          { text: 'Continue Scanning', style: 'cancel' },
-          { 
-            text: 'Complete Anyway', 
-            onPress: () => {
-              const totalScanned = scannedItems.reduce((sum, item) => sum + item.scannedQuantity, 0);
-              const totalOrder = orderItems.reduce((sum, item) => sum + item.quantity, 0);
-              
-              navigation.navigate('OrderDetails', {
-                validationResult: {
-                  isValidated: false,
-                  validationMethod: 'qr_scan',
-                  validationDate: new Date().toISOString(),
-                  scannedCount: totalScanned,
-                  totalCount: totalOrder,
-                  scannedItems: scannedItems,
-                  remainingItems: remainingItems,
-                },
-                checkoutCode,
-                checkoutData: route.params?.checkoutData,
-              });
-            }
-          }
-        ]
-      );
-      return;
-    }
-
-    // All items scanned successfully
-    const totalScanned = scannedItems.reduce((sum, item) => sum + item.scannedQuantity, 0);
-    const totalOrder = orderItems.reduce((sum, item) => sum + item.quantity, 0);
-    
-    Alert.alert(
-      'Validation Complete!',
-      'All items have been successfully scanned.',
-      [
-        { 
-          text: 'Return to Order', 
-          onPress: () => {
-            navigation.navigate('OrderDetails', {
-              validationResult: {
-                isValidated: true,
-                validationMethod: 'qr_scan',
-                validationDate: new Date().toISOString(),
-                scannedCount: totalScanned,
-                totalCount: totalOrder,
-                scannedItems: scannedItems,
-                remainingItems: [],
-              },
-              checkoutCode,
-              checkoutData: route.params?.checkoutData,
-            });
-          }
-        }
-      ]
-    );
-  };
-
-  const handleBack = () => {
-    if (scannedItems.length > 0) {
-      Alert.alert(
-        'Exit Validation',
-        'Your scan progress will be lost. Are you sure you want to exit?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Exit', 
-            onPress: () => navigation.goBack()
-          }
-        ]
-      );
-    } else {
-      navigation.goBack();
-    }
-  };
-
-  const getItemProgress = (item) => {
-    const scannedItem = scannedItems.find(si => si.sku === item.sku);
-    const scannedQuantity = scannedItem ? scannedItem.scannedQuantity : 0;
-    const progress = (scannedQuantity / item.quantity) * 100;
-    
-    return {
-      scannedQuantity,
-      progress,
-      isComplete: scannedQuantity >= item.quantity,
-    };
-  };
-
-  const totalScannedQuantity = scannedItems.reduce((sum, item) => sum + item.scannedQuantity, 0);
-  const totalOrderQuantity = orderItems.reduce((sum, item) => sum + item.quantity, 0);
-  const progressPercentage = totalOrderQuantity > 0 ? (totalScannedQuantity / totalOrderQuantity) * 100 : 0;
-
-  // Add scanned items list
-  const renderScannedItems = () => {
-    if (scannedItems.length === 0) return null;
-
-    return (
-      <View style={styles.scannedCard}>
-        <View style={styles.cardHeader}>
-          <MaterialCommunityIcons name="check-circle" size={22} color="#00A86B" />
-          <Text style={styles.cardTitle}>Scanned Items</Text>
-          <Text style={styles.scannedCountBadge}>
-            {scannedItems.length}
-          </Text>
-        </View>
-
-        <ScrollView 
-          style={styles.scannedList} 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.scannedListContent}
-        >
-          {scannedItems.map((item, index) => (
-            <View key={`scanned_${item.sku}_${index}`} style={styles.scannedItem}>
-              <View style={styles.scannedItemIcon}>
-                <MaterialCommunityIcons name="check-circle" size={20} color="#00A86B" />
-              </View>
-              <Text style={styles.scannedItemName} numberOfLines={1}>
-                {item.name}
-              </Text>
-              <Text style={styles.scannedItemQuantity}>
-                {item.scannedQuantity}/{item.quantity}
-              </Text>
-            </View>
-          ))}
-        </ScrollView>
-      </View>
-    );
-  };
-
-  // Calculate positions
-  const scanFrameTop = (SCREEN_HEIGHT - RESULTS_PANEL_HEIGHT - SCAN_FRAME_SIZE) / 1.5;
-
+  // ── Main UI ─────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
-      {/* Camera View - Full Screen */}
+      {/* Camera — fills behind everything */}
       <CameraView
-        ref={cameraRef}
-        style={styles.camera}
+        style={StyleSheet.absoluteFill}
         facing={cameraFacing}
         barcodeScannerSettings={{
           barcodeTypes: ["ean8", "ean13", "upc_a", "upc_e", "code128"],
@@ -338,747 +301,656 @@ const QRScanValidationScreen = () => {
         onBarcodeScanned={isProcessing ? undefined : handleBarCodeScanned}
       />
 
-      {/* Overlay with proper spacing for results panel */}
-      <View style={StyleSheet.absoluteFill}>
-        {/* Semi-transparent overlay */}
-        <View style={styles.overlay}>
-          {/* Top area above scan frame */}
-          <View style={[styles.overlaySection, { height: scanFrameTop }]} />
-          
-          {/* Middle area with scan frame */}
-          <View style={styles.overlayMiddle}>
-            <View style={styles.overlayLeft} />
-            <View style={[styles.scanFrame, { marginTop: scanFrameTop-131 }]}>
-              {/* Corner markers */}
-              <View style={styles.cornerTL} />
-              <View style={styles.cornerTR} />
-              <View style={styles.cornerBL} />
-              <View style={styles.cornerBR} />
+      {/* Overlay — flex layout, no pixel math */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        {/* Top dim */}
+        <View style={styles.dimTop} />
 
-              {/* Animated Scan Line */}
-              <Animated.View 
-                style={[
-                  styles.scanLine,
-                  {
-                    transform: [{
-                      translateY: scanAnimation.interpolate({
+        {/* Middle row */}
+        <View style={styles.dimMiddle}>
+          <View style={styles.dimSide} />
+
+          {/* Scan frame */}
+          <View style={styles.scanFrame}>
+            <View style={[styles.corner, styles.cTL]} />
+            <View style={[styles.corner, styles.cTR]} />
+            <View style={[styles.corner, styles.cBL]} />
+            <View style={[styles.corner, styles.cBR]} />
+
+            {/* Scan line */}
+            <Animated.View
+              style={[
+                styles.scanLine,
+                {
+                  transform: [
+                    {
+                      translateY: scanAnim.interpolate({
                         inputRange: [0, 1],
-                        outputRange: [0, SCAN_FRAME_SIZE],
+                        outputRange: [0, FRAME_SIZE - 2],
                       }),
-                    }],
+                    },
+                  ],
+                },
+              ]}
+            />
+
+            {/* Flash feedback overlay — on the frame itself */}
+            <Animated.View
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  borderRadius: 12,
+                  opacity: flashOpacity,
+                  backgroundColor:
+                    colorRef.current === "#00A86B"
+                      ? "rgba(0,168,107,0.18)"
+                      : "rgba(220,38,38,0.18)",
+                },
+              ]}
+            />
+          </View>
+
+          <View style={styles.dimSide} />
+        </View>
+
+        {/* Bottom dim — instructions sit here */}
+        <View style={styles.dimBottom}>
+          <View style={styles.instructionsWrap}>
+            <MaterialCommunityIcons
+              name="barcode-scan"
+              size={18}
+              color="#fff"
+            />
+            <Text style={styles.instructionsText}>
+              Align barcode within the frame
+            </Text>
+
+            {/* Last scan result pill */}
+            {lastResult && (
+              <View
+                style={[
+                  styles.resultPill,
+                  {
+                    backgroundColor: lastResult.success
+                      ? "rgba(0,168,107,0.25)"
+                      : "rgba(220,38,38,0.25)",
                   },
                 ]}
-              />
-            </View>
-            <View style={styles.overlayRight} />
-          </View>
-          
-          {/* Bottom area for instructions */}
-          <View style={[styles.overlayBottom, { height: RESULTS_PANEL_HEIGHT }]}>
-            <View style={styles.instructionsContainer}>
-              <Text style={styles.instructionsText}>
-                Scan product barcodes
-              </Text>
-              <Text style={styles.instructionsSubtext}>
-                Align barcode within the frame
-              </Text>
-              {isProcessing && (
-                <View style={styles.scanDelayIndicator}>
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                  <Text style={styles.scanDelayText}>Processing...</Text>
-                </View>
-              )}
-            </View>
+              >
+                <MaterialCommunityIcons
+                  name={lastResult.success ? "check-circle" : "alert-circle"}
+                  size={13}
+                  color={lastResult.success ? "#6ee7b7" : "#fca5a5"}
+                />
+                <Text
+                  style={[
+                    styles.resultPillText,
+                    { color: lastResult.success ? "#6ee7b7" : "#fca5a5" },
+                  ]}
+                >
+                  {lastResult.message}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
       </View>
 
-      {/* Header */}
-      <SafeAreaView style={styles.header}>
-        <View style={styles.headerContent}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={handleBack}
-          >
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Barcode Validation</Text>
-            <Text style={styles.headerSubtitle}>
-              {remainingItems.length > 0 
-                ? `${remainingItems.length} item(s) remaining` 
-                : 'All items scanned'}
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            style={styles.cameraToggle}
-            onPress={handleToggleCamera}
-          >
-            <MaterialCommunityIcons name="camera-flip" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
+      {/* Header — floating above overlay */}
+      <SafeAreaView edges={["top"]} style={styles.header}>
+        <TouchableOpacity style={styles.headerBtn} onPress={handleBack}>
+          <MaterialCommunityIcons name="chevron-left" size={22} color="#fff" />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Barcode Validation</Text>
+          <Text style={styles.headerSubtitle}>
+            {scanComplete
+              ? "All items scanned!"
+              : `${remainingItems.length} item${remainingItems.length !== 1 ? "s" : ""} remaining`}
+          </Text>
         </View>
+        <TouchableOpacity
+          style={styles.headerBtn}
+          onPress={() =>
+            setCameraFacing((f) => (f === "back" ? "front" : "back"))
+          }
+        >
+          <MaterialCommunityIcons
+            name="camera-flip-outline"
+            size={20}
+            color="#fff"
+          />
+        </TouchableOpacity>
       </SafeAreaView>
 
-      {/* Results Panel - Fixed position at bottom */}
-      <View style={[styles.resultsPanel, { height: RESULTS_PANEL_HEIGHT }]}>
-        <View style={styles.dragHandle}>
-          <View style={styles.dragHandleBar} />
-        </View>
+      {/* Results bottom sheet */}
+      <View style={styles.sheet}>
+        <View style={styles.dragHandle} />
 
-        <ScrollView 
-          style={styles.resultsScroll} 
+        <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={styles.sheetContent}
         >
-          {/* Progress Summary */}
-          <View style={[styles.progressCard, scanComplete && styles.progressCompleteCard]}>
-            <View style={styles.progressHeader}>
-              <MaterialCommunityIcons 
-                name={scanComplete ? "check-circle" : "progress-check"} 
-                size={24} 
-                color={scanComplete ? "#00A86B" : "#64748B"} 
-              />
-              <Text style={styles.progressTitle}>
-                {scanComplete ? 'Scan Complete!' : 'Scan Progress'}
+          {/* ── Overall progress card ── */}
+          <View style={[styles.card, scanComplete && styles.cardComplete]}>
+            <View style={styles.cardHeader}>
+              <View
+                style={[
+                  styles.cardIconWrap,
+                  {
+                    backgroundColor: scanComplete
+                      ? "rgba(0,168,107,0.1)"
+                      : "#f8fafc",
+                  },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name={scanComplete ? "check-circle" : "progress-check"}
+                  size={18}
+                  color={scanComplete ? "#00A86B" : "#64748b"}
+                />
+              </View>
+              <Text style={styles.cardTitle}>
+                {scanComplete ? "Scan Complete!" : "Scan Progress"}
               </Text>
-              <View style={[
-                styles.progressBadge,
-                scanComplete && styles.progressBadgeComplete
-              ]}>
-                <Text style={[
-                  styles.progressBadgeText,
-                  scanComplete && styles.progressBadgeTextComplete
-                ]}>
-                  {totalScannedQuantity}/{totalOrderQuantity}
+              <View style={[styles.badge, scanComplete && styles.badgeGreen]}>
+                <Text
+                  style={[
+                    styles.badgeText,
+                    scanComplete && styles.badgeTextGreen,
+                  ]}
+                >
+                  {totalScanned}/{totalOrder}
                 </Text>
               </View>
             </View>
 
-            <View style={styles.progressBarContainer}>
-              <View style={styles.progressBar}>
-                <View 
-                  style={[
-                    styles.progressFill,
-                    { 
-                      width: `${progressPercentage}%`,
-                      backgroundColor: scanComplete ? '#00A86B' : '#3B82F6'
-                    }
-                  ]} 
-                />
-              </View>
-              <View style={styles.progressLabels}>
-                <Text style={styles.progressLabel}>
-                  Scanned: {totalScannedQuantity}
-                </Text>
-                <Text style={styles.progressLabel}>
-                  Remaining: {totalOrderQuantity - totalScannedQuantity}
-                </Text>
-              </View>
+            <AnimatedBar
+              pct={overallPct}
+              color={scanComplete ? "#00A86B" : "#3b82f6"}
+              height={7}
+            />
+
+            <View style={styles.progressFooter}>
+              <Text style={styles.progressFooterText}>
+                Scanned: {totalScanned}
+              </Text>
+              <Text style={styles.progressFooterText}>
+                Remaining: {totalOrder - totalScanned}
+              </Text>
             </View>
           </View>
 
-          {/* Items to Scan */}
-          <View style={styles.itemsCard}>
+          {/* ── Items to scan ── */}
+          <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <MaterialCommunityIcons name="format-list-checkbox" size={22} color="#64748B" />
+              <View style={styles.cardIconWrap}>
+                <MaterialCommunityIcons
+                  name="format-list-checkbox"
+                  size={18}
+                  color="#64748b"
+                />
+              </View>
               <Text style={styles.cardTitle}>Items to Scan</Text>
-              <Text style={styles.cardSubtitle}>
-                {remainingItems.length} remaining
-              </Text>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>
+                  {remainingItems.length} left
+                </Text>
+              </View>
             </View>
 
             {remainingItems.length > 0 ? (
-              remainingItems.map((item, index) => {
-                const progress = getItemProgress(item);
-                
-                return (
-                  <View 
-                    key={`${item.sku}_${index}`} 
-                    style={[
-                      styles.itemRow,
-                      progress.isComplete && styles.itemRowComplete
-                    ]}
-                  >
-                    <View style={styles.itemInfo}>
-                      <Text style={styles.itemName} numberOfLines={2}>
-                        {item.name}
-                      </Text>
-                      <View style={styles.itemDetails}>
-                        <Text style={styles.itemSku}>
-                          SKU: {item.sku}
+              <View style={styles.itemsList}>
+                {remainingItems.map((item, i) => {
+                  const prog = getItemProgress(item);
+                  return (
+                    <View
+                      key={`${item.sku}_${i}`}
+                      style={[
+                        styles.itemRow,
+                        i === remainingItems.length - 1 && {
+                          borderBottomWidth: 0,
+                        },
+                      ]}
+                    >
+                      <View style={styles.itemInfo}>
+                        <Text style={styles.itemName} numberOfLines={2}>
+                          {item.name}
                         </Text>
-                        {item.product?.barcode && (
-                          <Text style={styles.itemBarcode}>
-                            Barcode: {item.product.barcode}
-                          </Text>
-                        )}
+                        <View style={styles.itemMeta}>
+                          <Text style={styles.itemSku}>SKU: {item.sku}</Text>
+                          {item.product?.barcode && (
+                            <Text style={styles.itemBarcode}>
+                              {" "}
+                              · {item.product.barcode}
+                            </Text>
+                          )}
+                        </View>
                       </View>
-                    </View>
-                    
-                    <View style={styles.itemProgress}>
-                      <Text style={styles.itemQuantity}>
-                        {progress.scannedQuantity}/{item.quantity}
-                      </Text>
-                      <View style={styles.itemProgressBar}>
-                        <View 
-                          style={[
-                            styles.itemProgressFill,
-                            { width: `${progress.progress}%` }
-                          ]} 
+                      <View style={styles.itemProgress}>
+                        <Text style={styles.itemQty}>
+                          {prog.scannedQuantity}/{item.quantity}
+                        </Text>
+                        <AnimatedBar
+                          pct={prog.pct}
+                          color="#00A86B"
+                          height={4}
                         />
                       </View>
                     </View>
-                  </View>
-                );
-              })
+                  );
+                })}
+              </View>
             ) : (
               <View style={styles.emptyState}>
-                <MaterialCommunityIcons name="check-all" size={48} color="#00A86B" />
+                <MaterialCommunityIcons
+                  name="check-all"
+                  size={40}
+                  color="#00A86B"
+                />
                 <Text style={styles.emptyStateText}>All items scanned!</Text>
               </View>
             )}
           </View>
 
-          {/* Scanned Items */}
-          {renderScannedItems()}
+          {/* ── Scanned items chips ── */}
+          {scannedItems.length > 0 && (
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View
+                  style={[
+                    styles.cardIconWrap,
+                    { backgroundColor: "rgba(0,168,107,0.1)" },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name="check-circle"
+                    size={18}
+                    color="#00A86B"
+                  />
+                </View>
+                <Text style={styles.cardTitle}>Scanned</Text>
+                <View style={[styles.badge, styles.badgeGreen]}>
+                  <Text style={[styles.badgeText, styles.badgeTextGreen]}>
+                    {scannedItems.length}
+                  </Text>
+                </View>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.chipsRow}
+              >
+                {scannedItems.map((item, i) => (
+                  <View key={`chip_${i}`} style={styles.chip}>
+                    <MaterialCommunityIcons
+                      name="check-circle"
+                      size={13}
+                      color="#00A86B"
+                    />
+                    <Text style={styles.chipName} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    <Text style={styles.chipQty}>
+                      {item.scannedQuantity}/{item.quantity}
+                    </Text>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          )}
 
-          {/* Action Buttons */}
-          <View style={styles.actionButtons}>
-            <TouchableOpacity
-              style={[
-                styles.completeButton,
-                scanComplete && styles.completeButtonSuccess,
-                scannedItems.length === 0 && styles.completeButtonDisabled,
-              ]}
-              onPress={handleCompleteValidation}
-              disabled={scannedItems.length === 0 || isProcessing}
-            >
-              <MaterialCommunityIcons
-                name={scanComplete ? "check-circle" : "check-all"}
-                size={22}
-                color="#FFFFFF"
-              />
-              <Text style={styles.completeButtonText}>
-                {scanComplete ? 'Complete ✓' : 'Complete Validation'}
-              </Text>
-            </TouchableOpacity>
+          {/* ── Actions ── */}
+          <TouchableOpacity
+            style={[
+              styles.completeBtn,
+              scanComplete && styles.completeBtnSuccess,
+              scannedItems.length === 0 && styles.completeBtnDisabled,
+            ]}
+            onPress={handleCompleteValidation}
+            disabled={scannedItems.length === 0 || isProcessing}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons
+              name={scanComplete ? "check-circle" : "check-all"}
+              size={20}
+              color="#fff"
+            />
+            <Text style={styles.completeBtnText}>
+              {scanComplete ? "Complete ✓" : "Complete Validation"}
+            </Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.cancelButton, isProcessing && styles.cancelButtonDisabled]}
-              onPress={handleBack}
-              disabled={isProcessing}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.bottomSpacer} />
+          <TouchableOpacity
+            style={styles.cancelBtn}
+            onPress={handleBack}
+            disabled={isProcessing}
+          >
+            <Text style={styles.cancelBtnText}>Cancel</Text>
+          </TouchableOpacity>
         </ScrollView>
       </View>
 
-      {/* Processing Overlay */}
+      {/* Processing indicator — small, non-blocking */}
       {isProcessing && (
-        <View style={styles.processingOverlay}>
-          <ActivityIndicator size="large" color="#00A86B" />
-          <Text style={styles.processingText}>Processing barcode...</Text>
+        <View style={styles.processingPill}>
+          <ActivityIndicator size="small" color="#00A86B" />
+          <Text style={styles.processingText}>Processing…</Text>
         </View>
       )}
     </View>
   );
 };
 
+// ─── Styles ──────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1, backgroundColor: "#000" },
+  loadingFull: {
     flex: 1,
-    backgroundColor: '#000',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F8F9FA",
   },
-  loadingContainer: {
+
+  // Permission
+  permissionContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#F8F9FA",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 40,
   },
-  camera: {
-    flex: 1,
+  permissionIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 20,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
   },
-  overlay: {
-    flex: 1,
+  permissionTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#0f172a",
+    marginBottom: 8,
+    textAlign: "center",
   },
-  overlaySection: {
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  permissionText: {
+    fontSize: 14,
+    color: "#64748b",
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 28,
   },
-  overlayMiddle: {
-    flexDirection: 'row',
-    height: SCAN_FRAME_SIZE,
-  },
-  overlayLeft: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  overlayRight: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  overlayBottom: {
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scanFrame: {
-    width: SCAN_FRAME_SIZE,
-    height: SCAN_FRAME_SIZE,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+  permissionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#00A86B",
+    paddingHorizontal: 28,
+    paddingVertical: 13,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  cornerTL: {
-    position: 'absolute',
-    top: -2,
-    left: -2,
-    width: 30,
-    height: 30,
-    borderTopWidth: 3,
-    borderLeftWidth: 3,
-    borderColor: '#00A86B',
-    borderTopLeftRadius: 8,
+  permissionBtnText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+
+  // Camera overlay — flex-based
+  dimTop: { height: "18%", backgroundColor: "rgba(0,0,0,0.65)" },
+  dimMiddle: { flexDirection: "row", height: FRAME_SIZE },
+  dimSide: { flex: 1, backgroundColor: "rgba(0,0,0,0.65)" },
+  dimBottom: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    paddingTop: 20,
   },
-  cornerTR: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    width: 30,
-    height: 30,
-    borderTopWidth: 3,
-    borderRightWidth: 3,
-    borderColor: '#00A86B',
-    borderTopRightRadius: 8,
+
+  // Scan frame
+  scanFrame: {
+    width: FRAME_SIZE,
+    height: FRAME_SIZE,
+    borderRadius: 12,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
   },
-  cornerBL: {
-    position: 'absolute',
-    bottom: -2,
-    left: -2,
-    width: 30,
-    height: 30,
-    borderBottomWidth: 3,
-    borderLeftWidth: 3,
-    borderColor: '#00A86B',
-    borderBottomLeftRadius: 8,
+  corner: {
+    position: "absolute",
+    width: CORNER_LEN,
+    height: CORNER_LEN,
+    borderColor: "#00A86B",
   },
-  cornerBR: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 30,
-    height: 30,
-    borderBottomWidth: 3,
-    borderRightWidth: 3,
-    borderColor: '#00A86B',
-    borderBottomRightRadius: 8,
+  cTL: {
+    top: -1,
+    left: -1,
+    borderTopWidth: CORNER_W,
+    borderLeftWidth: CORNER_W,
+    borderTopLeftRadius: 10,
+  },
+  cTR: {
+    top: -1,
+    right: -1,
+    borderTopWidth: CORNER_W,
+    borderRightWidth: CORNER_W,
+    borderTopRightRadius: 10,
+  },
+  cBL: {
+    bottom: -1,
+    left: -1,
+    borderBottomWidth: CORNER_W,
+    borderLeftWidth: CORNER_W,
+    borderBottomLeftRadius: 10,
+  },
+  cBR: {
+    bottom: -1,
+    right: -1,
+    borderBottomWidth: CORNER_W,
+    borderRightWidth: CORNER_W,
+    borderBottomRightRadius: 10,
   },
   scanLine: {
-    width: SCAN_FRAME_SIZE,
-    height: 2,
-    backgroundColor: '#00A86B',
-    position: 'absolute',
+    position: "absolute",
     top: 0,
+    left: 0,
+    right: 0,
+    height: 2,
+    backgroundColor: "#00A86B",
+    opacity: 0.9,
   },
-  instructionsContainer: {
-    alignItems: 'center',
-  },
-  instructionsText: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  instructionsSubtext: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginBottom: 8,
-  },
-  scanDelayIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 168, 107, 0.2)',
+
+  // Instructions
+  instructionsWrap: { alignItems: "center", gap: 8 },
+  instructionsText: { fontSize: 14, fontWeight: "600", color: "#fff" },
+  resultPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    marginTop: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
   },
-  scanDelayText: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    marginLeft: 6,
-  },
-  permissionContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-    backgroundColor: '#FFFFFF',
-  },
-  permissionTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1E293B',
-    marginTop: 20,
-    marginBottom: 8,
-  },
-  permissionText: {
-    fontSize: 16,
-    color: '#64748B',
-    textAlign: 'center',
-    marginBottom: 32,
-    lineHeight: 24,
-  },
-  permissionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#00A86B',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  permissionButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  resultPillText: { fontSize: 12, fontWeight: "700" },
+
+  // Header
   header: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
     paddingBottom: 12,
   },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  headerBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  headerCenter: {
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
+  headerCenter: { flex: 1, alignItems: "center" },
+  headerTitle: { fontSize: 16, fontWeight: "700", color: "#fff" },
   headerSubtitle: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: "rgba(255,255,255,0.75)",
     marginTop: 2,
   },
-  cameraToggle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  resultsPanel: {
-    position: 'absolute',
+
+  // Bottom sheet — fixed height, ~55% of screen
+  sheet: {
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    height: "55%",
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
   },
   dragHandle: {
-    paddingTop: 12,
-    paddingBottom: 8,
-    alignItems: 'center',
-  },
-  dragHandleBar: {
     width: 40,
     height: 4,
-    backgroundColor: '#E8F5EF',
     borderRadius: 2,
+    backgroundColor: "#e2e8f0",
+    alignSelf: "center",
+    marginTop: 12,
+    marginBottom: 4,
   },
-  resultsScroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 30,
-  },
-  progressCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+  sheetContent: { paddingHorizontal: 20, paddingBottom: 32, gap: 12 },
+
+  // Cards — matches design system
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E8F5EF',
-  },
-  progressCompleteCard: {
-    borderColor: '#00A86B',
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  progressTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginLeft: 10,
-    flex: 1,
-  },
-  progressBadge: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  progressBadgeComplete: {
-    backgroundColor: '#F0F9F5',
-  },
-  progressBadgeText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#64748B',
-  },
-  progressBadgeTextComplete: {
-    color: '#00A86B',
-  },
-  progressBarContainer: {
-    marginBottom: 8,
-  },
-  progressBar: {
-    height: 6,
-    backgroundColor: '#E8F5EF',
-    borderRadius: 3,
-    overflow: 'hidden',
-    marginBottom: 6,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  progressLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  progressLabel: {
-    fontSize: 12,
-    color: '#64748B',
-  },
-  itemsCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderColor: "#f1f5f9",
     padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E8F5EF',
   },
+  cardComplete: { borderColor: "rgba(0,168,107,0.3)" },
   cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginLeft: 8,
-    flex: 1,
-  },
-  cardSubtitle: {
-    fontSize: 12,
-    color: '#64748B',
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  itemRowComplete: {
-    opacity: 0.6,
-  },
-  itemInfo: {
-    flex: 1,
-    marginRight: 8,
-  },
-  itemName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginBottom: 4,
-    lineHeight: 18,
-  },
-  itemDetails: {
-    gap: 2,
-  },
-  itemSku: {
-    fontSize: 11,
-    color: '#94A3B8',
-  },
-  itemBarcode: {
-    fontSize: 11,
-    color: '#64748B',
-    fontFamily: 'monospace',
-  },
-  itemProgress: {
-    alignItems: 'flex-end',
-    minWidth: 60,
-  },
-  itemQuantity: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginBottom: 4,
-  },
-  itemProgressBar: {
-    width: 60,
-    height: 3,
-    backgroundColor: '#E8F5EF',
-    borderRadius: 1.5,
-    overflow: 'hidden',
-  },
-  itemProgressFill: {
-    height: '100%',
-    backgroundColor: '#00A86B',
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 16,
-  },
-  emptyStateText: {
-    fontSize: 14,
-    color: '#00A86B',
-    fontWeight: '600',
-    marginTop: 8,
-  },
-  scannedCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E8F5EF',
-  },
-  scannedCountBadge: {
-    backgroundColor: '#F0F9F5',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-    fontSize: 11,
-    color: '#00A86B',
-    fontWeight: '600',
-  },
-  scannedList: {
-    flexDirection: 'row',
-  },
-  scannedListContent: {
-    paddingRight: 10,
-  },
-  scannedItem: {
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 6,
-    padding: 10,
-    marginRight: 10,
-    minWidth: 100,
-    borderWidth: 1,
-    borderColor: '#E8F5EF',
-  },
-  scannedItemIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#F0F9F5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  scannedItemName: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#1E293B',
-    textAlign: 'center',
-    marginBottom: 2,
-    maxWidth: 90,
-  },
-  scannedItemQuantity: {
-    fontSize: 10,
-    color: '#00A86B',
-    fontWeight: '700',
-  },
-  actionButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 14,
     gap: 10,
   },
-  completeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#00A86B',
+  cardIconWrap: {
+    width: 32,
+    height: 32,
     borderRadius: 10,
+    backgroundColor: "#f8fafc",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cardTitle: { flex: 1, fontSize: 14, fontWeight: "700", color: "#0f172a" },
+
+  // Badges
+  badge: {
+    backgroundColor: "#f1f5f9",
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  badgeGreen: { backgroundColor: "rgba(0,168,107,0.1)" },
+  badgeText: { fontSize: 12, fontWeight: "700", color: "#64748b" },
+  badgeTextGreen: { color: "#00A86B" },
+
+  // Progress bar
+  barTrack: { backgroundColor: "#f1f5f9", borderRadius: 6, overflow: "hidden" },
+  barFill: { borderRadius: 6 },
+  progressFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+  progressFooterText: { fontSize: 12, color: "#64748b", fontWeight: "600" },
+
+  // Items list
+  itemsList: { gap: 0 },
+  itemRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f8fafc",
+    gap: 12,
+  },
+  itemInfo: { flex: 1 },
+  itemName: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0f172a",
+    marginBottom: 3,
+    lineHeight: 18,
+  },
+  itemMeta: { flexDirection: "row" },
+  itemSku: { fontSize: 11, color: "#94a3b8" },
+  itemBarcode: { fontSize: 11, color: "#64748b" },
+  itemProgress: { alignItems: "flex-end", gap: 5, minWidth: 56 },
+  itemQty: { fontSize: 12, fontWeight: "700", color: "#0f172a" },
+
+  // Empty state
+  emptyState: { alignItems: "center", paddingVertical: 20, gap: 8 },
+  emptyStateText: { fontSize: 14, color: "#00A86B", fontWeight: "700" },
+
+  // Scanned chips
+  chipsRow: { flexDirection: "row", gap: 8, paddingBottom: 4 },
+  chip: {
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+    borderRadius: 12,
+    padding: 10,
+    gap: 4,
+    minWidth: 88,
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
+  },
+  chipName: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#0f172a",
+    textAlign: "center",
+    maxWidth: 84,
+  },
+  chipQty: { fontSize: 10, color: "#00A86B", fontWeight: "700" },
+
+  // Action buttons
+  completeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#00A86B",
+    borderRadius: 12,
     paddingVertical: 14,
     gap: 8,
+    marginTop: 4,
   },
-  completeButtonDisabled: {
-    backgroundColor: '#CBD5E1',
+  completeBtnSuccess: { backgroundColor: "#059669" },
+  completeBtnDisabled: { backgroundColor: "#cbd5e1" },
+  completeBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  cancelBtn: { paddingVertical: 12, alignItems: "center" },
+  cancelBtnText: { color: "#64748b", fontSize: 14, fontWeight: "600" },
+
+  // Processing pill — small, non-blocking (replaces full-screen overlay)
+  processingPill: {
+    position: "absolute",
+    top: 120,
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(15,23,42,0.85)",
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 20,
   },
-  completeButtonSuccess: {
-    backgroundColor: '#00A86B',
-  },
-  completeButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  cancelButton: {
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  cancelButtonDisabled: {
-    opacity: 0.5,
-  },
-  cancelButtonText: {
-    color: '#64748B',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  bottomSpacer: {
-    height: 10,
-  },
-  processingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  processingText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    marginTop: 16,
-    fontWeight: '500',
-  },
+  processingText: { color: "#fff", fontSize: 13, fontWeight: "600" },
 });
 
 export default QRScanValidationScreen;

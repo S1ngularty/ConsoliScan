@@ -16,7 +16,7 @@ const ReceiptScreen = ({ route, navigation }) => {
   
   // Use the provided data or fallback
   const receiptData = orderData || {};
-  console.log(receiptData)
+  // console.log(receiptData)
   
   // Format date
   const formatDate = (dateString) => {

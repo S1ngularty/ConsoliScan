@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LoginPage from "./pages/auth/LoginPage";
 import Home from "./pages/Home";
+import AboutUs from "./pages/AboutUs";
 import adminRoute from "./routes/adminRoute.jsx";
 import AdminLayout from "./layouts/AdminLayout.jsx";
 
@@ -10,6 +11,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/about-us" element={<AboutUs />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/admin" element={<AdminLayout />}>
           {adminRoute().map((route) => {

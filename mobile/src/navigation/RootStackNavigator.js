@@ -19,15 +19,17 @@ const Stack = createNativeStackNavigator();
 export default function RootNavigator() {
   const { loading, isLoggedIn, role } = useSelector((state) => state.auth);
 
+  //  useEffect(() => {
+  //   console.log(loading, isLoggedIn, role);
+  // }, [loading, isLoggedIn, role]);
+
+
   const [appIsReady, setAppIsReady] = useState(false);
   if (!appIsReady) {
     return <SplashScreen onReady={() => setAppIsReady(true)} />;
   }
 
-  // useEffect(() => {
-  //   console.log(loading, isLoggedIn, role);
-  // }, [loading, isLoggedIn, role]);
-
+ 
   return (
     <Stack.Navigator id="RootStack" screenOptions={{ headerShown: false }}>
       {role === ROLES.Customer ? (

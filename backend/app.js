@@ -15,6 +15,8 @@ const {
   checkoutQueue,
   promo,
   loyalty,
+  exchange,
+  cashier,
 } = require("./routes/index");
 const productModel = require("./models/productModel");
 
@@ -58,5 +60,7 @@ app.use("/api/v1", checkoutQueue);
 app.use("/api/v1", order);
 app.use("/api/v1", promo);
 app.use("/api/v1", loyalty);
+app.use("/api/v1", exchange);
+app.use("/api/v1", cashier);
 
 module.exports = app;

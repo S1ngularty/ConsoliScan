@@ -277,7 +277,7 @@ const MenuScreen = ({ navigation }) => {
               icon={item.icon}
               isLast={index === menuItems.length - 1}
               onPress={() =>
-                item.path === "Help"
+                item.path === "Help" || item.path ==="About"
                   ? navigation.navigate("Shared", {
                       screen: item.path,
                     })
@@ -294,7 +294,7 @@ const MenuScreen = ({ navigation }) => {
         </TouchableOpacity>
 
         {/* --- VERSION --- */}
-        <Text style={styles.versionText}>GrocerySmart v1.0.0</Text>
+        <Text style={styles.versionText}>ConsoliScan v1.0.0</Text>
       </ScrollView>
     </SafeAreaView>
   );

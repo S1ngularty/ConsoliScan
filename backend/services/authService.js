@@ -7,6 +7,7 @@ const bcrypt = require("bcrypt");
 exports.register = async (request) => {
   if (!request.body) throw new Error("undefined body");
   const { name, email, age, sex, password } = request.body;
+  console.log(request.body);
 
   const hashPassword = await bcrypt.hash(password, 10);
   const newUser = await User.create({
@@ -24,7 +25,11 @@ exports.register = async (request) => {
     role: newUser.role,
     status: newUser.status,
   };
-  return user;
+
+  const token = await newUser.getToken();
+  if (!token) throw new Error("failed to create  a token");
+
+  return { ...user, token };
 };
 
 exports.login = async (request) => {

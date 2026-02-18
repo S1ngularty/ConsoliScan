@@ -21,4 +21,8 @@ router
   .route("/promo/apply/:promoCode")
   .get(authMiddleware.verifyToken, promoController.applyPromo);
 
+router
+  .route("/promo/guest/apply/:promoCode")
+  .post(promoController.applyGuestPromo);
+
 module.exports = router;

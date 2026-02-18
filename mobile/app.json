@@ -28,9 +28,9 @@
         "backgroundColor": "#00A86B"
       },
       "edgeToEdgeEnabled": true,
-      "permissions": [
-        "android.permission.CAMERA"
-      ]
+      "permissions": ["android.permission.CAMERA"],
+      "googleServicesFile": "./google-services.json",
+      "usesCleartextTraffic": true
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -45,12 +45,14 @@
         }
       ],
       "expo-font",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-notifications"
     ],
     "extra": {
       "eas": {
         "projectId": "04973f2e-c179-411e-bd1f-40e3685bf9cb"
       }
-    }
+    },
+    "owner": "singurity"
   }
 }

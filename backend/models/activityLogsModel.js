@@ -34,6 +34,10 @@ const activityLogsSchema = new mongoose.Schema(
         "DELETE_DISCOUNT",
         "CREATE_DISCOUNT",
 
+        "UPDATE_STOCK",
+        "CHECKOUT",
+        "EXCHANGE",
+
         "LOGOUT",
       ],
     },

@@ -20,11 +20,12 @@ import ProfileScreen from "../screens/cashier/ProfileScreen";
 
 // Import logout action (update path based on your project structure)
 // import { logout } from "../store/slices/authSlice";
+import {useSelector} from "react-redux";
 
 const Drawer = createDrawerNavigator();
 
 // Custom Drawer Content
-const CustomDrawerContent = ({ state, descriptors, navigation }) => {
+const CustomDrawerContent = ({ state, descriptors, navigation, userState}) => {
   const dispatch = useDispatch(); // Add useDispatch here
 
   const handleLogout = () => {
@@ -64,8 +65,8 @@ const CustomDrawerContent = ({ state, descriptors, navigation }) => {
             <MaterialCommunityIcons name="account" size={28} color="#FFFFFF" />
           </View>
           <View style={styles.userDetails}>
-            <Text style={styles.userName}>Maria Santos</Text>
-            <Text style={styles.userRole}>Senior Cashier</Text>
+            <Text style={styles.userName}>{userState?.user?.name || "Guest User"}</Text>
+            <Text style={styles.userRole}>{userState?.user?.role || "Cashier"}</Text>
           </View>
         </View>
       </View>
@@ -184,9 +185,10 @@ const CustomDrawerContent = ({ state, descriptors, navigation }) => {
 
 // Main Drawer Navigator
 export default function DrawerNavigator() {
+  const userState = useSelector((state) => state.auth);
   return (
     <Drawer.Navigator
-      drawerContent={(props) => <CustomDrawerContent {...props} />}
+      drawerContent={(props) => <CustomDrawerContent {...props} userState={userState} />}
       screenOptions={{
         headerShown: false,
         drawerStyle: {

@@ -90,7 +90,12 @@ const RegisterScreen = ({ navigation }) => {
       const isSuccess = await dispatch(register(userData));
       if (register.fulfilled.match(isSuccess)) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        navigation.navigate("HomeTabs");
+        // navigation.navigate("Customer", {
+        //   screen: "HomeTabs",
+        //   params: {
+        //     screen: "Home",
+        //   },
+        // });
       } else if (register.rejected.match(isSuccess)) {
         throw new Error(
           "failed to create your account please try again later.",

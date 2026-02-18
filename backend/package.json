@@ -11,6 +11,7 @@
     "start": "nodemon server.js"
   },
   "dependencies": {
+    "@types/pdfkit": "^0.17.5",
     "bcrypt": "^6.0.0",
     "bigchaindb-driver": "^4.3.0",
     "cloudinary": "^2.8.0",
@@ -22,9 +23,11 @@
     "firebase-admin": "^12.7.0",
     "fs": "^0.0.1-security",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.1.2", 
+    "mongoose": "^9.1.2",
     "multer": "^2.0.2",
     "nodemon": "^3.1.11",
+    "path": "^0.12.7",
+    "pdfkit": "^0.17.2",
     "slugify": "^1.6.6",
     "socket.io": "^4.8.3",
     "validator": "^13.15.26"

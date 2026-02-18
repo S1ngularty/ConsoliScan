@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1004361058566",
+    "project_id": "singularity-9b3ba",
+    "storage_bucket": "singularity-9b3ba.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1004361058566:android:851b3ecb02afe57b73b687",
+        "android_client_info": {
+          "package_name": "com.tupt.ConsoliScan"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1004361058566-d8foqnldhkuo2g0uepg9a1k1a24l171m.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD5-PuuXja1_OUpViEE_1n3pdkp-o0tf0w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1004361058566-d8foqnldhkuo2g0uepg9a1k1a24l171m.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
