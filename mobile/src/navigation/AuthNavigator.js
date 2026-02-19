@@ -8,9 +8,16 @@ const Stack = createNativeStackNavigator();
 
 export default function AuthNavigation() {
   return (
-    <Stack.Navigator screenOptions={{headerShown:false}}>
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen 
+        name="Register" 
+        component={RegisterScreen} 
+        options={{ 
+          presentation: 'modal', 
+          animation: 'slide_from_bottom' 
+        }}
+      />
     </Stack.Navigator>
   );
 }

@@ -30,6 +30,29 @@ const AboutUs = () => {
         <p>A Smart Solution for Efficient Grocery Shopping</p>
       </section>
 
+{/* Team */}
+      <section className="about-section">
+        <div className="section-header">
+          <span className="section-label">Our Team</span>
+          <h2>The Students Behind ConsoliScan</h2>
+        </div>
+        <div className="team-grid">
+          {[
+            { id: 1, name: "Sachzie Ilagan", role: "Developer", image: sachzieImage },
+            { id: 2, name: "Levi Penaverde", role: "Developer", image: leviImage },
+            { id: 3, name: "Ianzae Ego", role: "Developer", image: egoImage }
+          ].map((member) => (
+            <div key={member.id} className="team-card">
+              <div className="member-image">
+                <img src={member.image} alt={member.name} />
+              </div>
+              <h3>{member.name}</h3>
+              <p>{member.role}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Mission & Vision */}
       <section className="about-section">
         <div className="mission-vision-grid">
@@ -69,7 +92,7 @@ const AboutUs = () => {
               <h2>From Concept to Smart Assistant</h2>
               <p>
                 ConsoliScan started with a simple question: "How can we make grocery shopping less chaotic and more efficient?" 
-                We noticed that many people struggle with overbuying, forgetting items, or losing track of what's in their pantry.
+                We noticed that many people struggle with long lines, manual item scanning, and tracking products they are buying.
               </p>
               <p>
                 Combining our passion for technology with everyday needs, we developed a solution that does more than just list items. 
@@ -115,29 +138,6 @@ const AboutUs = () => {
           </div>
         </section>
       </div>
-
-      {/* Team */}
-      <section className="about-section">
-        <div className="section-header">
-          <span className="section-label">Our Team</span>
-          <h2>The Students Behind ConsoliScan</h2>
-        </div>
-        <div className="team-grid">
-          {[
-            { id: 1, name: "Sachzie", role: "Developer", image: sachzieImage },
-            { id: 2, name: "Levi", role: "Developer", image: leviImage },
-            { id: 3, name: "Ego", role: "Developer", image: egoImage }
-          ].map((member) => (
-            <div key={member.id} className="team-card">
-              <div className="member-image">
-                <img src={member.image} alt={member.name} />
-              </div>
-              <h3>{member.name}</h3>
-              <p>{member.role}</p>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {/* CTA */}
       <section className="about-cta">

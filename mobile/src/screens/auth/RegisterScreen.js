@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   View,
@@ -20,8 +20,26 @@ import { API_URL } from "../../constants/config";
 import { useDispatch, useSelector } from "react-redux";
 import { register } from "../../features/slices/auth/authThunks";
 import axios from "axios";
+import { LinearGradient } from "expo-linear-gradient";
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withDelay, 
+  withSpring, 
+  withTiming,
+  FadeInDown
+} from "react-native-reanimated";
 
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
+
+const COLORS = {
+  green: "#5C6F2B",
+  orange: "#DE802B",
+  sand: "#D8C9A7",
+  light: "#EEEEEE",
+  text: "#0f172a",
+  muted: "#334155",
+};
 
 const RegisterScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
@@ -39,7 +57,21 @@ const RegisterScreen = ({ navigation }) => {
   const { loading, error } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
 
+  // Animation values
+  const sheetY = useSharedValue(height);
+
+  useEffect(() => {
+    sheetY.value = withSpring(0, { damping: 15, stiffness: 90 });
+  }, []);
+
+  const animatedSheetStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateY: sheetY.value }],
+    };
+  });
+
   const validateForm = () => {
+    // ... existing validation logic ...
     const newErrors = {};
 
     if (!formData.name.trim()) newErrors.name = "Name is required";
@@ -67,6 +99,7 @@ const RegisterScreen = ({ navigation }) => {
   };
 
   const handleRegister = async () => {
+    // ... existing register logic ...
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     if (!validateForm()) {
@@ -74,7 +107,6 @@ const RegisterScreen = ({ navigation }) => {
       return;
     }
 
-    // Prepare registration data
     const userData = {
       name: formData.name.trim(),
       email: formData.email.trim().toLowerCase(),
@@ -86,16 +118,9 @@ const RegisterScreen = ({ navigation }) => {
     };
 
     try {
-      // Simulate API call
       const isSuccess = await dispatch(register(userData));
       if (register.fulfilled.match(isSuccess)) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        // navigation.navigate("Customer", {
-        //   screen: "HomeTabs",
-        //   params: {
-        //     screen: "Home",
-        //   },
-        // });
       } else if (register.rejected.match(isSuccess)) {
         throw new Error(
           "failed to create your account please try again later.",
@@ -115,15 +140,20 @@ const RegisterScreen = ({ navigation }) => {
     }
   };
 
+  const AnimatedInput = ({ index, children }) => (
+    <Animated.View entering={FadeInDown.delay(index * 100).springify()}>
+      {children}
+    </Animated.View>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-
-      {/* Background */}
-      <View style={styles.background}>
-        <View style={[styles.bgShape, styles.bgShape1]} />
-        <View style={[styles.bgShape, styles.bgShape2]} />
-        <View style={[styles.bgShape, styles.bgShape3]} />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.light} />
+      
+      {/* Background Decorative Blobs */}
+      <View style={styles.backgroundContainer} pointerEvents="none">
+        <View style={[styles.blob, styles.blob1]} />
+        <View style={[styles.blob, styles.blob2]} />
       </View>
 
       <KeyboardAvoidingView
@@ -135,7 +165,9 @@ const RegisterScreen = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <Pressable style={styles.content} onPress={() => setErrors({})}>
+          <Animated.View style={[styles.content, animatedSheetStyle]}>
+            <View style={styles.sheetHandle} />
+            
             {/* Header */}
             <View style={styles.header}>
               <TouchableOpacity
@@ -143,20 +175,13 @@ const RegisterScreen = ({ navigation }) => {
                 onPress={() => navigation.goBack()}
               >
                 <MaterialCommunityIcons
-                  name="arrow-left"
+                  name="arrow-down"
                   size={24}
-                  color="#00A86B"
+                  color={COLORS.text}
                 />
               </TouchableOpacity>
 
               <View style={styles.logoContainer}>
-                <View style={styles.logo}>
-                  <MaterialCommunityIcons
-                    name="account-plus"
-                    size={32}
-                    color="#00A86B"
-                  />
-                </View>
                 <Text style={styles.title}>Create Account</Text>
                 <Text style={styles.subtitle}>Join ConsoliScan in seconds</Text>
               </View>
@@ -165,266 +190,278 @@ const RegisterScreen = ({ navigation }) => {
             {/* Registration Form */}
             <View style={styles.form}>
               {/* Name */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>FULL NAME</Text>
-                <View
-                  style={[
-                    styles.inputContainer,
-                    errors.name && styles.inputContainerError,
-                  ]}
-                >
-                  <MaterialCommunityIcons
-                    name="account-outline"
-                    size={20}
-                    color={errors.name ? "#ef4444" : "#94a3b8"}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="John Doe"
-                    placeholderTextColor="#94a3b8"
-                    value={formData.name}
-                    onChangeText={(value) => updateFormData("name", value)}
-                    autoCapitalize="words"
-                  />
+              <AnimatedInput index={1}>
+                <View style={styles.inputGroup}>
+                  <View
+                    style={[
+                      styles.inputContainer,
+                      errors.name && styles.inputContainerError,
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name="account-outline"
+                      size={20}
+                      color={errors.name ? "#ef4444" : COLORS.muted}
+                    />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Full Name"
+                      placeholderTextColor={COLORS.muted}
+                      value={formData.name}
+                      onChangeText={(value) => updateFormData("name", value)}
+                      autoCapitalize="words"
+                    />
+                  </View>
+                  {errors.name ? (
+                    <Text style={styles.errorText}>{errors.name}</Text>
+                  ) : null}
                 </View>
-                {errors.name ? (
-                  <Text style={styles.errorText}>{errors.name}</Text>
-                ) : null}
-              </View>
+              </AnimatedInput>
 
               {/* Email */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>EMAIL ADDRESS</Text>
-                <View
-                  style={[
-                    styles.inputContainer,
-                    errors.email && styles.inputContainerError,
-                  ]}
-                >
-                  <MaterialCommunityIcons
-                    name="email-outline"
-                    size={20}
-                    color={errors.email ? "#ef4444" : "#94a3b8"}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="john@example.com"
-                    placeholderTextColor="#94a3b8"
-                    value={formData.email}
-                    onChangeText={(value) => updateFormData("email", value)}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                    autoComplete="email"
-                  />
-                </View>
-                {errors.email ? (
-                  <Text style={styles.errorText}>{errors.email}</Text>
-                ) : null}
-              </View>
-
-              {/* Age - Full width on top */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>AGE</Text>
-                <View
-                  style={[
-                    styles.inputContainer,
-                    errors.age && styles.inputContainerError,
-                  ]}
-                >
-                  <MaterialCommunityIcons
-                    name="cake-variant-outline"
-                    size={20}
-                    color={errors.age ? "#ef4444" : "#94a3b8"}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="25"
-                    placeholderTextColor="#94a3b8"
-                    value={formData.age}
-                    onChangeText={(value) => updateFormData("age", value)}
-                    keyboardType="numeric"
-                    maxLength={3}
-                  />
-                </View>
-                {errors.age ? (
-                  <Text style={styles.errorText}>{errors.age}</Text>
-                ) : null}
-              </View>
-
-              {/* Gender Selection - Separated row */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>GENDER</Text>
-                {errors.sex ? (
-                  <Text style={styles.errorText}>{errors.sex}</Text>
-                ) : null}
-                <View style={styles.genderContainer}>
-                  <TouchableOpacity
+              <AnimatedInput index={2}>
+                <View style={styles.inputGroup}>
+                  <View
                     style={[
-                      styles.genderOption,
-                      formData.sex === "male" && styles.genderOptionSelected,
+                      styles.inputContainer,
+                      errors.email && styles.inputContainerError,
                     ]}
-                    onPress={() => updateFormData("sex", "male")}
                   >
                     <MaterialCommunityIcons
-                      name="gender-male"
-                      size={24}
-                      color={formData.sex === "male" ? "#00A86B" : "#94a3b8"}
+                      name="email-outline"
+                      size={20}
+                      color={errors.email ? "#ef4444" : COLORS.muted}
                     />
-                    <Text
-                      style={[
-                        styles.genderText,
-                        formData.sex === "male" && styles.genderTextSelected,
-                      ]}
-                    >
-                      Male
-                    </Text>
-                  </TouchableOpacity>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Email Address"
+                      placeholderTextColor={COLORS.muted}
+                      value={formData.email}
+                      onChangeText={(value) => updateFormData("email", value)}
+                      autoCapitalize="none"
+                      keyboardType="email-address"
+                      autoComplete="email"
+                    />
+                  </View>
+                  {errors.email ? (
+                    <Text style={styles.errorText}>{errors.email}</Text>
+                  ) : null}
+                </View>
+              </AnimatedInput>
 
-                  <TouchableOpacity
+              {/* Age */}
+              <AnimatedInput index={3}>
+                <View style={styles.inputGroup}>
+                  <View
                     style={[
-                      styles.genderOption,
-                      formData.sex === "female" && styles.genderOptionSelected,
+                      styles.inputContainer,
+                      errors.age && styles.inputContainerError,
                     ]}
-                    onPress={() => updateFormData("sex", "female")}
                   >
                     <MaterialCommunityIcons
-                      name="gender-female"
-                      size={24}
-                      color={formData.sex === "female" ? "#00A86B" : "#94a3b8"}
+                      name="cake-variant-outline"
+                      size={20}
+                      color={errors.age ? "#ef4444" : COLORS.muted}
                     />
-                    <Text
-                      style={[
-                        styles.genderText,
-                        formData.sex === "female" && styles.genderTextSelected,
-                      ]}
-                    >
-                      Female
-                    </Text>
-                  </TouchableOpacity>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Age"
+                      placeholderTextColor={COLORS.muted}
+                      value={formData.age}
+                      onChangeText={(value) => updateFormData("age", value)}
+                      keyboardType="numeric"
+                      maxLength={3}
+                    />
+                  </View>
+                  {errors.age ? (
+                    <Text style={styles.errorText}>{errors.age}</Text>
+                  ) : null}
                 </View>
-              </View>
+              </AnimatedInput>
+
+              {/* Gender Selection */}
+              <AnimatedInput index={4}>
+                <View style={styles.inputGroup}>
+                  {errors.sex ? (
+                    <Text style={styles.errorText}>{errors.sex}</Text>
+                  ) : null}
+                  <View style={styles.genderContainer}>
+                    <TouchableOpacity
+                      style={[
+                        styles.genderOption,
+                        formData.sex === "male" && styles.genderOptionSelected,
+                      ]}
+                      onPress={() => updateFormData("sex", "male")}
+                    >
+                      <MaterialCommunityIcons
+                        name="gender-male"
+                        size={24}
+                        color={formData.sex === "male" ? COLORS.green : COLORS.muted}
+                      />
+                      <Text
+                        style={[
+                          styles.genderText,
+                          formData.sex === "male" && styles.genderTextSelected,
+                        ]}
+                      >
+                        Male
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.genderOption,
+                        formData.sex === "female" && styles.genderOptionSelected,
+                      ]}
+                      onPress={() => updateFormData("sex", "female")}
+                    >
+                      <MaterialCommunityIcons
+                        name="gender-female"
+                        size={24}
+                        color={formData.sex === "female" ? COLORS.green : COLORS.muted}
+                      />
+                      <Text
+                        style={[
+                          styles.genderText,
+                          formData.sex === "female" && styles.genderTextSelected,
+                        ]}
+                      >
+                        Female
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </AnimatedInput>
 
               {/* Password */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>PASSWORD</Text>
-                <View
-                  style={[
-                    styles.inputContainer,
-                    errors.password && styles.inputContainerError,
-                  ]}
-                >
-                  <MaterialCommunityIcons
-                    name="lock-outline"
-                    size={20}
-                    color={errors.password ? "#ef4444" : "#94a3b8"}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="••••••••"
-                    placeholderTextColor="#94a3b8"
-                    value={formData.password}
-                    onChangeText={(value) => updateFormData("password", value)}
-                    secureTextEntry={!showPassword}
-                    autoComplete="new-password"
-                  />
-                  <Pressable
-                    style={styles.eyeButton}
-                    onPress={() => setShowPassword(!showPassword)}
+              <AnimatedInput index={5}>
+                <View style={styles.inputGroup}>
+                  <View
+                    style={[
+                      styles.inputContainer,
+                      errors.password && styles.inputContainerError,
+                    ]}
                   >
                     <MaterialCommunityIcons
-                      name={showPassword ? "eye-off" : "eye"}
+                      name="lock-outline"
                       size={20}
-                      color="#64748b"
+                      color={errors.password ? "#ef4444" : COLORS.muted}
                     />
-                  </Pressable>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Password"
+                      placeholderTextColor={COLORS.muted}
+                      value={formData.password}
+                      onChangeText={(value) => updateFormData("password", value)}
+                      secureTextEntry={!showPassword}
+                      autoComplete="new-password"
+                    />
+                    <Pressable
+                      style={styles.eyeButton}
+                      onPress={() => setShowPassword(!showPassword)}
+                    >
+                      <MaterialCommunityIcons
+                        name={showPassword ? "eye-off" : "eye"}
+                        size={20}
+                        color={COLORS.muted}
+                      />
+                    </Pressable>
+                  </View>
+                  {errors.password ? (
+                    <Text style={styles.errorText}>{errors.password}</Text>
+                  ) : null}
                 </View>
-                {errors.password ? (
-                  <Text style={styles.errorText}>{errors.password}</Text>
-                ) : null}
-              </View>
+              </AnimatedInput>
 
               {/* Confirm Password */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>CONFIRM PASSWORD</Text>
-                <View
-                  style={[
-                    styles.inputContainer,
-                    errors.confirmPassword && styles.inputContainerError,
-                  ]}
-                >
-                  <MaterialCommunityIcons
-                    name="lock-check-outline"
-                    size={20}
-                    color={errors.confirmPassword ? "#ef4444" : "#94a3b8"}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="••••••••"
-                    placeholderTextColor="#94a3b8"
-                    value={formData.confirmPassword}
-                    onChangeText={(value) =>
-                      updateFormData("confirmPassword", value)
-                    }
-                    secureTextEntry={!showConfirmPassword}
-                    autoComplete="new-password"
-                  />
-                  <Pressable
-                    style={styles.eyeButton}
-                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+              <AnimatedInput index={6}>
+                <View style={styles.inputGroup}>
+                  <View
+                    style={[
+                      styles.inputContainer,
+                      errors.confirmPassword && styles.inputContainerError,
+                    ]}
                   >
                     <MaterialCommunityIcons
-                      name={showConfirmPassword ? "eye-off" : "eye"}
+                      name="lock-check-outline"
                       size={20}
-                      color="#64748b"
+                      color={errors.confirmPassword ? "#ef4444" : COLORS.muted}
                     />
-                  </Pressable>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Confirm Password"
+                      placeholderTextColor={COLORS.muted}
+                      value={formData.confirmPassword}
+                      onChangeText={(value) =>
+                        updateFormData("confirmPassword", value)
+                      }
+                      secureTextEntry={!showConfirmPassword}
+                      autoComplete="new-password"
+                    />
+                    <Pressable
+                      style={styles.eyeButton}
+                      onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      <MaterialCommunityIcons
+                        name={showConfirmPassword ? "eye-off" : "eye"}
+                        size={20}
+                        color={COLORS.muted}
+                      />
+                    </Pressable>
+                  </View>
+                  {errors.confirmPassword ? (
+                    <Text style={styles.errorText}>{errors.confirmPassword}</Text>
+                  ) : null}
                 </View>
-                {errors.confirmPassword ? (
-                  <Text style={styles.errorText}>{errors.confirmPassword}</Text>
-                ) : null}
-              </View>
+              </AnimatedInput>
 
               {/* Terms */}
-              <View style={styles.termsContainer}>
-                <Text style={styles.termsText}>
-                  By creating an account, you agree to our{" "}
-                  <Text style={styles.termsLink}>Terms of Service</Text> and{" "}
-                  <Text style={styles.termsLink}>Privacy Policy</Text>
-                </Text>
-              </View>
+              <AnimatedInput index={7}>
+                <View style={styles.termsContainer}>
+                  <Text style={styles.termsText}>
+                    By creating an account, you agree to our{" "}
+                    <Text style={styles.termsLink}>Terms of Service</Text> and{" "}
+                    <Text style={styles.termsLink}>Privacy Policy</Text>
+                  </Text>
+                </View>
+              </AnimatedInput>
 
               {/* Register Button */}
-              <Pressable
-                style={[
-                  styles.registerButton,
-                  loading && styles.registerButtonDisabled,
-                ]}
-                onPress={handleRegister}
-                disabled={loading}
-              >
-                {loading ? (
-                  <View style={styles.loadingContainer}>
-                    <MaterialCommunityIcons
-                      name="loading"
-                      size={20}
-                      color="#ffffff"
-                    />
-                    <Text style={styles.registerText}>Creating account...</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.registerText}>Create Account</Text>
-                )}
-              </Pressable>
+              <AnimatedInput index={8}>
+                <TouchableOpacity activeOpacity={0.8} onPress={handleRegister} disabled={loading}>
+                  <LinearGradient
+                    colors={[COLORS.green, '#4a5d20']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[styles.registerButton, loading && styles.registerButtonDisabled]}
+                  >
+                    {loading ? (
+                      <View style={styles.loadingContainer}>
+                        <MaterialCommunityIcons
+                          name="loading"
+                          size={20}
+                          color="#ffffff"
+                        />
+                        <Text style={styles.registerText}>Creating account...</Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.registerText}>Create Account</Text>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+              </AnimatedInput>
 
               {/* Login Link */}
-              <View style={styles.loginContainer}>
-                <Text style={styles.loginText}>Already have an account? </Text>
-                <Pressable onPress={() => navigation.navigate("Login")}>
-                  <Text style={styles.loginLink}>Sign in</Text>
-                </Pressable>
-              </View>
+              <AnimatedInput index={9}>
+                <View style={styles.loginContainer}>
+                  <Text style={styles.loginText}>Already have an account? </Text>
+                  <Pressable onPress={() => navigation.navigate("Login")}>
+                    <Text style={styles.loginLink}>Sign in</Text>
+                  </Pressable>
+                </View>
+              </AnimatedInput>
             </View>
-          </Pressable>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -434,105 +471,65 @@ const RegisterScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: COLORS.light,
   },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-  },
-  background: {
-    position: "absolute",
-    width: "100%",
-    height: "100%",
-  },
-  bgShape: {
-    position: "absolute",
-    backgroundColor: "#00A86B15",
-    borderRadius: 500,
-  },
-  bgShape1: {
-    width: width * 0.8,
-    height: width * 0.8,
-    top: -width * 0.4,
-    right: -width * 0.2,
-  },
-  bgShape2: {
-    width: width * 0.6,
-    height: width * 0.6,
-    bottom: -width * 0.2,
-    left: -width * 0.2,
-  },
-  bgShape3: {
-    width: width * 0.4,
-    height: width * 0.4,
-    top: "40%",
-    right: -width * 0.1,
+    paddingTop: 0, // Removed padding top to let the card sit properly
+    backgroundColor: "transparent", // Ensure background shows through
   },
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingVertical: 20,
+    paddingBottom: 20,
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -5 },
+    shadowOpacity: 0.15,
+    shadowRadius: 15,
+    elevation: 20,
+    minHeight: Dimensions.get("window").height * 0.9, // Ensure it covers most of the screen
+    marginTop: 40, // Push it down slightly from the very top
   },
   header: {
     marginBottom: 32,
+    marginTop: 20,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#00A86B10",
-    justifyContent: "center",
-    alignItems: "center",
     marginBottom: 20,
   },
   logoContainer: {
-    alignItems: "center",
-  },
-  logo: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: "#00A86B10",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#00A86B30",
+    alignItems: "flex-start",
   },
   title: {
     fontSize: 28,
-    fontWeight: "700",
-    color: "#0f172a",
+    fontWeight: "bold",
+    color: COLORS.text,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: "#64748b",
-    textAlign: "center",
+    color: COLORS.muted,
   },
   form: {
-    marginBottom: 32,
+    flex: 1,
   },
   inputGroup: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#475569",
-    marginBottom: 8,
-    textTransform: "uppercase",
+    marginBottom: 16,
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
     height: 56,
-    borderWidth: 1.5,
-    borderColor: "#e2e8f0",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
     borderRadius: 12,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#F8FAFC",
     paddingHorizontal: 16,
   },
   inputContainerError: {
@@ -542,7 +539,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
     fontSize: 16,
-    color: "#0f172a",
+    color: COLORS.text,
   },
   errorText: {
     fontSize: 12,
@@ -556,12 +553,11 @@ const styles = StyleSheet.create({
   genderContainer: {
     flexDirection: "row",
     height: 56,
-    borderWidth: 1.5,
-    borderColor: "#e2e8f0",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
     borderRadius: 12,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#F8FAFC",
     overflow: "hidden",
-    marginTop: 8, // Added margin to separate from label
   },
   genderOption: {
     flex: 1,
@@ -571,15 +567,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   genderOptionSelected: {
-    backgroundColor: "#00A86B10",
+    backgroundColor: COLORS.green + "15", // 15% opacity
+    borderColor: COLORS.green,
   },
   genderText: {
     fontSize: 16,
-    color: "#64748b",
+    color: COLORS.muted,
     fontWeight: "500",
   },
   genderTextSelected: {
-    color: "#00A86B",
+    color: COLORS.green,
     fontWeight: "600",
   },
   termsContainer: {
@@ -587,27 +584,25 @@ const styles = StyleSheet.create({
     padding: 12,
     backgroundColor: "#f8fafc",
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
   },
   termsText: {
     fontSize: 13,
-    color: "#64748b",
+    color: COLORS.muted,
     lineHeight: 18,
     textAlign: "center",
   },
   termsLink: {
-    color: "#00A86B",
+    color: COLORS.green,
     fontWeight: "600",
   },
   registerButton: {
     height: 56,
-    backgroundColor: "#00A86B",
-    borderRadius: 12,
+    backgroundColor: COLORS.green,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 24,
-    shadowColor: "#00A86B",
+    shadowColor: COLORS.green,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -622,23 +617,24 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   registerText: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 18,
+    fontWeight: "bold",
     color: "#ffffff",
   },
   loginContainer: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
+    marginBottom: 20,
   },
   loginText: {
-    fontSize: 14,
-    color: "#64748b",
+    fontSize: 15,
+    color: COLORS.muted,
   },
   loginLink: {
-    fontSize: 14,
-    color: "#00A86B",
-    fontWeight: "600",
+    fontSize: 15,
+    color: COLORS.green,
+    fontWeight: "bold",
   },
 });
 
