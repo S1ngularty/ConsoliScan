@@ -11,6 +11,12 @@
   "expo": {
     "install": {
       "exclude": []
+    },
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": ["react-native-fs"],
+        "listUnknownPackages": false
+      }
     }
   },
   "dependencies": {
