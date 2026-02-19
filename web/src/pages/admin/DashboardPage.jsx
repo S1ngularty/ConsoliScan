@@ -37,21 +37,21 @@ function DashboardPage() {
       value: "1,050",
       icon: <Users />,
       trend: "+3.2%",
-      color: "blue",
+      color: "blue", // Will render as Orange based on new CSS
     },
     {
       title: "Products Sold",
       value: "482",
       icon: <Package />,
       trend: "+18%",
-      color: "orange",
+      color: "orange", // Will render as Dark Sand based on new CSS
     },
     {
       title: "Conversion",
       value: "3.4%",
       icon: <TrendingUp />,
       trend: "-0.5%",
-      color: "purple",
+      color: "purple", // Will render as Muted based on new CSS
     },
   ];
 
@@ -127,38 +127,40 @@ function DashboardPage() {
               >
                 <defs>
                   <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#00A86B" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#00A86B" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#5C6F2B" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#5C6F2B" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid
                   strokeDasharray="3 3"
                   vertical={false}
-                  stroke="#f0f0f0"
+                  stroke="#e5e7eb"
                 />
                 <XAxis
                   dataKey="name"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: "#9ca3af", fontSize: 12 }}
+                  tick={{ fill: "#6b7280", fontSize: 12, fontWeight: 500 }}
                   dy={10}
                 />
                 <YAxis
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: "#9ca3af", fontSize: 12 }}
+                  tick={{ fill: "#6b7280", fontSize: 12, fontWeight: 500 }}
                 />
                 <Tooltip
                   contentStyle={{
-                    borderRadius: "10px",
+                    borderRadius: "12px",
                     border: "none",
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                    boxShadow: "0 10px 24px rgba(0,0,0,0.1)",
+                    fontFamily: "inherit",
                   }}
+                  itemStyle={{ color: "#5C6F2B", fontWeight: 600 }}
                 />
                 <Area
                   type="monotone"
                   dataKey="sales"
-                  stroke="#00A86B"
+                  stroke="#5C6F2B"
                   strokeWidth={3}
                   fillOpacity={1}
                   fill="url(#colorSales)"
@@ -185,7 +187,7 @@ function DashboardPage() {
                 <p className="item-title">New User: Anna Smith</p>
                 <p className="item-time">1 hour ago</p>
               </div>
-              <p className="item-amount" style={{ color: "#3b82f6" }}>
+              <p className="item-amount" style={{ color: "#DE802B" }}>
                 Verified
               </p>
             </li>

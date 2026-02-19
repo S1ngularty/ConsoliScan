@@ -11,6 +11,7 @@ const promo = require("./promoRoute");
 const loyalty = require("./loyaltyConfigRoute");
 const exchange = require("./exchangeRoute");
 const cashier = require("./cashierRoute");
+const adminDashboard = require("./adminDashboardRoute");
 
 module.exports = {
   product,
@@ -26,4 +27,5 @@ module.exports = {
   loyalty,
   exchange,
   cashier,
+  adminDashboard,
 };

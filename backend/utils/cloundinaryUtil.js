@@ -9,7 +9,7 @@ const uploadImage = async (images = [], path = "") => {
         },
         (err, result) => {
           if (err instanceof Error) return reject(err);
-          return resolve({ public_id: result.public_id, url: result.url });
+          return resolve({ public_id: result.public_id, url: result.secure_url });
         },
       );
       stream.end(image.buffer);
