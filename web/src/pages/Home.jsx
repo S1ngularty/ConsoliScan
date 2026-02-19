@@ -5,6 +5,7 @@ import "../styles/css/hero.css";
 import "../styles/css/carousel.css";
 import "../styles/css/appDownloadBanner.css";
 import "../styles/css/footer.css";
+import "../styles/css/home.css"; // Added new CSS file for home styles
 
 import Navbar from "../components/home components/Navbar";
 import Hero from "../components/home components/Hero";
@@ -29,6 +30,13 @@ const Home = () => {
 
   return (
     <div className="home">
+      {/* Background Decorative Blobs */}
+      <div className="background-container">
+        <div className="blob blob1"></div>
+        <div className="blob blob2"></div>
+        <div className="blob blob3"></div>
+      </div>
+
       <Navbar />
       <Hero />
       <Carousel />
