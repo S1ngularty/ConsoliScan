@@ -52,7 +52,7 @@ const AboutUs = () => {
 
 {/* Team */}
       <section className="about-section">
-        <div className="section-header">
+        <div className="about-section-header">
           <span className="section-label">Our Team</span>
           <h2>The Students Behind ConsoliScan</h2>
         </div>
@@ -104,7 +104,7 @@ const AboutUs = () => {
       {/* Our Story Container */}
       <div className="distinctive-container">
         <section className="about-section">
-          <div className="section-header">
+          <div className="about-section-header">
             <span className="section-label">Our Story</span>
           </div>
           <div className="story-container">
@@ -134,7 +134,7 @@ const AboutUs = () => {
       {/* Core Features Container */}
       <div className="distinctive-container">
         <section className="about-section">
-          <div className="section-header">
+          <div className="about-section-header">
             <span className="section-label">Core Features</span>
             <h2>What Drives Our Project</h2>
           </div>
