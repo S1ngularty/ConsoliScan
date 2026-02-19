@@ -1,11 +1,13 @@
 import React, { useEffect } from "react";
 import Navbar from "../components/home components/Navbar";
 import Footer from "../components/home components/Footer";
+import ChatBot from "../components/home components/ChatBot";
 import "../styles/css/global.css";
 import "../styles/css/aboutUs.css";
 import egoImage from "../styles/assets/Ego.png";
 import sachzieImage from "../styles/assets/sachzie.jpg";
 import leviImage from "../styles/assets/levi.jpg";
+import { QrCode, ShieldCheck, BrainCircuit, Star, Tag, FileText, LayoutDashboard, History } from "lucide-react";
 
 const AboutUs = () => {
   useEffect(() => {
@@ -20,8 +22,26 @@ const AboutUs = () => {
     });
   }, []);
 
+  const features = [
+    { icon: <QrCode size={24} />, title: "QR-Based Checkout", desc: "Aggregated transaction encoding into single QR code for seamless payment processing" },
+    { icon: <ShieldCheck size={24} />, title: "Blockchain Security", desc: "Immutable transaction logging and real-time inventory synchronization" },
+    { icon: <BrainCircuit size={24} />, title: "Predictive Analytics", desc: "ML-driven insights on inventory trends and customer buying behavior" },
+    { icon: <Star size={24} />, title: "Loyalty Program", desc: "Points accrual system with automated redemption and tiered rewards" },
+    { icon: <Tag size={24} />, title: "BNPC Compliance", desc: "Automated 5% discount application for verified Senior and PWD customers" },
+    // { icon: <FileText size={24} />, title: "Digital Receipts", desc: "Blockchain-verified transaction records with PDF export capability" },
+    // { icon: <LayoutDashboard size={24} />, title: "Admin Dashboard", desc: "Real-time analytics, sales reporting, and inventory oversight" },
+    { icon: <History size={24} />, title: "Order History", desc: "Comprehensive purchase tracking with receipt archival" },
+  ];
+
   return (
     <div className="about-us-page">
+      {/* Background Decorative Blobs */}
+      <div className="background-container">
+        <div className="blob blob1"></div>
+        <div className="blob blob2"></div>
+        <div className="blob blob3"></div>
+      </div>
+
       <Navbar />
 
       {/* Hero Section */}
@@ -111,28 +131,21 @@ const AboutUs = () => {
         </section>
       </div>
 
-      {/* Values Container */}
+      {/* Core Features Container */}
       <div className="distinctive-container">
         <section className="about-section">
           <div className="section-header">
-            <span className="section-label">Our Values</span>
+            <span className="section-label">Core Features</span>
             <h2>What Drives Our Project</h2>
           </div>
           <div className="values-grid">
-            {[
-              { title: "Efficiency", text: "Streamlining your shopping process to save valuable time." },
-              { title: "Sustainability", text: "Promoting eco-friendly choices and reducing food waste." },
-              { title: "User-Centric", text: "Designing with the user's real-world needs in mind." },
-              { title: "Innovation", text: "Leveraging technology to solve everyday problems." },
-              { title: "Accessibility", text: "Making smart tools available to everyone, everywhere." },
-              { title: "Transparency", text: "Providing clear insights into your shopping habits." }
-            ].map((value, index) => (
+            {features.map((feature, index) => (
               <div key={index} className="value-card">
                 <div className="value-icon">
-                  <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                  {feature.icon}
                 </div>
-                <h3>{value.title}</h3>
-                <p>{value.text}</p>
+                <h3>{feature.title}</h3>
+                <p>{feature.desc}</p>
               </div>
             ))}
           </div>
@@ -150,6 +163,7 @@ const AboutUs = () => {
       </section>
 
       <Footer />
+      <ChatBot />
     </div>
   );
 };

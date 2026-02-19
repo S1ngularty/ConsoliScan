@@ -1,49 +1,58 @@
 import React from "react";
+import { HeartHandshake, ScanLine, Bell, ChevronRight } from "lucide-react";
 import "../../styles/css/topEvents.css";
 
 const TopEvents = () => {
-  const events = [
+  const offers = [
     {
       id: 1,
-      title: "GAIN POINTS",
-      description:"",
-      link: "#"
+      title: "Senior/PWD Special",
+      description: "Get extra 5% off BNPC items",
+      icon: <HeartHandshake size={32} color="white" />,
+      color: "#00A86B", // Brand Green
+      link: "/eligibility"
     },
     {
       id: 2,
-      title: "Event Title 2",
-      description: "Description for event 2. This is a placeholder description that you can edit later.",
-      link: "#"
+      title: "Scan & Save",
+      description: "Track all your grocery scans",
+      icon: <ScanLine size={32} color="white" />,
+      color: "#0f172a", // Dark Slate
+      link: "/scan"
+    },
+    {
+      id: 3,
+      title: "Weekly Cap Alert",
+      description: "Never miss your discount limit",
+      icon: <Bell size={32} color="white" />,
+      color: "#3b82f6", // Blue
+      link: "/notifications"
     }
   ];
 
   return (
-    <section className="top-events-section">
-      <h2 className="section-title">TOP EVENTS</h2>
-      
-      <div className="events-container">
-        <button className="nav-btn prev" aria-label="Previous">
-          &#10094;
-        </button>
+    <section className="exclusive-offers-section">
+      <div className="section-header">
+        <h2 className="section-title">Exclusive Offers</h2>
+      </div>
 
-        <div className="events-grid">
-          {events.map((event) => (
-            <div key={event.id} className="event-card">
-              <div className="event-image-placeholder">
-                {/* Image Placeholder */}
-              </div>
-              <div className="event-details">
-                <h3 className="event-title">{event.title}</h3>
-                <p className="event-description">{event.description}</p>
-                <a href={event.link} className="read-more">Read more →</a>
-              </div>
+      <div className="offers-grid-container">
+        {offers.map((offer) => (
+          <div 
+            key={offer.id} 
+            className="offer-card"
+            style={{ backgroundColor: offer.color }}
+            onClick={() => window.location.href = offer.link}
+          >
+            <div className="offer-icon-wrapper">
+              {offer.icon}
             </div>
-          ))}
-        </div>
-
-        <button className="nav-btn next" aria-label="Next">
-          &#10095;
-        </button>
+            <div className="offer-content">
+              <h3 className="offer-title">{offer.title}</h3>
+              <p className="offer-description">{offer.description}</p>
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   );
