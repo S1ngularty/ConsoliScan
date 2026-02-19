@@ -152,6 +152,12 @@ exports.managePoints = async (orderData) => {
 };
 
 exports.promoUpdateUsage = async (orderData) => {
+  // Skip promo usage update for guest users (no user ID)
+  if (!orderData?.user) {
+    console.log("Guest checkout - skipping promo usage update");
+    return;
+  }
+
   // console.log(
   //   "code:",
   //   orderData?.promoDiscount?.code,
@@ -168,12 +174,19 @@ exports.promoUpdateUsage = async (orderData) => {
   const promoCode = orderData.promoDiscount.code;
   const now = new Date();
 
+  // Handle both limited and unlimited promos
+  // usageLimit = 0 or null means unlimited use
   const promo = await Promo.findOneAndUpdate(
     {
       code: promoCode,
       startDate: { $lte: now },
       endDate: { $gte: now },
-      $expr: { $lt: ["$usedCount", "$usageLimit"] },
+      // Match if: unlimited (usageLimit = 0 or null) OR limited but available (usedCount < usageLimit)
+      $or: [
+        { usageLimit: 0 }, // Unlimited (0)
+        { usageLimit: null }, // Unlimited (null/not set)
+        { $expr: { $lt: ["$usedCount", "$usageLimit"] } }, // Limited and available
+      ],
     },
     { $inc: { usedCount: 1 } },
     { new: true },

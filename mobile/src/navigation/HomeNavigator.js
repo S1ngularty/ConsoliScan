@@ -139,7 +139,10 @@ export default function HomeNavigator() {
       <Tab.Screen
         name="History"
         component={OrderHistoryScreen}
-        options={{ title: "History" }}
+        options={{
+          title: "History",
+          tabBarStyle: { display: "none" },
+        }}
       />
       <Tab.Screen
         name="Scan"
