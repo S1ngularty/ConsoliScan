@@ -13,7 +13,8 @@
       "backgroundColor": "#00A86B"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tupt.ConsoliScan"
     },
     "android": {
       "package": "com.tupt.ConsoliScan",

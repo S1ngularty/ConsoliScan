@@ -5,8 +5,8 @@ const TopEvents = () => {
   const events = [
     {
       id: 1,
-      title: "Event Title 1",
-      description: "Description for event 1. This is a placeholder description that you can edit later.",
+      title: "GAIN POINTS",
+      description:"",
       link: "#"
     },
     {
