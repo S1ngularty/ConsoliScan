@@ -305,7 +305,7 @@ const HeroPoints = ({ points, navigation }) => {
         Animated.timing(pulse, {
           toValue: 1,
           duration: 1600,
-          
+
           ease: Easing.inOut(Easing.sine),
           useNativeDriver: true,
         }),
@@ -667,15 +667,10 @@ const HomeScreen = ({ navigation }) => {
         <View style={styles.gridContainer}>
           {[
             {
-              title: "Scan Product",
-              icon: "barcode-scan",
-              onPress: () => navigation.navigate("Shared", { screen: "Scan" }),
-              isPrimary: true,
-            },
-            {
               title: "My Cart",
               icon: "basket-outline",
-              onPress: () => navigation.navigate("HomeTabs", { screen: "Cart" }),
+              onPress: () =>
+                navigation.navigate("HomeTabs", { screen: "Cart" }),
               badge:
                 homeData.cartItemCount > 0
                   ? homeData.cartItemCount.toString()
@@ -690,9 +685,10 @@ const HomeScreen = ({ navigation }) => {
             {
               title: "Order History",
               icon: "clipboard-list-outline",
-              onPress: () => navigation.navigate("HomeTabs",{
-                screen:"History"
-              }),
+              onPress: () =>
+                navigation.navigate("HomeTabs", {
+                  screen: "History",
+                }),
               badge:
                 homeData.orderCount > 0 ? homeData.orderCount.toString() : null,
             },
@@ -821,16 +817,6 @@ const HomeScreen = ({ navigation }) => {
           </TouchableOpacity>
         </FadeSlideCard>
       </ScrollView>
-
-      {/* Floating scan button */}
-      <TouchableOpacity
-        style={styles.floatingScan}
-        onPress={() => navigation.navigate("Shared", { screen: "Scan" })}
-        activeOpacity={0.88}
-      >
-        <MaterialCommunityIcons name="qrcode-scan" size={20} color="#fff" />
-        <Text style={styles.floatingText}>Scan Product</Text>
-      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -838,7 +824,7 @@ const HomeScreen = ({ navigation }) => {
 // ─── Styles ──────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8F9FA" },
-  scrollContent: { paddingBottom: 140 },
+  scrollContent: { paddingBottom: 80 },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   loadingText: { marginTop: 12, fontSize: 14, color: "#64748b" },
 
@@ -1271,26 +1257,6 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   tipsText: { fontSize: 12, color: "#64748b" },
-
-  // Floating button
-  floatingScan: {
-    position: "absolute",
-    bottom: Platform.OS === "ios" ? 50 : 20,
-    left: 24,
-    right: 24,
-    height: 54,
-    backgroundColor: "#0f172a",
-    borderRadius: 16,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 10,
-    shadowColor: "#0f172a",
-    shadowOpacity: 0.2,
-    shadowRadius: 14,
-    elevation: 8,
-  },
-  floatingText: { color: "#fff", fontSize: 15, fontWeight: "800" },
 });
 
 export default HomeScreen;

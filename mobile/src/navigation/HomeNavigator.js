@@ -1,5 +1,11 @@
 import React from "react";
-import { Text, TouchableOpacity, View, StyleSheet, Platform } from "react-native";
+import {
+  Text,
+  TouchableOpacity,
+  View,
+  StyleSheet,
+  Platform,
+} from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 
@@ -13,6 +19,15 @@ const Tab = createBottomTabNavigator();
 
 // Custom Tab Bar Component
 const CustomTabBar = ({ state, descriptors, navigation }) => {
+  // Get current route options
+  const currentRoute = state.routes[state.index];
+  const currentOptions = descriptors[currentRoute.key]?.options;
+
+  // Check if tabBarStyle is set to display: none
+  if (currentOptions?.tabBarStyle?.display === "none") {
+    return null; // Hide tab bar completely
+  }
+
   return (
     <View style={styles.tabContainer}>
       <View style={styles.tabBar}>
@@ -41,7 +56,11 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
                   onPress={onPress}
                   activeOpacity={0.9}
                 >
-                  <MaterialCommunityIcons name="barcode-scan" size={32} color="#fff" />
+                  <MaterialCommunityIcons
+                    name="barcode-scan"
+                    size={32}
+                    color="#fff"
+                  />
                 </TouchableOpacity>
               </View>
             );
@@ -102,14 +121,14 @@ export default function HomeNavigator() {
   return (
     <Tab.Navigator
       tabBar={(props) => <CustomTabBar {...props} />}
-      screenOptions={{ 
+      screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          position: 'absolute', // Required for floating effect
-          backgroundColor: 'transparent',
+          position: "absolute", // Required for floating effect
+          backgroundColor: "transparent",
           borderTopWidth: 0,
           elevation: 0,
-        }
+        },
       }}
     >
       <Tab.Screen
@@ -125,15 +144,18 @@ export default function HomeNavigator() {
       <Tab.Screen
         name="Scan"
         component={ScanningScreen}
-        options={{ 
+        options={{
           title: "Scan",
-          tabBarStyle: { display: 'none' } // Optionally hide tab bar on scan screen
+          tabBarStyle: { display: "none" }, // Optionally hide tab bar on scan screen
         }}
       />
       <Tab.Screen
         name="Cart"
         component={CartScreen}
-        options={{ title: "Cart" }}
+        options={{
+          title: "Cart",
+          tabBarStyle: { display: "none" },
+        }}
       />
       <Tab.Screen
         name="Menu"
