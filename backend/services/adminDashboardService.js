@@ -37,7 +37,7 @@ const getDashboardSummary = async () => {
     const recentActivity = await ActivityLog.find()
       .sort({ createdAt: -1 })
       .limit(5)
-      .populate("userId", "name email");
+      .populate("user", "name email");
 
     return {
       totalUsers,
@@ -238,7 +238,7 @@ const getUserAnalytics = async (params = {}) => {
 
     const totalUsers = await User.countDocuments();
     const newUsers = await User.countDocuments(dateFilter);
-    const activeUsers = await ActivityLog.distinct("userId");
+    const activeUsers = await ActivityLog.distinct("user");
 
     const usersByRole = await User.aggregate([
       {
@@ -253,7 +253,7 @@ const getUserAnalytics = async (params = {}) => {
       { $match: { status: "completed" } },
       {
         $group: {
-          _id: "$userId",
+          _id: "$user",
           totalSpent: { $sum: "$totalAmount" },
           orderCount: { $sum: 1 },
         },
@@ -477,12 +477,12 @@ const getActivityLogs = async (params = {}) => {
     const skip = (page - 1) * limit;
 
     let filter = {};
-    if (userId) filter.userId = userId;
+    if (userId) filter.user = userId;
     if (action) filter.action = action;
     if (status) filter.status = status;
 
     const logs = await ActivityLog.find(filter)
-      .populate("userId", "name email role")
+      .populate("user", "name email role")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -520,8 +520,7 @@ const getCheckoutQueueAnalytics = async () => {
     const activeQueues = await CheckoutQueue.find({
       status: { $ne: "completed" },
     })
-      .populate("userId", "name")
-      .populate("cashierId", "name")
+      .populate("user", "name")
       .sort({ createdAt: 1 });
 
     return {

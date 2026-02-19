@@ -1,20 +1,12 @@
 const express = require("express");
 const router = express.Router();
 const adminDashboardController = require("../controllers/adminDashboardController");
-const authMiddleware = require("../middlewares/authMiddleware");
+const { verifyToken, roleAccess } = require("../middlewares/authMiddleware");
 
-// Middleware to check if user is admin (you may need to adjust based on your auth setup)
-const isAdmin = (req, res, next) => {
-  if (req.user && req.user.role === "admin") {
-    next();
-  } else {
-    res.status(403).json({ message: "Access denied. Admin only." });
-  }
-};
-
-// Apply auth and admin middleware to all dashboard routes
-router.use(authMiddleware);
-router.use(isAdmin);
+// Apply auth middleware to all dashboard routes
+router.use(verifyToken);
+// Apply role access middleware - only admins can access
+router.use(roleAccess("admin"));
 
 // ==================== DASHBOARD ENDPOINTS ====================
 
