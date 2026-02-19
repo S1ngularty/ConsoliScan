@@ -85,8 +85,11 @@ exports.logBNPC_discountUsage = async (orderData) => {
 };
 
 exports.managePoints = async (orderData) => {
-  if (!orderData?.user && !orderData?.appUser) return;
-  // console.log(orderData)
+  // Skip loyalty points management for guest users (no user ID)
+  if (!orderData?.user) {
+    console.log("Guest checkout - skipping loyalty points management");
+    return 0; // Return 0 points earned for guests
+  }
 
   const config = await getConfig();
 
@@ -97,6 +100,13 @@ exports.managePoints = async (orderData) => {
   const pointsEarned = (config?.earnRate || 0.1) * finalAmount;
 
   const user = await User.findById(orderData.user);
+
+  // Double-check user exists before accessing properties
+  if (!user) {
+    console.log("User not found:", orderData.user);
+    return 0;
+  }
+
   console.log("User current points:", user.loyaltyPoints);
   console.log("Points used:", pointsUsed);
   console.log("Points earned:", pointsEarned);

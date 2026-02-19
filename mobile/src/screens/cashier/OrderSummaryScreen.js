@@ -72,7 +72,7 @@ const OrderSummaryScreen = ({ route, navigation }) => {
         customerScope: transactionData.customerScope || null,
         verificationSource: transactionData.verificationSource || 'manual',
         systemVerified: transactionData.systemVerified || false,
-        systemVerificationType: transactionData.systemVerificationType.toLowerCase() || null,
+        systemVerificationType: (transactionData.systemVerificationType && typeof transactionData.systemVerificationType === 'string') ? transactionData.systemVerificationType.toLowerCase() : null,
         manualOverride: transactionData.manualOverride || false,
 
         // Items with full details
