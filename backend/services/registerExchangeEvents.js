@@ -18,7 +18,6 @@ exports.registerExchangeEvents = async (socket) => {
     socket.emit("exchange:state", {
       status: exchange.status,
       exchangeId: exchange._id,
-      expiresAt: exchange.qrExpiresAt,
       originalItemId: exchange.originalItemId,
       price: exchange.price,
     });
@@ -31,7 +30,6 @@ exports.registerExchangeEvents = async (socket) => {
     socket.emit("exchange:state", {
       status: exchange.status,
       exchangeId: exchange._id,
-      expiresAt: exchange.qrExpiresAt,
       originalItemId: exchange.originalItemId,
       price: exchange.price,
     });

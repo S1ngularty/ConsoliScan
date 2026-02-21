@@ -21,10 +21,6 @@ const { emitCheckout, emitToRoom } = require("../helper/socketEmitter");
 
 /* ─── Config ──────────────────────────────────────────────────────────────── */
 const JWT_SECRET = process.env.JWT_SECRET || "exchange_secret_fallback";
-const QR_TTL_MINUTES = parseInt(
-  process.env.EXCHANGE_QR_TTL_MINUTES || "60",
-  10,
-);
 const EXCHANGE_WINDOW_DAYS = parseInt(
   process.env.EXCHANGE_WINDOW_DAYS || "7",
   10,
@@ -32,11 +28,11 @@ const EXCHANGE_WINDOW_DAYS = parseInt(
 
 /* ─── Private helpers ─────────────────────────────────────────────────────── */
 function signQrToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: `${QR_TTL_MINUTES}m` });
+  return jwt.sign(payload, JWT_SECRET);
 }
 
 function verifyQrToken(token) {
-  return jwt.verify(token, JWT_SECRET); // throws on invalid / expired
+  return jwt.verify(token, JWT_SECRET); // throws on invalid token
 }
 
 function daysAgo(n) {
@@ -89,14 +85,12 @@ async function initiateExchange(request) {
     status: { $in: ["PENDING", "VALIDATED"] },
   });
 
-  if (existing && new Date() < existing.qrExpiresAt) {
+  if (existing) {
     // Return the live exchange — app can re-display the same QR
     return existing;
   }
 
   /* ── Build & save new exchange ── */
-  const expiresAt = new Date(Date.now() + QR_TTL_MINUTES * 60 * 1000);
-
   // Temporary token so we have an _id to embed
   const exchange = await Exchange.create({
     orderId,
@@ -105,7 +99,6 @@ async function initiateExchange(request) {
     originalItemName: lineItem.name,
     price: lineItem.unitPrice,
     qrToken: "pending", // replaced below
-    qrExpiresAt: expiresAt,
     status: "PENDING",
     initiatedAt: new Date(),
   });
@@ -140,7 +133,7 @@ async function validateExchangeQR(request) {
   try {
     payload = verifyQrToken(qrToken);
   } catch {
-    throw new Error("QR code is invalid or has expired");
+    throw new Error("QR code is invalid");
   }
 
   const { exchangeId, orderId, itemId } = payload;

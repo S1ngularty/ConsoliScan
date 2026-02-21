@@ -8,6 +8,8 @@ import {
   Animated,
   PanResponder,
   Dimensions,
+  TextInput,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -25,6 +27,9 @@ const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const ScanningScreen = ({ navigation }) => {
   const [scannedProduct, setScannedProduct] = useState(null);
   const [cart, setCart] = useState([]);
+  const [manualBarcodeVisible, setManualBarcodeVisible] = useState(false);
+  const [manualBarcode, setManualBarcode] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
   const sheetPosition = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const dispatch = useDispatch();
   const cartState = useSelector((state) => state.cart);
@@ -86,7 +91,7 @@ const ScanningScreen = ({ navigation }) => {
   const handleDetection = async (type, data) => {
     try {
       console.log(`Searching for: ${data} (${type})`);
-      const response = await scanProduct(type, data);
+      const response = await scanProduct(type,data);
 
       if (response) {
         setScannedProduct(response);
@@ -109,6 +114,40 @@ const ScanningScreen = ({ navigation }) => {
     debounceCartSync(dispatch);
     // dispatch(saveLocally())
     closeSheet();
+  };
+
+  const handleManualBarcodeSubmit = async () => {
+    if (!manualBarcode.trim()) {
+      Alert.alert("Error", "Please enter a barcode");
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      console.log(`Searching for barcode: ${manualBarcode}`);
+      const response = await scanProduct(manualBarcode.trim());
+
+      if (response) {
+        setScannedProduct(response);
+        handleScanHistory(response);
+        setManualBarcodeVisible(false);
+        setManualBarcode("");
+        openSheet();
+      } else {
+        Alert.alert(
+          "Product Not Found",
+          `No product found with barcode: ${manualBarcode}`,
+        );
+      }
+    } catch (err) {
+      console.log("Error searching product:", err);
+      Alert.alert(
+        "Search Error",
+        "Failed to search for product. Please try again.",
+      );
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   const openSheet = () => {
@@ -155,33 +194,43 @@ const ScanningScreen = ({ navigation }) => {
             </Text>
           </View>
 
-          <TouchableOpacity
-            style={styles.cartButton}
-            activeOpacity={0.7}
-            onPress={() => {
-              // console.log(userState.role);
-              if(userState.role==="user"){
-                navigation.navigate("HomeTabs",{
-                  screen:"Cart"
-                })
-              }else{
-                navigation.navigate("Cart")
-              }
-            }}
-          >
-            <MaterialCommunityIcons
-              name="cart-outline"
-              size={24}
-              color="#000"
-            />
-            {cartState.cart.length > 0 && (
-              <View style={styles.cartBadge}>
-                <Text style={styles.cartBadgeText}>
-                  {cartState.cart.length}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.manualButton}
+              activeOpacity={0.7}
+              onPress={() => setManualBarcodeVisible(true)}
+            >
+              <MaterialCommunityIcons name="keyboard" size={22} color="#fff" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.cartButton}
+              activeOpacity={0.7}
+              onPress={() => {
+                // console.log(userState.role);
+                if (userState.role === "user") {
+                  navigation.navigate("HomeTabs", {
+                    screen: "Cart",
+                  });
+                } else {
+                  navigation.navigate("Cart");
+                }
+              }}
+            >
+              <MaterialCommunityIcons
+                name="cart-outline"
+                size={24}
+                color="#000"
+              />
+              {cartState.cart.length > 0 && (
+                <View style={styles.cartBadge}>
+                  <Text style={styles.cartBadgeText}>
+                    {cartState.cart.length}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
 
@@ -209,6 +258,89 @@ const ScanningScreen = ({ navigation }) => {
           </Animated.View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Manual Barcode Input Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={manualBarcodeVisible}
+        statusBarTranslucent
+        onRequestClose={() => {
+          setManualBarcodeVisible(false);
+          setManualBarcode("");
+        }}
+      >
+        <View style={styles.manualModalOverlay}>
+          <View style={styles.manualModalContent}>
+            <View style={styles.manualModalHeader}>
+              <Text style={styles.manualModalTitle}>Enter Barcode</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setManualBarcodeVisible(false);
+                  setManualBarcode("");
+                }}
+              >
+                <MaterialCommunityIcons
+                  name="close"
+                  size={28}
+                  color="#1E293B"
+                />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.manualInputContainer}>
+              <MaterialCommunityIcons
+                name="barcode"
+                size={40}
+                color="#00A86B"
+                style={styles.barcodeIcon}
+              />
+              <TextInput
+                style={styles.barcodeInput}
+                placeholder="Enter product barcode"
+                placeholderTextColor="#94A3B8"
+                value={manualBarcode}
+                onChangeText={setManualBarcode}
+                autoFocus
+                keyboardType="number-pad"
+                editable={!isSearching}
+              />
+            </View>
+
+            <View style={styles.manualModalActions}>
+              <TouchableOpacity
+                style={[
+                  styles.cancelButton,
+                  isSearching && styles.disabledButton,
+                ]}
+                onPress={() => {
+                  setManualBarcodeVisible(false);
+                  setManualBarcode("");
+                }}
+                disabled={isSearching}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.submitButton,
+                  (isSearching || !manualBarcode.trim()) &&
+                    styles.disabledButton,
+                ]}
+                onPress={handleManualBarcodeSubmit}
+                disabled={isSearching || !manualBarcode.trim()}
+              >
+                {isSearching ? (
+                  <Text style={styles.submitButtonText}>Searching...</Text>
+                ) : (
+                  <Text style={styles.submitButtonText}>Search</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -232,6 +364,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 12,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  manualButton: {
+    width: 50,
+    height: 50,
+    backgroundColor: "#00A86B",
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   logoContainer: {
     flexDirection: "row",
@@ -314,6 +464,90 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 16,
     elevation: 20,
+  },
+  // Manual Barcode Modal Styles
+  manualModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  manualModalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 24,
+    width: "100%",
+    maxWidth: 400,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  manualModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  manualModalTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#1E293B",
+  },
+  manualInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 24,
+    borderWidth: 2,
+    borderColor: "#E2E8F0",
+  },
+  barcodeIcon: {
+    marginRight: 12,
+  },
+  barcodeInput: {
+    flex: 1,
+    fontSize: 16,
+    color: "#1E293B",
+    paddingVertical: 8,
+  },
+  manualModalActions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#475569",
+  },
+  submitButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: "#00A86B",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  submitButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#fff",
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
 });
 

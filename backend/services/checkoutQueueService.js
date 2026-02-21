@@ -7,17 +7,14 @@ exports.checkout = async (request) => {
   const { userId } = request.body;
   const data = { ...request.body };
   const checkoutCode = `CHK-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
-  const expiresAt = Date.now() + 10 * 60 * 1000;
 
   data.userType = !userId ? "user" : "guest";
   data.checkoutCode = checkoutCode;
-  data.expiresAt = expiresAt;
 
   const isQueue = await Queue.findOneAndUpdate(
     {
       user: userId,
       status: { $eq: "PENDING" },
-      expiresAt: { $gte: new Date() },
     },
     {
       ...data,
@@ -27,14 +24,13 @@ exports.checkout = async (request) => {
 
   return {
     checkoutCode,
-    expiresAt,
   };
 };
 
 exports.getOrder = async (request) => {
   const { checkoutCode } = request.params;
   const { userId, name } = request.user;
-  const order =await  Queue.findOneAndUpdate(
+  const order = await Queue.findOneAndUpdate(
     { checkoutCode: checkoutCode },
     {
       cashier: { cashierId: userId, name },
@@ -42,11 +38,10 @@ exports.getOrder = async (request) => {
       scannedAt: Date.now(),
     },
     { new: true },
-  )
-    .populate({
-      path: "items.product",
-      select: "barcode barcodeType category",
-    })
+  ).populate({
+    path: "items.product",
+    select: "barcode barcodeType category",
+  });
 
   if (!order) throw new Error("order not found");
 
@@ -98,20 +93,21 @@ exports.payOrder = async (request) => {
     {
       status: "PAID",
       paidAt: Date.now(),
-    },{
-      new:true,
-      runValidators:true
-    }
+    },
+    {
+      new: true,
+      runValidators: true,
+    },
   ).populate({
     path: "items.product",
     select: "checkoutCode",
   });
-  console.log(queue)
+  console.log(queue);
   if (!queue) throw new Error("failed to update checkout status");
 
   checkoutEmitter.emitCheckout(checkoutCode, "checkout:paid", {
     status: queue.status,
   });
-  console.log("paid emit")
+  console.log("paid emit");
   return queue;
 };
