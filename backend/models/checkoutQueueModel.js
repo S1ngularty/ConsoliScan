@@ -347,15 +347,6 @@ const checkoutQueueSchema = new mongoose.Schema(
       bookletUsed: Number,
       transactionId: String,
     },
-
-    /* ======================
-       SAFETY & LIFETIME
-    ====================== */
-    expiresAt: {
-      type: Date,
-      required: true,
-      index: { expireAfterSeconds: 0 },
-    },
   },
   { timestamps: true },
 );
