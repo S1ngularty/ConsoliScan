@@ -90,7 +90,7 @@ async function getOrders(request) {
       itemTotal: item.itemTotal,
       status: item.status,
     })),
-    pointsEarned: order.loyaltyDiscount.pointsEarned,
+    pointsEarned: order.loyaltyDiscount.pointsEarned.toFixed(2),
     baseAmount: order.baseAmount,
   }));
 

@@ -9,6 +9,7 @@ import {
   RefreshControl,
   Alert,
   TextInput,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -38,6 +39,8 @@ const CartScreen = ({ navigation, route }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPromo, setSelectedPromo] = useState(null);
   const [loyaltyPoints, setLoyaltyPoints] = useState("");
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [confirmChecked, setConfirmChecked] = useState(false);
   const [weeklyUsage, setWeeklyUsage] = useState({
     bnpcAmountUsed: 0,
     discountUsed: 0,
@@ -495,6 +498,16 @@ const CartScreen = ({ navigation, route }) => {
     setPromoDiscountAmount(0);
   };
 
+  const openCheckoutConfirm = () => {
+    setConfirmChecked(false);
+    setConfirmModalVisible(true);
+  };
+
+  const closeCheckoutConfirm = () => {
+    setConfirmModalVisible(false);
+    setConfirmChecked(false);
+  };
+
   const handleCheckout = async () => {
     const { itemCount } = calculateCartTotals();
     if (!itemCount) {
@@ -932,67 +945,10 @@ const CartScreen = ({ navigation, route }) => {
               </View>
             </View>
 
-            {isEligibleUser && (
-              <View style={styles.progressBlock}>
-                {/* Purchase Cap */}
-                <View style={styles.progressItem}>
-                  <View style={styles.progressLabelRow}>
-                    <Text style={styles.progressLabel}>Purchase Cap</Text>
-                    <Text style={styles.progressValue}>
-                      ₱{weeklyUsage.bnpcAmountUsed.toFixed(0)} / ₱
-                      {BNPC_PURCHASE_CAP}
-                    </Text>
-                  </View>
-                  <View style={styles.progressTrack}>
-                    <View
-                      style={[
-                        styles.progressFill,
-                        {
-                          width: `${purchaseProgress}%`,
-                          backgroundColor:
-                            purchaseProgress >= 100 ? "#DC2626" : "#00A86B",
-                        },
-                      ]}
-                    />
-                  </View>
-                </View>
-                {/* Discount Cap */}
-                <View style={styles.progressItem}>
-                  <View style={styles.progressLabelRow}>
-                    <Text style={styles.progressLabel}>Discount Cap</Text>
-                    <Text style={styles.progressValue}>
-                      ₱{weeklyUsage.discountUsed.toFixed(0)} / ₱
-                      {BNPC_DISCOUNT_CAP}
-                    </Text>
-                  </View>
-                  <View style={styles.progressTrack}>
-                    <View
-                      style={[
-                        styles.progressFill,
-                        {
-                          width: `${discountProgress}%`,
-                          backgroundColor:
-                            discountProgress >= 100 ? "#DC2626" : "#00A86B",
-                        },
-                      ]}
-                    />
-                  </View>
-                </View>
-                {weeklyUsage.weekStart && weeklyUsage.weekEnd && (
-                  <Text style={styles.weekRange}>
-                    Week:{" "}
-                    {formatWeekRange(
-                      weeklyUsage.weekStart,
-                      weeklyUsage.weekEnd,
-                    )}
-                  </Text>
-                )}
-              </View>
-            )}
-
+            {/* Simple eligibility message - removed progress bars */}
             {isEligibleUser && discountDetails.eligibleItemsCount > 0 && (
-              <View style={[styles.chip, styles.greenChip]}>
-                <MaterialCommunityIcons name="tag" size={12} color="#00A86B" />
+              <View style={[styles.chip, styles.greenChip, { marginTop: 8 }]}>
+                <MaterialCommunityIcons name="tag" size={14} color="#00A86B" />
                 <Text style={[styles.chipText, { color: "#00A86B" }]}>
                   {discountDetails.eligibleItemsCount} BNPC item
                   {discountDetails.eligibleItemsCount !== 1 ? "s" : ""} eligible
@@ -1008,7 +964,9 @@ const CartScreen = ({ navigation, route }) => {
           <View style={styles.itemsContainer}>{cart.map(renderCartItem)}</View>
         ) : (
           <View style={styles.emptyContainer}>
-            <MaterialCommunityIcons name="cart-off" size={72} color="#cbd5e1" />
+            <View style={styles.emptyIconContainer}>
+              <MaterialCommunityIcons name="cart-off" size={48} color="#CBD5E1" />
+            </View>
             <Text style={styles.emptyTitle}>Your cart is empty</Text>
             <Text style={styles.emptyText}>
               Scan products to add them to your cart
@@ -1226,64 +1184,23 @@ const CartScreen = ({ navigation, route }) => {
               </Text>
             </View>
 
-            {/* BNPC Discount block */}
+            {/* BNPC Discount block - simplified */}
             {isEligibleUser && discountDetails.eligibleItemsCount > 0 && (
               <>
                 <View style={styles.divider} />
-                <Text style={styles.blockTitle}>BNPC Discount (5%)</Text>
-
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Eligible items total</Text>
-                  <Text style={styles.detailValue}>
-                    ₱{discountDetails.bnpcEligibleSubtotal.toFixed(2)}
-                  </Text>
+                <View style={styles.discountHeader}>
+                  <MaterialCommunityIcons name="shield-check" size={16} color="#00A86B" />
+                  <Text style={styles.discountTitle}>BNPC Discount (5%)</Text>
                 </View>
-
-                {discountDetails.bnpcEligibleSubtotal >
-                  discountDetails.cappedBNPCAmount && (
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>After purchase cap</Text>
-                    <Text style={styles.detailValue}>
-                      ₱{discountDetails.cappedBNPCAmount.toFixed(2)}
-                      <Text style={styles.capNote}>
-                        {" "}
-                        (₱{discountDetails.remainingPurchaseCap?.toFixed(
-                          2,
-                        )}{" "}
-                        left)
-                      </Text>
-                    </Text>
-                  </View>
-                )}
 
                 {discountDetails.discountApplied > 0 && (
                   <View style={styles.summaryRow}>
-                    <Text
-                      style={[
-                        styles.summaryLabel,
-                        { color: "#00A86B", fontWeight: "700" },
-                      ]}
-                    >
-                      BNPC Discount
-                    </Text>
-                    <Text style={[styles.summaryValue, { color: "#00A86B" }]}>
+                    <Text style={styles.discountLabel}>Savings on BNPC items</Text>
+                    <Text style={[styles.discountValue, { color: "#00A86B" }]}>
                       -₱{discountDetails.discountApplied.toFixed(2)}
                     </Text>
                   </View>
                 )}
-
-                <View style={styles.weeklyBlock}>
-                  <Text style={styles.weeklyText}>
-                    Purchase this week: ₱
-                    {discountDetails.weeklyPurchaseUsed?.toFixed(2)} / ₱
-                    {BNPC_PURCHASE_CAP}
-                  </Text>
-                  <Text style={styles.weeklyText}>
-                    Discount this week: ₱
-                    {discountDetails.weeklyDiscountUsed?.toFixed(2)} / ₱
-                    {BNPC_DISCOUNT_CAP}
-                  </Text>
-                </View>
               </>
             )}
 
@@ -1291,26 +1208,13 @@ const CartScreen = ({ navigation, route }) => {
             {selectedPromo && totals.promoDiscount > 0 && (
               <>
                 <View style={styles.divider} />
-                <Text style={styles.blockTitle}>Promo</Text>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>{selectedPromo.code}</Text>
-                  <Text style={styles.detailValue}>
-                    {appliedPromoData?.promoType === "percentage"
-                      ? `${appliedPromoData?.value}%`
-                      : `₱${appliedPromoData?.value}`}{" "}
-                    off
-                  </Text>
+                <View style={styles.discountHeader}>
+                  <MaterialCommunityIcons name="tag" size={16} color="#FF9800" />
+                  <Text style={styles.discountTitle}>Promo Discount</Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Text
-                    style={[
-                      styles.summaryLabel,
-                      { color: "#FF9800", fontWeight: "700" },
-                    ]}
-                  >
-                    Promo Discount
-                  </Text>
-                  <Text style={[styles.summaryValue, { color: "#FF9800" }]}>
+                  <Text style={styles.discountLabel}>{selectedPromo.code}</Text>
+                  <Text style={[styles.discountValue, { color: "#FF9800" }]}>
                     -₱{totals.promoDiscount.toFixed(2)}
                   </Text>
                 </View>
@@ -1321,49 +1225,20 @@ const CartScreen = ({ navigation, route }) => {
             {totals.loyaltyDiscount > 0 && (
               <>
                 <View style={styles.divider} />
-                <Text style={styles.blockTitle}>Loyalty Points</Text>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>
-                    {totals.loyaltyPointsUsed} pts used
-                  </Text>
-                  <Text style={styles.detailValue}>
-                    ₱{loyaltyConfig.pointsToCurrencyRate}/pt
-                  </Text>
+                <View style={styles.discountHeader}>
+                  <MaterialCommunityIcons name="trophy" size={16} color="#B45309" />
+                  <Text style={styles.discountTitle}>Loyalty Discount</Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Text
-                    style={[
-                      styles.summaryLabel,
-                      { color: "#B45309", fontWeight: "700" },
-                    ]}
-                  >
-                    Points Discount
+                  <Text style={styles.discountLabel}>
+                    {totals.loyaltyPointsUsed} pts used
                   </Text>
-                  <Text style={[styles.summaryValue, { color: "#B45309" }]}>
+                  <Text style={[styles.discountValue, { color: "#B45309" }]}>
                     -₱{totals.loyaltyDiscount.toFixed(2)}
                   </Text>
                 </View>
               </>
             )}
-
-            {/* No discount reason */}
-            {!discountDetails.eligible &&
-              discountDetails.reason &&
-              isEligibleUser && (
-                <>
-                  <View style={styles.divider} />
-                  <View style={[styles.chip, { backgroundColor: "#f1f5f9" }]}>
-                    <MaterialCommunityIcons
-                      name="information"
-                      size={13}
-                      color="#94a3b8"
-                    />
-                    <Text style={[styles.chipText, { color: "#64748b" }]}>
-                      {discountDetails.reason}
-                    </Text>
-                  </View>
-                </>
-              )}
 
             {/* Total */}
             <View style={styles.totalDivider} />
@@ -1409,6 +1284,62 @@ const CartScreen = ({ navigation, route }) => {
         )}
       </ScrollView>
 
+      {/* ── Checkout Confirmation Modal ── */}
+      <Modal
+        transparent
+        animationType="fade"
+        visible={confirmModalVisible}
+        onRequestClose={closeCheckoutConfirm}
+      >
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmCard}>
+            <MaterialCommunityIcons name="cart-check" size={48} color="#00A86B" style={styles.confirmIcon} />
+            <Text style={styles.confirmTitle}>Confirm Your Cart</Text>
+            <Text style={styles.confirmText}>
+              You have {displayItemCount} item{displayItemCount !== 1 ? "s" : ""} in your cart. 
+              Please verify before proceeding to checkout.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.confirmCheckboxRow}
+              onPress={() => setConfirmChecked((prev) => !prev)}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons
+                name={confirmChecked ? "checkbox-marked" : "checkbox-blank-outline"}
+                size={24}
+                color={confirmChecked ? "#00A86B" : "#94A3B8"}
+              />
+              <Text style={styles.confirmCheckboxText}>
+                I have verified the items in my cart
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.confirmActions}>
+              <TouchableOpacity
+                style={styles.confirmCancelBtn}
+                onPress={closeCheckoutConfirm}
+              >
+                <Text style={styles.confirmCancelText}>Review Cart</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.confirmProceedBtn,
+                  !confirmChecked && styles.confirmProceedBtnDisabled,
+                ]}
+                onPress={() => {
+                  closeCheckoutConfirm();
+                  handleCheckout();
+                }}
+                disabled={!confirmChecked}
+              >
+                <Text style={styles.confirmProceedText}>Proceed to QR</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* ── Checkout Bar ── */}
       {cart.length > 0 && (
         <View style={styles.checkoutBar}>
@@ -1427,7 +1358,7 @@ const CartScreen = ({ navigation, route }) => {
           </View>
           <TouchableOpacity
             style={styles.checkoutBtn}
-            onPress={handleCheckout}
+            onPress={openCheckoutConfirm}
             activeOpacity={0.8}
           >
             <MaterialCommunityIcons name="cart-check" size={20} color="#fff" />
@@ -1439,134 +1370,114 @@ const CartScreen = ({ navigation, route }) => {
   );
 };
 
-// ─── Styles — aligned with OrderHistoryScreen design system ──────────────────
+// ─── Styles — aligned with design system ──────────────────
 const styles = StyleSheet.create({
   // Layout
-  container: { flex: 1, backgroundColor: "#F8F9FA" },
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
   scrollContent: { paddingBottom: 120 },
 
-  // Header — matches OrderHistoryScreen header tokens
+  // Header
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 15,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9",
+    borderBottomColor: "#F1F5F9",
   },
-  headerTitle: { fontSize: 24, fontWeight: "800", color: "#0f172a" },
+  headerTitle: { fontSize: 20, fontWeight: "700", color: "#0F172A" },
   headerSubtitle: {
     fontSize: 13,
-    color: "#94a3b8",
+    color: "#64748B",
     marginTop: 2,
     fontWeight: "500",
   },
   backButton: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     borderRadius: 12,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#F8FAFC",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#f1f5f9",
+    borderColor: "#F1F5F9",
   },
   clearButton: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     borderRadius: 12,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#FEF2F2",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#f1f5f9",
+    borderColor: "#FEE2E2",
   },
 
-  // Card — matches orderCard
+  // Card
   card: {
     backgroundColor: "#fff",
-    marginHorizontal: 24,
+    marginHorizontal: 16,
     marginTop: 16,
-    padding: 20,
-    borderRadius: 24,
+    padding: 16,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#f1f5f9",
+    borderColor: "#F1F5F9",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  cardHeader: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
-  cardTitle: { fontSize: 15, fontWeight: "700", color: "#0f172a" },
-  cardSubtitle: { fontSize: 12, color: "#94a3b8", marginTop: 2 },
+  cardHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
+  cardTitle: { fontSize: 16, fontWeight: "600", color: "#0F172A" },
+  cardSubtitle: { fontSize: 13, color: "#64748B", marginTop: 2 },
   iconBadge: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
   },
 
-  // Chips — matches chip pattern from OrderHistoryScreen
+  // Chips
   chip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 8,
     paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 12,
-    backgroundColor: "#f8fafc",
-    marginTop: 8,
+    paddingVertical: 8,
+    borderRadius: 30,
+    backgroundColor: "#F8FAFC",
   },
-  greenChip: { backgroundColor: "rgba(0,168,107,0.08)" },
-  chipText: { fontSize: 12, fontWeight: "600", color: "#64748b" },
+  greenChip: { backgroundColor: "rgba(0,168,107,0.1)" },
+  chipText: { fontSize: 13, fontWeight: "500", color: "#64748B" },
 
-  // Progress bars
-  progressBlock: {
-    backgroundColor: "#f8fafc",
-    borderRadius: 16,
-    padding: 14,
-    gap: 10,
-    marginBottom: 12,
-  },
-  progressItem: { gap: 6 },
-  progressLabelRow: { flexDirection: "row", justifyContent: "space-between" },
-  progressLabel: { fontSize: 12, color: "#64748b", fontWeight: "600" },
-  progressValue: { fontSize: 12, color: "#0f172a", fontWeight: "700" },
-  progressTrack: {
-    height: 5,
-    backgroundColor: "#e2e8f0",
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  progressFill: { height: "100%", borderRadius: 3 },
-  weekRange: { fontSize: 11, color: "#94a3b8", fontStyle: "italic" },
-
-  // Cart items list
-  itemsContainer: { paddingHorizontal: 24, paddingTop: 16, gap: 12 },
+  // Cart items
+  itemsContainer: { paddingHorizontal: 16, paddingTop: 16, gap: 12 },
   cartItem: {
     flexDirection: "row",
     backgroundColor: "#fff",
-    borderRadius: 24,
-    padding: 16,
+    borderRadius: 20,
+    padding: 12,
     borderWidth: 1,
-    borderColor: "#f1f5f9",
+    borderColor: "#F1F5F9",
   },
   itemImage: {
-    width: 68,
-    height: 68,
-    borderRadius: 16,
-    backgroundColor: "#f8fafc",
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    backgroundColor: "#F8FAFC",
   },
-
-  itemInfo: { flex: 1, marginLeft: 14 },
+  itemInfo: { flex: 1, marginLeft: 12 },
   itemName: {
     fontSize: 14,
-    fontWeight: "700",
-    color: "#0f172a",
+    fontWeight: "600",
+    color: "#0F172A",
     marginBottom: 6,
     lineHeight: 20,
   },
-
-  // Badge row
   badgeRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -1588,34 +1499,30 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   eligibleBadgeText: { fontSize: 10, color: "#00A86B", fontWeight: "700" },
-  ineligibleText: { fontSize: 11, color: "#94a3b8" },
-
-  // Price row
+  ineligibleText: { fontSize: 11, color: "#94A3B8" },
   priceRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 7,
+    gap: 6,
     marginBottom: 4,
     flexWrap: "wrap",
   },
-  regularPrice: { fontSize: 15, fontWeight: "700", color: "#00A86B" },
-  salePrice: { fontSize: 15, fontWeight: "700", color: "#00A86B" },
+  regularPrice: { fontSize: 16, fontWeight: "700", color: "#00A86B" },
+  salePrice: { fontSize: 16, fontWeight: "700", color: "#00A86B" },
   originalPrice: {
     fontSize: 13,
-    color: "#94a3b8",
+    color: "#94A3B8",
     textDecorationLine: "line-through",
   },
   saleBadge: {
-    backgroundColor: "#DC2626",
-    paddingHorizontal: 5,
+    backgroundColor: "#EF4444",
+    paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
   },
   saleBadgeText: { fontSize: 9, color: "#fff", fontWeight: "700" },
-  unitText: { fontSize: 12, color: "#94a3b8" },
-  dateText: { fontSize: 11, color: "#94a3b8" },
-
-  // Item actions (right column)
+  unitText: { fontSize: 12, color: "#94A3B8" },
+  dateText: { fontSize: 11, color: "#94A3B8" },
   itemActions: {
     alignItems: "flex-end",
     justifyContent: "space-between",
@@ -1624,142 +1531,154 @@ const styles = StyleSheet.create({
   qtyRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f8fafc",
-    borderRadius: 12,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 30,
     borderWidth: 1,
-    borderColor: "#f1f5f9",
-    padding: 3,
+    borderColor: "#F1F5F9",
+    padding: 2,
   },
   qtyBtn: {
-    width: 26,
-    height: 26,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
   },
   qtyDisplay: {
-    width: 36,
-    height: 26,
+    minWidth: 32,
+    height: 28,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#fff",
-    borderRadius: 8,
+    borderRadius: 14,
     marginHorizontal: 2,
   },
-  qtyText: { fontSize: 14, fontWeight: "700", color: "#0f172a" },
-  itemTotalText: { fontSize: 15, fontWeight: "800", color: "#0f172a" },
+  qtyText: { fontSize: 14, fontWeight: "600", color: "#0F172A" },
+  itemTotalText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#0F172A",
+    marginTop: 6,
+  },
   removeBtn: {
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: "#fef2f2",
+    backgroundColor: "#FEF2F2",
     justifyContent: "center",
     alignItems: "center",
+    marginTop: 6,
     borderWidth: 1,
-    borderColor: "#fecaca",
+    borderColor: "#FEE2E2",
   },
 
-  // Empty state — matches emptyContainer pattern
+  // Empty state
   emptyContainer: {
     alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 60,
-    marginHorizontal: 24,
+    marginHorizontal: 16,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#F8FAFC",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: "700",
-    color: "#0f172a",
-    marginTop: 16,
+    fontWeight: "600",
+    color: "#0F172A",
     marginBottom: 8,
   },
   emptyText: {
     fontSize: 14,
-    color: "#64748b",
+    color: "#64748B",
     textAlign: "center",
-    lineHeight: 20,
     marginBottom: 24,
+    paddingHorizontal: 40,
+    lineHeight: 20,
   },
   scanButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     backgroundColor: "#00A86B",
-    paddingHorizontal: 28,
-    paddingVertical: 13,
-    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 30,
   },
-  scanButtonText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  scanButtonText: { color: "#fff", fontSize: 14, fontWeight: "600" },
 
-  // Applied promo / points row
+  // Applied row
   appliedRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#F8FAFC",
     padding: 14,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#f1f5f9",
+    borderColor: "#F1F5F9",
   },
   appliedInfo: { flexDirection: "row", alignItems: "center", flex: 1 },
-  appliedCode: { fontSize: 14, fontWeight: "700", color: "#0f172a" },
-  appliedName: { fontSize: 12, color: "#64748b", marginTop: 2 },
-  appliedValue: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#FF9800",
-    marginTop: 2,
-  },
+  appliedCode: { fontSize: 14, fontWeight: "600", color: "#0F172A" },
+  appliedName: { fontSize: 12, color: "#64748B", marginTop: 2 },
+  appliedValue: { fontSize: 13, fontWeight: "700", marginTop: 2 },
   removeChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: "#fef2f2",
-    borderRadius: 10,
+    backgroundColor: "#FEF2F2",
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#fecaca",
+    borderColor: "#FEE2E2",
   },
-  removeChipText: { fontSize: 12, fontWeight: "700", color: "#DC2626" },
+  removeChipText: { fontSize: 12, fontWeight: "600", color: "#EF4444" },
 
-  // Promo option row
+  // Promo option
   promoOption: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#F8FAFC",
     padding: 14,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#f1f5f9",
+    borderColor: "#F1F5F9",
   },
-  promoOptionCode: { fontSize: 14, fontWeight: "700", color: "#0f172a" },
-  promoOptionName: { fontSize: 12, color: "#64748b", marginTop: 2 },
+  promoOptionCode: { fontSize: 14, fontWeight: "600", color: "#0F172A" },
+  promoOptionName: { fontSize: 12, color: "#64748B", marginTop: 2 },
 
   // Loyalty balance
   balanceRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#F8FAFC",
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#f1f5f9",
+    borderColor: "#F1F5F9",
     marginBottom: 12,
   },
-  balanceLabel: { fontSize: 13, color: "#64748b", fontWeight: "600" },
-  balanceValue: { fontSize: 16, fontWeight: "800", color: "#0f172a" },
+  balanceLabel: { fontSize: 13, color: "#64748B", fontWeight: "500" },
+  balanceValue: { fontSize: 18, fontWeight: "700", color: "#0F172A" },
 
   // Points input
   inputRow: { flexDirection: "row", gap: 10, marginBottom: 6 },
   pointsInput: {
     flex: 1,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#F8FAFC",
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
     fontSize: 15,
     borderWidth: 1,
-    borderColor: "#f1f5f9",
-    color: "#0f172a",
+    borderColor: "#F1F5F9",
+    color: "#0F172A",
   },
   applyBtn: {
     backgroundColor: "#B45309",
@@ -1768,16 +1687,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: "center",
   },
-  applyBtnDisabled: { backgroundColor: "#e2e8f0" },
-  applyBtnText: { color: "#fff", fontSize: 14, fontWeight: "700" },
-  hintText: { fontSize: 12, color: "#94a3b8", marginBottom: 4 },
+  applyBtnDisabled: { backgroundColor: "#E2E8F0" },
+  applyBtnText: { color: "#fff", fontSize: 14, fontWeight: "600" },
+  hintText: { fontSize: 12, color: "#94A3B8", marginBottom: 4 },
 
-  // Order summary card
-  summaryCard: { marginBottom: 0 },
+  // Order summary
+  summaryCard: { marginBottom: 16 },
   summaryTitle: {
     fontSize: 18,
-    fontWeight: "800",
-    color: "#0f172a",
+    fontWeight: "700",
+    color: "#0F172A",
     marginBottom: 16,
   },
   summaryRow: {
@@ -1786,42 +1705,114 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 10,
   },
-  summaryLabel: { fontSize: 14, color: "#64748b" },
-  summaryValue: { fontSize: 14, fontWeight: "600", color: "#0f172a" },
-  blockTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#0f172a",
-    marginBottom: 10,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  detailRow: {
+  summaryLabel: { fontSize: 14, color: "#64748B" },
+  summaryValue: { fontSize: 14, fontWeight: "600", color: "#0F172A" },
+  discountHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    gap: 8,
     marginBottom: 8,
   },
-  detailLabel: { fontSize: 13, color: "#64748b" },
-  detailValue: { fontSize: 13, color: "#0f172a", fontWeight: "500" },
-  capNote: { fontSize: 11, color: "#94a3b8" },
-  weeklyBlock: {
-    backgroundColor: "#f8fafc",
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 6,
-    gap: 4,
-  },
-  weeklyText: { fontSize: 12, color: "#64748b" },
-  divider: { height: 1, backgroundColor: "#f1f5f9", marginVertical: 14 },
+  discountTitle: { fontSize: 14, fontWeight: "600", color: "#0F172A" },
+  discountLabel: { fontSize: 13, color: "#64748B", flex: 1 },
+  discountValue: { fontSize: 14, fontWeight: "700" },
+  divider: { height: 1, backgroundColor: "#F1F5F9", marginVertical: 14 },
   totalDivider: {
     height: 1,
-    backgroundColor: "#0f172a",
+    backgroundColor: "#E2E8F0",
     marginVertical: 14,
-    opacity: 0.08,
   },
-  totalLabel: { fontSize: 16, fontWeight: "700", color: "#0f172a" },
-  totalValue: { fontSize: 22, fontWeight: "800", color: "#00A86B" },
+  totalLabel: { fontSize: 16, fontWeight: "700", color: "#0F172A" },
+  totalValue: { fontSize: 24, fontWeight: "800", color: "#00A86B" },
+
+  // Confirmation Modal
+  confirmOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  confirmCard: {
+    width: "100%",
+    maxWidth: 340,
+    backgroundColor: "#fff",
+    borderRadius: 24,
+    padding: 24,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  confirmIcon: { marginBottom: 16 },
+  confirmTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#0F172A",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  confirmText: {
+    fontSize: 14,
+    color: "#64748B",
+    textAlign: "center",
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  confirmCheckboxRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#F8FAFC",
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    marginBottom: 20,
+    width: "100%",
+  },
+  confirmCheckboxText: {
+    fontSize: 14,
+    color: "#0F172A",
+    fontWeight: "500",
+    flex: 1,
+  },
+  confirmActions: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%",
+  },
+  confirmCancelBtn: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    alignItems: "center",
+  },
+  confirmCancelText: {
+    color: "#64748B",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  confirmProceedBtn: {
+    flex: 1,
+    backgroundColor: "#00A86B",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  confirmProceedBtnDisabled: {
+    backgroundColor: "#CBD5E1",
+  },
+  confirmProceedText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
+  },
 
   // Checkout bar
   checkoutBar: {
@@ -1831,26 +1822,26 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: "#fff",
     borderTopWidth: 1,
-    borderTopColor: "#f1f5f9",
-    paddingHorizontal: 24,
-    paddingVertical: 16,
+    borderTopColor: "#F1F5F9",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     paddingBottom: 24,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    elevation: 15,
-    zIndex: 999,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
+    shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
+    elevation: 10,
   },
-  checkoutLabel: { fontSize: 13, color: "#64748b", fontWeight: "600" },
+  checkoutLabel: { fontSize: 12, color: "#64748B", fontWeight: "500" },
   checkoutTotal: { fontSize: 24, fontWeight: "800", color: "#00A86B" },
   checkoutOriginal: {
-    fontSize: 12,
-    color: "#94a3b8",
+    fontSize: 13,
+    color: "#94A3B8",
     textDecorationLine: "line-through",
+    marginTop: 2,
   },
   checkoutBtn: {
     flex: 1,
@@ -1858,10 +1849,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#00A86B",
-    borderRadius: 12,
+    borderRadius: 30,
     paddingVertical: 14,
     gap: 8,
-    marginLeft: 20,
+    marginLeft: 16,
   },
   checkoutBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
 });
