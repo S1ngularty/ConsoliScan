@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Modal,
@@ -10,64 +10,82 @@ import {
   Dimensions,
   TextInput,
   Alert,
+  ToastAndroid,
+  Platform,
+  StatusBar,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import BarcodeScanner from "../../components/BarcodeScanner";
 import ProductDetailSheet from "../../components/ProductDetailSheet";
 import { scanProduct } from "../../api/product.api";
-import { addToCart } from "../../features/slices/cart/cartSlice";
+import {
+  addToCart,
+  removeFromCart,
+} from "../../features/slices/cart/cartSlice";
 import { useDispatch, useSelector } from "react-redux";
-import { saveLocally } from "../../features/slices/cart/cartThunks";
 import { debounceCartSync } from "../../features/slices/cart/cartDebounce";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const ScanningScreen = ({ navigation }) => {
   const [scannedProduct, setScannedProduct] = useState(null);
-  const [cart, setCart] = useState([]);
   const [manualBarcodeVisible, setManualBarcodeVisible] = useState(false);
   const [manualBarcode, setManualBarcode] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [continuousMode, setContinuousMode] = useState(false);
+  const [toastMessage, setToastMessage] = useState(null);
+  const [lastAddedItem, setLastAddedItem] = useState(null);
+  const [showToast, setShowToast] = useState(false);
+  const [isScanningLocked, setIsScanningLocked] = useState(false);
+
+  const toastPosition = useRef(new Animated.Value(100)).current;
+  const toastOpacity = useRef(new Animated.Value(0)).current;
   const sheetPosition = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const scanLockTimeoutRef = useRef(null);
+  const toastTimeoutRef = useRef(null);
+  const isUndoActionRef = useRef(false);
+
   const dispatch = useDispatch();
   const cartState = useSelector((state) => state.cart);
   const userState = useSelector((state) => state.auth);
 
+  useEffect(() => {
+    return () => {
+      if (scanLockTimeoutRef.current) clearTimeout(scanLockTimeoutRef.current);
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    };
+  }, []);
+
   const handleScanHistory = async (product) => {
-    const scanHistory = await AsyncStorage.getItem("scanHistory");
-    if (!scanHistory) {
-      AsyncStorage.setItem(
-        "scanHistory",
-        JSON.stringify([
-          {
-            name: product.name,
-            price: product.price,
-            scannedAt: Date.now(),
-          },
-        ]),
-      );
-    } else {
-      const currScanned = JSON.parse(scanHistory);
-      if (currScanned.length >= 4) currScanned.shift();
-      currScanned.push({
+    try {
+      const scanHistory = await AsyncStorage.getItem("scanHistory");
+      const newScan = {
         name: product.name,
         price: product.price,
         scannedAt: Date.now(),
-      });
+      };
 
-      AsyncStorage.setItem("scanHistory", JSON.stringify(currScanned));
+      if (!scanHistory) {
+        await AsyncStorage.setItem("scanHistory", JSON.stringify([newScan]));
+      } else {
+        const currScanned = JSON.parse(scanHistory);
+        if (currScanned.length >= 4) currScanned.shift();
+        currScanned.push(newScan);
+        await AsyncStorage.setItem("scanHistory", JSON.stringify(currScanned));
+      }
+    } catch (error) {
+      console.log("Error saving scan history:", error);
     }
-
-    return;
   };
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderMove: (_, gestureState) => {
-        // Only allow dragging down
         if (gestureState.dy > 0) {
           sheetPosition.setValue(gestureState.dy);
         }
@@ -76,7 +94,6 @@ const ScanningScreen = ({ navigation }) => {
         if (gestureState.dy > 100 || gestureState.vy > 0.5) {
           closeSheet();
         } else {
-          // Snap back to top
           Animated.spring(sheetPosition, {
             toValue: 0,
             useNativeDriver: true,
@@ -88,19 +105,116 @@ const ScanningScreen = ({ navigation }) => {
     }),
   ).current;
 
+  const showToastNotification = (message, isUndo = false) => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+
+    setToastMessage(message);
+    setShowToast(true);
+
+    Animated.parallel([
+      Animated.spring(toastPosition, {
+        toValue: 0, // Changed from 80 to 0 - now it sits at bottom with margin
+        useNativeDriver: true,
+        tension: 50,
+        friction: 8,
+      }),
+      Animated.timing(toastOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    if (!isUndo) {
+      toastTimeoutRef.current = setTimeout(() => {
+        hideToastNotification();
+      }, 2500);
+    }
+  };
+
+  const hideToastNotification = () => {
+    Animated.parallel([
+      Animated.spring(toastPosition, {
+        toValue: 100,
+        useNativeDriver: true,
+        tension: 50,
+        friction: 8,
+      }),
+      Animated.timing(toastOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowToast(false);
+      setToastMessage(null);
+      setLastAddedItem(null);
+
+      if (isUndoActionRef.current) {
+        debounceCartSync(dispatch);
+        isUndoActionRef.current = false;
+      }
+    });
+  };
+
+  const handleUndoAddToCart = () => {
+    if (lastAddedItem) {
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+
+      dispatch(removeFromCart(lastAddedItem._id));
+      isUndoActionRef.current = true;
+      setLastAddedItem(null);
+      hideToastNotification();
+
+      if (Platform.OS === "android") {
+        ToastAndroid.show("Item removed from cart", ToastAndroid.SHORT);
+      }
+    }
+  };
+
   const handleDetection = async (type, data) => {
+    if (isScanningLocked) {
+      console.log("Scan locked - ignoring rapid scan");
+      return;
+    }
+
     try {
+      setIsScanningLocked(true);
       console.log(`Searching for: ${data} (${type})`);
-      const response = await scanProduct(type,data);
+
+      const response = await scanProduct(type, data);
 
       if (response) {
-        setScannedProduct(response);
-        openSheet();
-        handleScanHistory(response);
+        await handleScanHistory(response);
+
+        if (continuousMode) {
+          handleAddToContinuous(response);
+        } else {
+          setScannedProduct(response);
+          openSheet();
+        }
       }
     } catch (err) {
       console.log("Product not found or API error:", err);
+      showToastNotification("Product not found", true);
+    } finally {
+      scanLockTimeoutRef.current = setTimeout(() => {
+        setIsScanningLocked(false);
+      }, 1000);
     }
+  };
+
+  const handleAddToContinuous = (product) => {
+    const newItem = {
+      ...product,
+      selectedQuantity: 1,
+      addedAt: new Date().toISOString(),
+    };
+
+    setLastAddedItem(newItem);
+    dispatch(addToCart(newItem));
+    debounceCartSync(dispatch);
+    showToastNotification(`${product.name} added to cart`);
   };
 
   const handleAddToCart = (product, quantity) => {
@@ -110,10 +224,11 @@ const ScanningScreen = ({ navigation }) => {
       addedAt: new Date().toISOString(),
     };
 
+    setLastAddedItem(newItem);
     dispatch(addToCart(newItem));
     debounceCartSync(dispatch);
-    // dispatch(saveLocally())
     closeSheet();
+    showToastNotification(`${product.name} added to cart`);
   };
 
   const handleManualBarcodeSubmit = async () => {
@@ -151,7 +266,6 @@ const ScanningScreen = ({ navigation }) => {
   };
 
   const openSheet = () => {
-    // Start from bottom and slide up to 0 (fully visible)
     sheetPosition.setValue(SCREEN_HEIGHT);
     Animated.spring(sheetPosition, {
       toValue: 0,
@@ -174,29 +288,66 @@ const ScanningScreen = ({ navigation }) => {
 
   const translateY = sheetPosition;
 
+  // Helper function to get image URL
+  const getProductImageUrl = (product) => {
+    if (product?.images && product.images.length > 0) {
+      return product.images[0].url;
+    }
+    return null;
+  };
+
   return (
     <View style={styles.container}>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent
+      />
+
       <BarcodeScanner onDetect={handleDetection} />
 
+      {/* Gradient Overlay for better header visibility */}
+      <LinearGradient
+        colors={["rgba(0,0,0,0.7)", "transparent"]}
+        style={styles.gradientOverlay}
+        pointerEvents="none"
+      />
+
       {/* Header */}
-      <SafeAreaView style={styles.header}>
+      <SafeAreaView style={styles.header} edges={["top"]}>
         <View style={styles.headerContent}>
-          <View style={styles.logoContainer}>
-            <View style={styles.logoIcon}>
-              <MaterialCommunityIcons
-                name="barcode-scan"
-                size={20}
-                color="#00A86B"
-              />
-            </View>
-            <Text style={styles.logoText}>
-              Consoli<Text style={styles.logoBold}>Scan</Text>
-            </Text>
+          <View style={styles.headerLeft}>
+            {/* Empty view for balance */}
           </View>
 
-          <View style={styles.headerActions}>
+          <View style={styles.headerRight}>
             <TouchableOpacity
-              style={styles.manualButton}
+              style={[
+                styles.modeToggleButton,
+                continuousMode && styles.modeToggleActive,
+              ]}
+              activeOpacity={0.7}
+              onPress={() => setContinuousMode(!continuousMode)}
+            >
+              <MaterialCommunityIcons
+                name={
+                  continuousMode ? "lightning-bolt" : "lightning-bolt-outline"
+                }
+                size={18}
+                color={continuousMode ? "#fff" : "#fff"}
+              />
+              <Text
+                style={[
+                  styles.modeToggleText,
+                  continuousMode && styles.modeToggleTextActive,
+                ]}
+              >
+                {continuousMode ? "Fast" : "Detail"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.iconButton}
               activeOpacity={0.7}
               onPress={() => setManualBarcodeVisible(true)}
             >
@@ -207,11 +358,8 @@ const ScanningScreen = ({ navigation }) => {
               style={styles.cartButton}
               activeOpacity={0.7}
               onPress={() => {
-                // console.log(userState.role);
                 if (userState.role === "user") {
-                  navigation.navigate("HomeTabs", {
-                    screen: "Cart",
-                  });
+                  navigation.navigate("HomeTabs", { screen: "Cart" });
                 } else {
                   navigation.navigate("Cart");
                 }
@@ -219,8 +367,8 @@ const ScanningScreen = ({ navigation }) => {
             >
               <MaterialCommunityIcons
                 name="cart-outline"
-                size={24}
-                color="#000"
+                size={22}
+                color="#fff"
               />
               {cartState.cart.length > 0 && (
                 <View style={styles.cartBadge}>
@@ -234,6 +382,12 @@ const ScanningScreen = ({ navigation }) => {
         </View>
       </SafeAreaView>
 
+      {/* Simple instruction text only - removed duplicate corners */}
+      <View style={styles.instructionContainer}>
+        <Text style={styles.instructionText}>Align barcode within frame</Text>
+      </View>
+
+      {/* Product Detail Modal */}
       <Modal
         animationType="none"
         transparent={true}
@@ -250,6 +404,7 @@ const ScanningScreen = ({ navigation }) => {
             style={[styles.sheetContainer, { transform: [{ translateY }] }]}
             {...panResponder.panHandlers}
           >
+            <View style={styles.sheetHandle} />
             <ProductDetailSheet
               product={scannedProduct}
               onConfirm={handleAddToCart}
@@ -261,7 +416,7 @@ const ScanningScreen = ({ navigation }) => {
 
       {/* Manual Barcode Input Modal */}
       <Modal
-        animationType="fade"
+        animationType="slide"
         transparent={true}
         visible={manualBarcodeVisible}
         statusBarTranslucent
@@ -279,11 +434,12 @@ const ScanningScreen = ({ navigation }) => {
                   setManualBarcodeVisible(false);
                   setManualBarcode("");
                 }}
+                style={styles.closeButton}
               >
                 <MaterialCommunityIcons
                   name="close"
-                  size={28}
-                  color="#1E293B"
+                  size={24}
+                  color="#64748B"
                 />
               </TouchableOpacity>
             </View>
@@ -291,9 +447,8 @@ const ScanningScreen = ({ navigation }) => {
             <View style={styles.manualInputContainer}>
               <MaterialCommunityIcons
                 name="barcode"
-                size={40}
+                size={24}
                 color="#00A86B"
-                style={styles.barcodeIcon}
               />
               <TextInput
                 style={styles.barcodeInput}
@@ -341,6 +496,63 @@ const ScanningScreen = ({ navigation }) => {
           </View>
         </View>
       </Modal>
+
+      {/* Toast Notification with Product Image - Positioned higher */}
+      {showToast && lastAddedItem && (
+        <Animated.View
+          style={[
+            styles.toastContainer,
+            {
+              transform: [{ translateY: toastPosition }],
+              opacity: toastOpacity,
+            },
+          ]}
+        >
+          <View style={styles.toastContent}>
+            <View style={styles.toastLeftSection}>
+              {/* Product Image */}
+              <View style={styles.toastImageContainer}>
+                {getProductImageUrl(lastAddedItem) ? (
+                  <Image
+                    source={{ uri: getProductImageUrl(lastAddedItem) }}
+                    style={styles.toastImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={styles.toastImagePlaceholder}>
+                    <MaterialCommunityIcons
+                      name="image-off"
+                      size={16}
+                      color="#94A3B8"
+                    />
+                  </View>
+                )}
+              </View>
+
+              {/* Message */}
+              <View style={styles.toastMessage}>
+                <MaterialCommunityIcons
+                  name="check-circle"
+                  size={16}
+                  color="#00A86B"
+                />
+                <Text style={styles.toastText} numberOfLines={2}>
+                  {toastMessage}
+                </Text>
+              </View>
+            </View>
+
+            {/* UNDO Button */}
+            <TouchableOpacity
+              style={styles.undoButton}
+              onPress={handleUndoAddToCart}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.undoButtonText}>UNDO</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      )}
     </View>
   );
 };
@@ -349,6 +561,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#000",
+  },
+  gradientOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 120,
+    zIndex: 5,
   },
   header: {
     position: "absolute",
@@ -359,81 +579,70 @@ const styles = StyleSheet.create({
   },
   headerContent: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
-  headerActions: {
+  headerLeft: {
+    flex: 1,
+  },
+  headerRight: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
   },
-  manualButton: {
-    width: 50,
-    height: 50,
-    backgroundColor: "#00A86B",
-    borderRadius: 16,
+  iconButton: {
+    width: 44,
+    height: 44,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)",
   },
-  logoContainer: {
+  modeToggleButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    paddingHorizontal: 16,
+    gap: 8,
+    paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
   },
-  logoIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(0, 168, 107, 0.1)",
-    justifyContent: "center",
-    alignItems: "center",
+  modeToggleActive: {
+    backgroundColor: "#00A86B",
+    borderColor: "#00A86B",
   },
-  logoText: {
-    marginLeft: 10,
-    fontSize: 18,
-    color: "#000",
-    letterSpacing: 0.5,
+  modeToggleText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#fff",
   },
-  logoBold: {
-    fontWeight: "900",
+  modeToggleTextActive: {
+    color: "#fff",
   },
   cartButton: {
-    width: 50,
-    height: 50,
-    backgroundColor: "#fff",
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)",
   },
   cartBadge: {
     position: "absolute",
-    top: -5,
-    right: -5,
-    backgroundColor: "#00A86B",
+    top: -4,
+    right: -4,
+    backgroundColor: "#EF4444",
     borderRadius: 10,
-    minWidth: 22,
-    height: 22,
+    minWidth: 20,
+    height: 20,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
@@ -441,9 +650,28 @@ const styles = StyleSheet.create({
   },
   cartBadgeText: {
     color: "#fff",
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "bold",
     paddingHorizontal: 4,
+  },
+  // Simple instruction text only - removed duplicate corners
+  instructionContainer: {
+    position: "absolute",
+    bottom: 110,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    zIndex: 8,
+  },
+  instructionText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "500",
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+    overflow: "hidden",
   },
   modalOverlay: {
     flex: 1,
@@ -454,18 +682,21 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    top: 0, // Make it fill from top to bottom
+    top: 0,
     backgroundColor: "#fff",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 20,
   },
-  // Manual Barcode Modal Styles
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: "#E2E8F0",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginTop: 8,
+    marginBottom: 4,
+  },
   manualModalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
@@ -479,11 +710,6 @@ const styles = StyleSheet.create({
     padding: 24,
     width: "100%",
     maxWidth: 400,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
   },
   manualModalHeader: {
     flexDirection: "row",
@@ -492,9 +718,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   manualModalTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "700",
     color: "#1E293B",
+  },
+  closeButton: {
+    padding: 4,
   },
   manualInputContainer: {
     flexDirection: "row",
@@ -504,17 +733,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     marginBottom: 24,
-    borderWidth: 2,
+    gap: 12,
+    borderWidth: 1,
     borderColor: "#E2E8F0",
-  },
-  barcodeIcon: {
-    marginRight: 12,
   },
   barcodeInput: {
     flex: 1,
     fontSize: 16,
     color: "#1E293B",
-    paddingVertical: 8,
+    padding: 0,
   },
   manualModalActions: {
     flexDirection: "row",
@@ -548,6 +775,79 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.5,
+  },
+  toastContainer: {
+    position: "absolute",
+    bottom: 30, // Increased from 40 to 90 to lift it higher
+    left: 16,
+    right: 16,
+    zIndex: 100,
+  },
+  toastContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
+    elevation: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: "#00A86B",
+  },
+  toastLeftSection: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  toastImageContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 6,
+    overflow: "hidden",
+    backgroundColor: "#F1F5F9",
+  },
+  toastImage: {
+    width: 40,
+    height: 40,
+  },
+  toastImagePlaceholder: {
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F1F5F9",
+  },
+  toastMessage: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  toastText: {
+    color: "#1E293B",
+    fontSize: 14,
+    fontWeight: "600",
+    flex: 1,
+    lineHeight: 20,
+  },
+  undoButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: "#00A86B",
+    borderRadius: 22,
+    marginLeft: 12,
+  },
+  undoButtonText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 0.6,
   },
 });
 

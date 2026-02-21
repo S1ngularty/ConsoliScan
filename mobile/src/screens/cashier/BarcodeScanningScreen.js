@@ -11,9 +11,11 @@ import {
   Alert,
   Modal,
   TextInput,
+  Animated,
+  ToastAndroid,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { scanProduct } from "../../api/product.api";
 import { useDispatch } from "react-redux";
@@ -30,8 +32,12 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
   const [manualBarcodeVisible, setManualBarcodeVisible] = useState(false);
   const [manualBarcode, setManualBarcode] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [toastMessage, setToastMessage] = useState(null);
+  const [showToast, setShowToast] = useState(false);
+  const [lastAddedItem, setLastAddedItem] = useState(null);
   const isProcessingRef = useRef(false);
   const cameraRef = useRef(null);
+  const toastPosition = useRef(new Animated.Value(-100)).current;
 
   const dispatch = useDispatch();
 
@@ -46,6 +52,46 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
     }, 0);
     setTotalPrice(total);
   }, [scannedItems]);
+
+  const showToastNotification = (message, item = null) => {
+    setToastMessage(message);
+    setShowToast(true);
+    if (item) {
+      setLastAddedItem(item);
+    }
+
+    Animated.timing(toastPosition, {
+      toValue: 20,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+
+    const timeout = setTimeout(() => {
+      hideToastNotification();
+    }, 3000);
+    return timeout;
+  };
+
+  const hideToastNotification = () => {
+    Animated.timing(toastPosition, {
+      toValue: -100,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowToast(false);
+      setLastAddedItem(null);
+    });
+  };
+
+  const handleUndoAddItem = () => {
+    if (lastAddedItem) {
+      setScannedItems((prev) =>
+        prev.filter((item) => item.id !== lastAddedItem.id),
+      );
+      hideToastNotification();
+      ToastAndroid.show("Item removed", ToastAndroid.SHORT);
+    }
+  };
 
   const handleScan = async ({ data, type }) => {
     if (isProcessingRef.current) return;
@@ -74,10 +120,8 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
         setScannedItems(updatedItems);
 
         // Show success feedback
-        Alert.alert(
-          "Item Updated",
-          `Quantity increased to ${updatedItems[existingItemIndex].quantity}`,
-          [{ text: "OK" }],
+        showToastNotification(
+          `Qty: ${updatedItems[existingItemIndex].quantity} - ${updatedItems[existingItemIndex].name}`,
         );
       } else {
         // New item, fetch from API
@@ -109,9 +153,7 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
           setScannedItems((prev) => [...prev, newItem]);
 
           // Show success feedback
-          Alert.alert("Product Scanned", `Added: ${response.name}`, [
-            { text: "OK" },
-          ]);
+          showToastNotification(`Added: ${response.name}`, newItem);
         } else {
           Alert.alert(
             "Product Not Found",
@@ -715,6 +757,35 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
           </View>
         </View>
       </Modal>
+
+      {/* Toast Notification */}
+      {showToast && (
+        <Animated.View
+          style={[
+            styles.toastContainer,
+            { transform: [{ translateY: toastPosition }] },
+          ]}
+        >
+          <View style={styles.toastContent}>
+            <View style={styles.toastMessage}>
+              <MaterialCommunityIcons
+                name="check-circle"
+                size={20}
+                color="#00A86B"
+              />
+              <Text style={styles.toastText}>{toastMessage}</Text>
+            </View>
+            {lastAddedItem && (
+              <TouchableOpacity
+                style={styles.undoButton}
+                onPress={handleUndoAddItem}
+              >
+                <Text style={styles.undoButtonText}>UNDO</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </Animated.View>
+      )}
     </SafeAreaView>
   );
 };
@@ -1281,6 +1352,54 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
+  },
+  toastContainer: {
+    position: "absolute",
+    top: 70,
+    left: 16,
+    right: 16,
+    zIndex: 100,
+  },
+  toastContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#1E293B",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderLeftWidth: 4,
+    borderLeftColor: "#1D4ED8",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  toastMessage: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  toastText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "500",
+    flex: 1,
+  },
+  undoButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: "rgba(29, 78, 216, 0.2)",
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  undoButtonText: {
+    color: "#1D4ED8",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.5,
   },
 });
 
