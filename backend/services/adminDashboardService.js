@@ -10,22 +10,30 @@ const CheckoutQueue = require("../models/checkoutQueueModel");
 // ==================== DASHBOARD SUMMARY ====================
 const getDashboardSummary = async () => {
   try {
-    const totalUsers = await User.countDocuments();
+    console.log("\n========== getDashboardSummary DEBUG START ==========");
+    const totalUsers = await User.countDocuments({ role: "user" });
     const totalProducts = await Product.countDocuments();
     const totalOrders = await Order.countDocuments();
     const totalCategories = await Category.countDocuments();
 
-    // Revenue calculation
+    console.log("📊 Counts:", { totalUsers, totalProducts, totalOrders, totalCategories });
+
+    // Revenue calculation - Use finalAmountPaid and CONFIRMED status
     const revenueData = await Order.aggregate([
+      {
+        $match: { status: "CONFIRMED" },
+      },
       {
         $group: {
           _id: null,
-          totalRevenue: { $sum: "$totalAmount" },
-          averageOrderValue: { $avg: "$totalAmount" },
+          totalRevenue: { $sum: "$finalAmountPaid" },
+          averageOrderValue: { $avg: "$finalAmountPaid" },
           totalOrderCount: { $sum: 1 },
         },
       },
     ]);
+
+    console.log("💰 Revenue data from CONFIRMED orders:", revenueData);
 
     const revenue = revenueData[0] || {
       totalRevenue: 0,
@@ -39,6 +47,9 @@ const getDashboardSummary = async () => {
       .limit(5)
       .populate("user", "name email");
 
+    console.log("📝 Recent activity items:", recentActivity.length);
+    console.log("========== getDashboardSummary DEBUG END ==========\n");
+
     return {
       totalUsers,
       totalProducts,
@@ -49,6 +60,7 @@ const getDashboardSummary = async () => {
       recentActivity,
     };
   } catch (error) {
+    console.error("❌ ERROR in getDashboardSummary:", error.message);
     throw new Error(`Failed to get dashboard summary: ${error.message}`);
   }
 };
@@ -57,49 +69,132 @@ const getDashboardSummary = async () => {
 const getSalesAnalytics = async (params = {}) => {
   try {
     const { startDate, endDate, groupBy = "day" } = params;
+    
+    console.log("\n========== getSalesAnalytics DEBUG START ==========");
+    console.log("📊 Input Parameters:", { startDate, endDate, groupBy });
 
-    let dateFilter = {};
+    // Check total orders in collection
+    const totalOrders = await Order.countDocuments();
+    console.log("📦 Total orders in collection:", totalOrders);
+
+    // Check orders by status
+    const ordersByStatus = await Order.aggregate([
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]);
+    console.log("📊 Orders by status:", ordersByStatus);
+
+    // Check all orders (first 3)
+    const sampleOrders = await Order.find().limit(3).lean();
+    console.log(
+      "Sample orders (first 3):",
+      sampleOrders.map((o) => ({
+        _id: o._id,
+        status: o.status,
+        createdAt: o.createdAt,
+        confirmedAt: o.confirmedAt,
+        finalAmountPaid: o.finalAmountPaid,
+      }))
+    );
+
+    let dateFilter = { status: { $in: ["CONFIRMED", "COMPLETED"] } };
+
     if (startDate || endDate) {
-      dateFilter.createdAt = {};
-      if (startDate) dateFilter.createdAt.$gte = new Date(startDate);
-      if (endDate) dateFilter.createdAt.$lte = new Date(endDate);
+      dateFilter.$or = [{ confirmedAt: {} }, { createdAt: {} }];
+
+      if (startDate) {
+        dateFilter.$or[0].confirmedAt.$gte = new Date(startDate);
+        dateFilter.$or[1].createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        dateFilter.$or[0].confirmedAt.$lte = new Date(endDate);
+        dateFilter.$or[1].createdAt.$lte = new Date(endDate);
+      }
     }
 
+    console.log("🔍 Date filter:", JSON.stringify(dateFilter, null, 2));
+
+    // Count matching orders before aggregation
+    const matchingCount = await Order.countDocuments({
+      status: { $in: ["CONFIRMED", "COMPLETED"] },
+    });
+    console.log("✅ Orders matching status filter (CONFIRMED/COMPLETED):", matchingCount);
+
     let groupStage;
+    let dateField = "$createdAt"; // Use createdAt as default, falls back in aggregation
+
     switch (groupBy) {
       case "month":
         groupStage = {
-          year: { $year: "$createdAt" },
-          month: { $month: "$createdAt" },
+          year: { $year: dateField },
+          month: { $month: dateField },
         };
         break;
       case "week":
         groupStage = {
-          year: { $isoWeekYear: "$createdAt" },
-          week: { $isoWeek: "$createdAt" },
+          year: { $isoWeekYear: dateField },
+          week: { $isoWeek: dateField },
         };
         break;
       default: // day
         groupStage = {
-          year: { $year: "$createdAt" },
-          month: { $month: "$createdAt" },
-          day: { $dayOfMonth: "$createdAt" },
+          date: { $dateToString: { format: "%Y-%m-%d", date: dateField } },
         };
     }
 
-    const salesData = await Order.aggregate([
-      { $match: { ...dateFilter, status: "completed" } },
+    console.log("🏗️ Aggregation pipeline:");
+    
+    // Construct date range properly - endDate should include the entire day
+    let startDateObj = startDate ? new Date(startDate) : null;
+    let endDateObj = endDate ? new Date(endDate) : null;
+    
+    // If endDate is provided, set it to the end of the day (23:59:59.999Z)
+    if (endDateObj) {
+      endDateObj.setDate(endDateObj.getDate() + 1); // Move to next day
+      endDateObj.setHours(0, 0, 0, 0); // Set to midnight of next day
+    }
+    
+    console.log("🔄 Date range after adjustment:", { startDateObj, endDateObj });
+
+    const pipeline = [
+      { $match: { status: { $in: ["CONFIRMED", "COMPLETED"] } } },
       {
-        $group: {
-          _id: groupStage,
-          totalSales: { $sum: "$totalAmount" },
-          orderCount: { $sum: 1 },
-          averageOrderValue: { $avg: "$totalAmount" },
-          totalQuantity: { $sum: "$quantity" },
+        $addFields: {
+          dateField: { $ifNull: ["$confirmedAt", "$createdAt"] },
         },
       },
-      { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } },
-    ]);
+      // Apply date filter if provided
+      ...(startDateObj || endDateObj
+        ? [
+            {
+              $match: {
+                dateField: {
+                  ...(startDateObj && { $gte: startDateObj }),
+                  ...(endDateObj && { $lt: endDateObj }),
+                },
+              },
+            },
+          ]
+        : []),
+      {
+        $group: {
+          _id: {
+            date: { $dateToString: { format: "%Y-%m-%d", date: "$dateField" } },
+          },
+          totalSales: { $sum: "$finalAmountPaid" },
+          grossSales: { $sum: "$baseAmount" },
+          orderCount: { $sum: 1 },
+          averageOrderValue: { $avg: "$finalAmountPaid" },
+        },
+      },
+      { $sort: { "_id.date": 1 } },
+    ];
+    console.log(JSON.stringify(pipeline, null, 2));
+
+    const salesData = await Order.aggregate(pipeline);
+
+    console.log("📈 Final aggregated data:", salesData);
+    console.log("📊 Data points returned:", salesData.length);
+    console.log("========== getSalesAnalytics DEBUG END ==========\n");
 
     return {
       groupBy,
@@ -113,6 +208,10 @@ const getSalesAnalytics = async (params = {}) => {
       },
     };
   } catch (error) {
+    console.error("❌ ERROR in getSalesAnalytics:");
+    console.error("Error message:", error.message);
+    console.error("Error stack:", error.stack);
+    console.log("========== getSalesAnalytics DEBUG END (ERROR) ==========\n");
     throw new Error(`Failed to get sales analytics: ${error.message}`);
   }
 };
@@ -236,7 +335,7 @@ const getUserAnalytics = async (params = {}) => {
       if (endDate) dateFilter.createdAt.$lte = new Date(endDate);
     }
 
-    const totalUsers = await User.countDocuments();
+    const totalUsers = await User.countDocuments({ role: "user" });
     const newUsers = await User.countDocuments(dateFilter);
     const activeUsers = await ActivityLog.distinct("user");
 
@@ -250,11 +349,11 @@ const getUserAnalytics = async (params = {}) => {
     ]);
 
     const topSpenders = await Order.aggregate([
-      { $match: { status: "completed" } },
+      { $match: { status: "CONFIRMED", user: { $ne: null } } },
       {
         $group: {
           _id: "$user",
-          totalSpent: { $sum: "$totalAmount" },
+          totalSpent: { $sum: "$finalAmountPaid" },
           orderCount: { $sum: 1 },
         },
       },
@@ -299,9 +398,9 @@ const getOrderAnalytics = async (params = {}) => {
 
     let dateFilter = {};
     if (startDate || endDate) {
-      dateFilter.createdAt = {};
-      if (startDate) dateFilter.createdAt.$gte = new Date(startDate);
-      if (endDate) dateFilter.createdAt.$lte = new Date(endDate);
+      dateFilter.confirmedAt = {};
+      if (startDate) dateFilter.confirmedAt.$gte = new Date(startDate);
+      if (endDate) dateFilter.confirmedAt.$lte = new Date(endDate);
     }
 
     const orderStatusBreakdown = await Order.aggregate([
@@ -310,19 +409,20 @@ const getOrderAnalytics = async (params = {}) => {
         $group: {
           _id: "$status",
           count: { $sum: 1 },
-          totalRevenue: { $sum: "$totalAmount" },
-          averageValue: { $avg: "$totalAmount" },
+          totalRevenue: { $sum: "$finalAmountPaid" },
+          averageValue: { $avg: "$finalAmountPaid" },
         },
       },
     ]);
 
+    // Get payment method breakdown from cashTransaction
     const orderPaymentMethods = await Order.aggregate([
       { $match: dateFilter },
       {
         $group: {
-          _id: "$paymentMethod",
+          _id: "cash", // Cash is the primary method in your system
           count: { $sum: 1 },
-          totalAmount: { $sum: "$totalAmount" },
+          totalAmount: { $sum: "$finalAmountPaid" },
         },
       },
     ]);
@@ -332,10 +432,10 @@ const getOrderAnalytics = async (params = {}) => {
       {
         $group: {
           _id: {
-            hour: { $hour: "$createdAt" },
+            hour: { $hour: "$confirmedAt" },
           },
           orderCount: { $sum: 1 },
-          totalRevenue: { $sum: "$totalAmount" },
+          totalRevenue: { $sum: "$finalAmountPaid" },
         },
       },
       { $sort: { "_id.hour": 1 } },
@@ -358,20 +458,20 @@ const getInventoryAnalytics = async () => {
       {
         $group: {
           _id: null,
-          totalUnits: { $sum: "$stock" },
+          totalUnits: { $sum: "$stockQuantity" },
           totalValue: {
-            $sum: { $multiply: ["$stock", "$price"] },
+            $sum: { $multiply: ["$stockQuantity", "$price"] },
           },
         },
       },
     ]);
 
-    const lowStockProducts = await Product.find({ stock: { $lt: 10 } })
-      .select("name sku stock price")
-      .sort({ stock: 1 })
+    const lowStockProducts = await Product.find({ stockQuantity: { $lt: 10 } })
+      .select("name sku stockQuantity price")
+      .sort({ stockQuantity: 1 })
       .limit(10);
 
-    const outOfStockProducts = await Product.find({ stock: 0 })
+    const outOfStockProducts = await Product.find({ stockQuantity: 0 })
       .select("name sku price")
       .limit(10);
 
@@ -379,8 +479,8 @@ const getInventoryAnalytics = async () => {
       {
         $group: {
           _id: "$category",
-          totalStock: { $sum: "$stock" },
-          totalValue: { $sum: { $multiply: ["$stock", "$price"] } },
+          totalStock: { $sum: "$stockQuantity" },
+          totalValue: { $sum: { $multiply: ["$stockQuantity", "$price"] } },
           productCount: { $sum: 1 },
         },
       },
@@ -396,7 +496,7 @@ const getInventoryAnalytics = async () => {
       {
         $project: {
           _id: 1,
-          categoryName: { $ifNull: ["$category.name", "Unknown"] },
+          categoryName: { $ifNull: ["$category.categoryName", "Unknown"] },
           totalStock: 1,
           totalValue: 1,
           productCount: 1,
