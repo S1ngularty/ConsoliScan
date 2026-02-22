@@ -68,11 +68,11 @@ export default function ObjectDetectionScreen() {
     }
   };
 
-  // Auto-return to OrderDetails when validation is complete and successful
+  // Auto-return to Payment when validation is complete and successful
   useEffect(() => {
     if (validationComplete && getValidationStatus() === "success") {
       const timer = setTimeout(() => {
-        navigation.navigate('OrderDetails', {
+        navigation.navigate('Payment', {
           validationResult: {
             isValidated: true,
             validationMethod: 'object_detection',
@@ -82,6 +82,7 @@ export default function ObjectDetectionScreen() {
           },
           checkoutCode,
           checkoutData,
+          appUser: checkoutData?.userType === "user",
         });
       }, 1500);
       
@@ -231,7 +232,7 @@ export default function ObjectDetectionScreen() {
             text: "Continue Anyway", 
             style: "destructive",
             onPress: () => {
-              navigation.navigate('OrderDetails', {
+              navigation.navigate('Payment', {
                 validationResult: {
                   isValidated: false,
                   validationMethod: 'object_detection',
@@ -241,6 +242,7 @@ export default function ObjectDetectionScreen() {
                 },
                 checkoutCode,
                 checkoutData,
+                appUser: checkoutData?.userType === "user",
               });
             }
           },

@@ -130,10 +130,25 @@ const QRScannerScreen = () => {
 
       setTimeout(() => {
         setShowSuccessModal(false);
-        navigation.navigate("OrderDetails", {
-          checkoutData: response,
-          checkoutCode,
-        });
+
+        // Check validation method and route accordingly
+        const validationMethod = response.validation?.validationMethod;
+
+        if (validationMethod === "COUNTING_ONLY") {
+          // Low risk - use ML counting
+          navigation.navigate("Detection", {
+            checkoutData: response,
+            checkoutCode,
+            orderItems: response.items || response.cartSnapshot?.items || [],
+          });
+        } else {
+          // High risk or default - require full rescan
+          navigation.navigate("QRScanValidation", {
+            checkoutData: response,
+            checkoutCode,
+            orderItems: response.items || response.cartSnapshot?.items || [],
+          });
+        }
       }, 1600);
     } catch (err) {
       Alert.alert("Scan Failed", err.message || "Please try scanning again", [

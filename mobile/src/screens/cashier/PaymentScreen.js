@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "react-native-vector-icons/Ionicons";
-import { payOrder } from "../../api/checkout.api";
+import { payOrder, lockedOrder } from "../../api/checkout.api";
 import { CheckBox } from "react-native-elements";
 
 const WEEKLY_CAP = 125;
@@ -537,6 +537,9 @@ const PaymentScreen = ({ route, navigation }) => {
         "TRANSACTION COMPLETED:",
         JSON.stringify(transactionLog, null, 2),
       );
+
+      // Lock the order first before paying
+      await lockedOrder(checkoutCode);
 
       // Call payOrder API if appUser
       if (appUser) {

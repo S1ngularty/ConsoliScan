@@ -1,6 +1,7 @@
 const Queue = require("../models/checkoutQueueModel");
 const checkoutEmitter = require("../helper/socketEmitter");
 const crypto = require("crypto");
+const validationService = require("./validationService");
 
 exports.checkout = async (request) => {
   if (!request.body) throw new Error("empty request content");
@@ -45,13 +46,29 @@ exports.getOrder = async (request) => {
 
   if (!order) throw new Error("order not found");
 
+  // Assess cart for validation method
+  const cartItems = order.items.map((item) => ({
+    name: item.name,
+    unitPrice: item.unitPrice,
+    quantity: item.quantity,
+    isBNPCEligible: item.isBNPCEligible || false,
+    saleActive: item.saleActive || false,
+  }));
+
+  const validationAssessment =
+    validationService.assessCartSensitivity(cartItems);
+
   checkoutEmitter.emitCheckout(checkoutCode, "checkout:scanned", {
     status: order.status,
     totals: order.totals,
     cashier: name,
   });
 
-  return order;
+  // Return order with validation assessment
+  return {
+    ...order.toObject(),
+    validation: validationAssessment,
+  };
 };
 
 exports.lockedOrder = async (request) => {
