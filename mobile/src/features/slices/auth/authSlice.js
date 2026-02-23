@@ -53,8 +53,8 @@ const authSlice = createSlice({
       .addCase(register.pending, pendingState)
       .addCase(register.fulfilled, (state, action) => {
         console.log(action.payload);
-        state.user = action.payload;
-        state.role = action.payload.role;
+        state.user = action.payload.user;
+        state.role = action.payload.user.role;
         state.isLoggedIn = true;
         state.loading = false;
         state.isNewUser = true;

@@ -7,8 +7,7 @@ import { SOCKET_API } from "../../constants/config";
 import { useSelector } from "react-redux";
 
 export default function CheckoutQRScreen({ route, navigation }) {
-  const { checkoutCode, expiresAt, token, appUser = false } = route.params;
-  const [timeLeft, setTimeLeft] = useState("");
+  const { checkoutCode, token, appUser = false } = route.params;
   const [status, setStatus] = useState("PROCESSING");
   const [totals, setTotals] = useState(null);
   const [orderId, setOrderId] = useState(null);
@@ -132,38 +131,10 @@ export default function CheckoutQRScreen({ route, navigation }) {
       );
     });
 
-    socket.on("checkout:expired", () => {
-      Alert.alert(
-        "Checkout Expired",
-        "Your checkout session has expired. Please try again.",
-        [{ text: "OK", onPress: () => navigation.goBack() }],
-      );
-    });
-
     return () => {
       socket.disconnect();
     };
   }, [token, checkoutCode]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const diff = new Date(expiresAt).getTime() - Date.now();
-      if (diff <= 0) {
-        clearInterval(interval);
-        Alert.alert(
-          "Checkout Expired",
-          "Your checkout session expired. Please try again.",
-        );
-        navigation.goBack();
-      } else {
-        const minutes = Math.floor(diff / 60000);
-        const seconds = Math.floor((diff % 60000) / 1000);
-        setTimeLeft(`${minutes}:${seconds.toString().padStart(2, "0")}`);
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [expiresAt, status]);
 
   const renderStatusMessage = () => {
     switch (status) {
@@ -226,12 +197,6 @@ export default function CheckoutQRScreen({ route, navigation }) {
             />
           </View>
           <Text style={styles.codeText}>{checkoutCode}</Text>
-
-          {status !== "COMPLETE" && (
-            <Text style={styles.timer}>
-              Expires in <Text style={styles.bold}>{timeLeft}</Text>
-            </Text>
-          )}
         </View>
 
         {/* Totals Display */}
@@ -329,14 +294,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
     marginBottom: 8,
-  },
-  timer: {
-    fontSize: 14,
-    color: "#444",
-  },
-  bold: {
-    fontWeight: "700",
-    color: "#00A86B",
   },
   totalsContainer: {
     backgroundColor: "#F8FAFC",

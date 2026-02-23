@@ -9,15 +9,19 @@ import {
   ActivityIndicator,
   Dimensions,
   Alert,
+  Modal,
+  TextInput,
+  Animated,
+  ToastAndroid,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { scanProduct } from "../../api/product.api";
 import { useDispatch } from "react-redux";
 import { clearCart } from "../../features/slices/cart/cartSlice";
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 const BarcodeScanningScreen = ({ navigation, route }) => {
   const [scannedItems, setScannedItems] = useState([]);
@@ -25,8 +29,15 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(false);
   const [totalPrice, setTotalPrice] = useState(0);
   const [permission, requestPermission] = useCameraPermissions();
+  const [manualBarcodeVisible, setManualBarcodeVisible] = useState(false);
+  const [manualBarcode, setManualBarcode] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [toastMessage, setToastMessage] = useState(null);
+  const [showToast, setShowToast] = useState(false);
+  const [lastAddedItem, setLastAddedItem] = useState(null);
   const isProcessingRef = useRef(false);
   const cameraRef = useRef(null);
+  const toastPosition = useRef(new Animated.Value(-100)).current;
 
   const dispatch = useDispatch();
 
@@ -37,10 +48,50 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
   // Calculate total price when scanned items change
   useEffect(() => {
     const total = scannedItems.reduce((sum, item) => {
-      return sum + (item.price * item.quantity);
+      return sum + item.price * item.quantity;
     }, 0);
     setTotalPrice(total);
   }, [scannedItems]);
+
+  const showToastNotification = (message, item = null) => {
+    setToastMessage(message);
+    setShowToast(true);
+    if (item) {
+      setLastAddedItem(item);
+    }
+
+    Animated.timing(toastPosition, {
+      toValue: 20,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+
+    const timeout = setTimeout(() => {
+      hideToastNotification();
+    }, 3000);
+    return timeout;
+  };
+
+  const hideToastNotification = () => {
+    Animated.timing(toastPosition, {
+      toValue: -100,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowToast(false);
+      setLastAddedItem(null);
+    });
+  };
+
+  const handleUndoAddItem = () => {
+    if (lastAddedItem) {
+      setScannedItems((prev) =>
+        prev.filter((item) => item.id !== lastAddedItem.id),
+      );
+      hideToastNotification();
+      ToastAndroid.show("Item removed", ToastAndroid.SHORT);
+    }
+  };
 
   const handleScan = async ({ data, type }) => {
     if (isProcessingRef.current) return;
@@ -50,10 +101,10 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
 
     try {
       console.log(`Scanning barcode: ${data} (${type})`);
-      
+
       // Check if item already exists in scanned items
       const existingItemIndex = scannedItems.findIndex(
-        item => item.barcode === data
+        (item) => item.barcode === data,
       );
 
       if (existingItemIndex > -1) {
@@ -62,25 +113,25 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
         updatedItems[existingItemIndex] = {
           ...updatedItems[existingItemIndex],
           quantity: updatedItems[existingItemIndex].quantity + 1,
-          subtotal: updatedItems[existingItemIndex].price * (updatedItems[existingItemIndex].quantity + 1)
+          subtotal:
+            updatedItems[existingItemIndex].price *
+            (updatedItems[existingItemIndex].quantity + 1),
         };
         setScannedItems(updatedItems);
-        
+
         // Show success feedback
-        Alert.alert(
-          "Item Updated",
-          `Quantity increased to ${updatedItems[existingItemIndex].quantity}`,
-          [{ text: "OK" }]
+        showToastNotification(
+          `Qty: ${updatedItems[existingItemIndex].quantity} - ${updatedItems[existingItemIndex].name}`,
         );
       } else {
         // New item, fetch from API
         const response = await scanProduct(data, type);
-        
+
         if (response && response._id) {
           // Extract BNPC eligibility from category
           const isBNPCEligible = response.category?.isBNPC || false;
           const bnpcCategory = response.category?.bnpcCategory || null;
-          
+
           const newItem = {
             id: response._id,
             name: response.name,
@@ -96,32 +147,26 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
             isBNPCEligible: isBNPCEligible,
             bnpcCategory: bnpcCategory,
             excludedFromDiscount: response.excludedFromDiscount || false,
-            images: response.images || []
+            images: response.images || [],
           };
-          
-          setScannedItems(prev => [...prev, newItem]);
-          
+
+          setScannedItems((prev) => [...prev, newItem]);
+
           // Show success feedback
-          Alert.alert(
-            "Product Scanned",
-            `Added: ${response.name}`,
-            [{ text: "OK" }]
-          );
+          showToastNotification(`Added: ${response.name}`, newItem);
         } else {
           Alert.alert(
             "Product Not Found",
             `No product found for barcode: ${data}`,
-            [{ text: "OK", onPress: () => setIsScanning(true) }]
+            [{ text: "OK", onPress: () => setIsScanning(true) }],
           );
         }
       }
     } catch (error) {
       console.error("Scan error:", error);
-      Alert.alert(
-        "Scan Error",
-        "Failed to scan product. Please try again.",
-        [{ text: "OK", onPress: () => setIsScanning(true) }]
-      );
+      Alert.alert("Scan Error", "Failed to scan product. Please try again.", [
+        { text: "OK", onPress: () => setIsScanning(true) },
+      ]);
     } finally {
       setTimeout(() => {
         isProcessingRef.current = false;
@@ -131,27 +176,107 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
     }
   };
 
+  const handleManualBarcodeSubmit = async () => {
+    if (!manualBarcode.trim()) {
+      Alert.alert("Error", "Please enter a barcode");
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      console.log(`Searching for barcode: ${manualBarcode}`);
+      const response = await scanProduct(manualBarcode.trim(), "ean13");
+
+      if (response && response._id) {
+        // Check if item already exists
+        const existingItemIndex = scannedItems.findIndex(
+          (item) => item.barcode === response.barcode,
+        );
+
+        if (existingItemIndex > -1) {
+          // Item exists, increment quantity
+          const updatedItems = [...scannedItems];
+          updatedItems[existingItemIndex] = {
+            ...updatedItems[existingItemIndex],
+            quantity: updatedItems[existingItemIndex].quantity + 1,
+            subtotal:
+              updatedItems[existingItemIndex].price *
+              (updatedItems[existingItemIndex].quantity + 1),
+          };
+          setScannedItems(updatedItems);
+
+          Alert.alert(
+            "Item Updated",
+            `Quantity increased to ${updatedItems[existingItemIndex].quantity}`,
+          );
+        } else {
+          // Extract BNPC eligibility from category
+          const isBNPCEligible = response.category?.isBNPC || false;
+          const bnpcCategory = response.category?.bnpcCategory || null;
+
+          const newItem = {
+            id: response._id,
+            name: response.name,
+            barcode: response.barcode,
+            price: response.price,
+            srp: response.srp || response.price,
+            quantity: 1,
+            subtotal: response.price,
+            unit: response.unit,
+            sku: response.sku,
+            category: response.category,
+            stockQuantity: response.stockQuantity,
+            isBNPCEligible: isBNPCEligible,
+            bnpcCategory: bnpcCategory,
+            excludedFromDiscount: response.excludedFromDiscount || false,
+            images: response.images || [],
+          };
+
+          setScannedItems((prev) => [...prev, newItem]);
+
+          Alert.alert("Product Added", `Added: ${response.name}`);
+        }
+
+        setManualBarcodeVisible(false);
+        setManualBarcode("");
+      } else {
+        Alert.alert(
+          "Product Not Found",
+          `No product found with barcode: ${manualBarcode}`,
+        );
+      }
+    } catch (error) {
+      console.error("Manual search error:", error);
+      Alert.alert(
+        "Search Error",
+        "Failed to search for product. Please try again.",
+      );
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   const handleProceedToPayment = () => {
     if (scannedItems.length === 0) {
       Alert.alert(
         "No Items Scanned",
-        "Please scan at least one item before proceeding to payment."
+        "Please scan at least one item before proceeding to payment.",
       );
       return;
     }
 
     // Calculate BNPC eligible subtotal
     const bnpcSubtotal = scannedItems
-      .filter(item => item.isBNPCEligible && !item.excludedFromDiscount)
-      .reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      .filter((item) => item.isBNPCEligible && !item.excludedFromDiscount)
+      .reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     // Calculate regular subtotal (non-BNPC items)
     const regularSubtotal = scannedItems
-      .filter(item => !item.isBNPCEligible || item.excludedFromDiscount)
-      .reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      .filter((item) => !item.isBNPCEligible || item.excludedFromDiscount)
+      .reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     // Transform scanned items to match PaymentScreen expected format
-    const checkoutItems = scannedItems.map(item => ({
+    const checkoutItems = scannedItems.map((item) => ({
       productId: item.id,
       name: item.name,
       unitPrice: item.price,
@@ -165,7 +290,7 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
       barcode: item.barcode,
       unit: item.unit,
       excludedFromDiscount: item.excludedFromDiscount,
-      stockQuantity: item.stockQuantity
+      stockQuantity: item.stockQuantity,
     }));
 
     // Create checkout data object matching PaymentScreen structure
@@ -177,12 +302,12 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
         bnpcSubtotal: bnpcSubtotal,
         regularSubtotal: regularSubtotal,
         discount: 0, // Will be calculated in PaymentScreen
-        finalTotal: totalPrice
+        finalTotal: totalPrice,
       },
       userEligibility: {
         isSenior: isSenior || false,
         isPWD: isPWD || false,
-        verified: isSenior || isPWD // Mark as verified if eligible
+        verified: isSenior || isPWD, // Mark as verified if eligible
       },
       discountSnapshot: {
         eligible: isSenior || isPWD,
@@ -191,19 +316,19 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
         weeklyPurchaseUsed: 0, // Start from 0
         remainingDiscountCap: 125, // ₱125 weekly cap
         remainingPurchaseCap: 2500, // ₱2,500 weekly purchase cap
-        maxPossibleDiscount: Math.min(125, 2500, bnpcSubtotal * 0.05) // 5% of eligible items, capped
+        maxPossibleDiscount: Math.min(125, 2500, bnpcSubtotal * 0.05), // 5% of eligible items, capped
       },
       voucher: null, // No voucher applied yet
       cashier: {
         // Add current user/cashier info if available
         id: "current_cashier_id",
         name: "Cashier",
-        _id: "current_cashier_id"
+        _id: "current_cashier_id",
       },
       status: "pending",
       paymentMethod: "cash", // Default to cash
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
 
     // Generate a checkout code (in real app, this would come from API)
@@ -219,7 +344,7 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
       scannedItemsCount: scannedItems.length,
       totalAmount: totalPrice,
       bnpcEligibleTotal: bnpcSubtotal,
-      appUser:false
+      appUser: false,
     });
   };
 
@@ -234,23 +359,23 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
       handleRemoveItem(index);
       return;
     }
-    
+
     // Check stock availability if stockQuantity is available
     const item = scannedItems[index];
     if (item.stockQuantity && newQuantity > item.stockQuantity) {
       Alert.alert(
         "Insufficient Stock",
         `Only ${item.stockQuantity} units available for ${item.name}`,
-        [{ text: "OK" }]
+        [{ text: "OK" }],
       );
       return;
     }
-    
+
     const updatedItems = [...scannedItems];
     updatedItems[index] = {
       ...updatedItems[index],
       quantity: newQuantity,
-      subtotal: updatedItems[index].price * newQuantity
+      subtotal: updatedItems[index].price * newQuantity,
     };
     setScannedItems(updatedItems);
   };
@@ -292,7 +417,7 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
         }}
         onBarcodeScanned={isScanning ? handleScan : undefined}
       />
-      
+
       {/* Scanner Overlay */}
       <View style={styles.scannerOverlay}>
         <View style={styles.scannerFrame}>
@@ -300,10 +425,10 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
           <View style={[styles.corner, styles.cornerTR]} />
           <View style={[styles.corner, styles.cornerBL]} />
           <View style={[styles.corner, styles.cornerBR]} />
-          
+
           <View style={styles.scanLine} />
         </View>
-        
+
         <View style={styles.instructionBox}>
           <MaterialIcons name="qr-code-scanner" size={20} color="#FFFFFF" />
           <Text style={styles.instructionText}>
@@ -311,7 +436,7 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
           </Text>
         </View>
       </View>
-      
+
       {loading && (
         <View style={styles.processingOverlay}>
           <View style={styles.processingCard}>
@@ -348,7 +473,7 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
           <MaterialIcons name="close" size={20} color="#DC2626" />
         </TouchableOpacity>
       </View>
-      
+
       <View style={styles.itemDetails}>
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>SKU:</Text>
@@ -367,7 +492,7 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
           </View>
         )}
       </View>
-      
+
       <View style={styles.itemFooter}>
         <View style={styles.quantityControl}>
           <TouchableOpacity
@@ -376,17 +501,15 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
           >
             <MaterialIcons name="remove" size={20} color="#374151" />
           </TouchableOpacity>
-          
+
           <View style={styles.qtyDisplay}>
             <Text style={styles.qtyText}>{item.quantity}</Text>
             <Text style={styles.unitText}>{item.unit}</Text>
             {item.stockQuantity && (
-              <Text style={styles.stockText}>
-                Stock: {item.stockQuantity}
-              </Text>
+              <Text style={styles.stockText}>Stock: {item.stockQuantity}</Text>
             )}
           </View>
-          
+
           <TouchableOpacity
             style={styles.qtyButton}
             onPress={() => handleUpdateQuantity(index, item.quantity + 1)}
@@ -394,7 +517,7 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
             <MaterialIcons name="add" size={20} color="#374151" />
           </TouchableOpacity>
         </View>
-        
+
         <View style={styles.priceSection}>
           <View style={styles.priceRow}>
             <Text style={styles.priceLabel}>Price:</Text>
@@ -415,7 +538,7 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -424,38 +547,49 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
         >
           <MaterialIcons name="arrow-back" size={24} color="#374151" />
         </TouchableOpacity>
-        
+
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Barcode Scanning</Text>
           <Text style={styles.headerSubtitle}>
-            {isScanning ? "Ready to scan" : loading ? "Processing..." : "Item added"}
+            {isScanning
+              ? "Ready to scan"
+              : loading
+                ? "Processing..."
+                : "Item added"}
           </Text>
         </View>
-        
-        <View style={styles.userStatus}>
-          {(isSenior || isPWD) && (
-            <View style={styles.eligibleBadge}>
-              <MaterialIcons 
-                name={isSenior ? "elderly" : "accessible"} 
-                size={16} 
-                color="#FFFFFF" 
-              />
-              <Text style={styles.eligibleText}>
-                {isSenior ? "Senior" : "PWD"}
-              </Text>
-            </View>
-          )}
+
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={styles.manualButton}
+            onPress={() => setManualBarcodeVisible(true)}
+          >
+            <MaterialIcons name="keyboard" size={24} color="#374151" />
+          </TouchableOpacity>
+
+          <View style={styles.userStatus}>
+            {(isSenior || isPWD) && (
+              <View style={styles.eligibleBadge}>
+                <MaterialIcons
+                  name={isSenior ? "elderly" : "accessible"}
+                  size={16}
+                  color="#FFFFFF"
+                />
+                <Text style={styles.eligibleText}>
+                  {isSenior ? "Senior" : "PWD"}
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
       </View>
 
       {/* Camera Section */}
-      {!permission ? (
-        renderLoadingView()
-      ) : !permission.granted ? (
-        renderPermissionView()
-      ) : (
-        renderCameraView()
-      )}
+      {!permission
+        ? renderLoadingView()
+        : !permission.granted
+          ? renderPermissionView()
+          : renderCameraView()}
 
       {/* Scanned Items Section */}
       <View style={styles.listContainer}>
@@ -468,27 +602,26 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
             <Text style={styles.totalPrice}>₱{totalPrice.toFixed(2)}</Text>
           </View>
         </View>
-        
+
         {/* BNPC Summary if eligible */}
         {(isSenior || isPWD) && (
           <View style={styles.bnpcSummary}>
             <Text style={styles.bnpcSummaryText}>
-              BNPC Eligible Items: ₱{
-                scannedItems
-                  .filter(item => item.isBNPCEligible && !item.excludedFromDiscount)
-                  .reduce((sum, item) => sum + item.subtotal, 0)
-                  .toFixed(2)
-              }
+              BNPC Eligible Items: ₱
+              {scannedItems
+                .filter(
+                  (item) => item.isBNPCEligible && !item.excludedFromDiscount,
+                )
+                .reduce((sum, item) => sum + item.subtotal, 0)
+                .toFixed(2)}
             </Text>
           </View>
         )}
-        
+
         {scannedItems.length === 0 ? (
           <View style={styles.emptyState}>
             <MaterialIcons name="receipt-long" size={48} color="#E2E8F0" />
-            <Text style={styles.emptyStateText}>
-              Scan items to appear here
-            </Text>
+            <Text style={styles.emptyStateText}>Scan items to appear here</Text>
             <Text style={styles.emptyStateSubtext}>
               Position barcode within the camera frame
             </Text>
@@ -502,7 +635,7 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
             showsVerticalScrollIndicator={false}
           />
         )}
-        
+
         {/* Action Buttons */}
         <View style={styles.actionBar}>
           <TouchableOpacity
@@ -514,12 +647,12 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
                   "Are you sure you want to clear all scanned items?",
                   [
                     { text: "Cancel", style: "cancel" },
-                    { 
-                      text: "Clear", 
+                    {
+                      text: "Clear",
                       style: "destructive",
-                      onPress: () => setScannedItems([]) 
-                    }
-                  ]
+                      onPress: () => setScannedItems([]),
+                    },
+                  ],
                 );
               }
             }}
@@ -528,12 +661,12 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
             <MaterialIcons name="clear-all" size={20} color="#64748B" />
             <Text style={styles.clearButtonText}>Clear All</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={[
-              styles.actionButton, 
+              styles.actionButton,
               styles.paymentButton,
-              scannedItems.length === 0 && styles.disabledButton
+              scannedItems.length === 0 && styles.disabledButton,
             ]}
             onPress={handleProceedToPayment}
             disabled={scannedItems.length === 0}
@@ -545,6 +678,114 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Manual Barcode Input Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={manualBarcodeVisible}
+        statusBarTranslucent
+        onRequestClose={() => {
+          setManualBarcodeVisible(false);
+          setManualBarcode("");
+        }}
+      >
+        <View style={styles.manualModalOverlay}>
+          <View style={styles.manualModalContent}>
+            <View style={styles.manualModalHeader}>
+              <Text style={styles.manualModalTitle}>Enter Barcode</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setManualBarcodeVisible(false);
+                  setManualBarcode("");
+                }}
+              >
+                <MaterialIcons name="close" size={28} color="#1E293B" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.manualInputContainer}>
+              <MaterialIcons
+                name="barcode"
+                size={40}
+                color="#1D4ED8"
+                style={styles.barcodeIcon}
+              />
+              <TextInput
+                style={styles.barcodeInput}
+                placeholder="Enter product barcode"
+                placeholderTextColor="#94A3B8"
+                value={manualBarcode}
+                onChangeText={setManualBarcode}
+                autoFocus
+                keyboardType="number-pad"
+                editable={!isSearching}
+              />
+            </View>
+
+            <View style={styles.manualModalActions}>
+              <TouchableOpacity
+                style={[
+                  styles.cancelButton,
+                  isSearching && styles.disabledButton,
+                ]}
+                onPress={() => {
+                  setManualBarcodeVisible(false);
+                  setManualBarcode("");
+                }}
+                disabled={isSearching}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.submitButton,
+                  (isSearching || !manualBarcode.trim()) &&
+                    styles.disabledButton,
+                ]}
+                onPress={handleManualBarcodeSubmit}
+                disabled={isSearching || !manualBarcode.trim()}
+              >
+                {isSearching ? (
+                  <Text style={styles.submitButtonText}>Searching...</Text>
+                ) : (
+                  <Text style={styles.submitButtonText}>Add Item</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Toast Notification */}
+      {showToast && (
+        <Animated.View
+          style={[
+            styles.toastContainer,
+            { transform: [{ translateY: toastPosition }] },
+          ]}
+        >
+          <View style={styles.toastContent}>
+            <View style={styles.toastMessage}>
+              <MaterialCommunityIcons
+                name="check-circle"
+                size={20}
+                color="#00A86B"
+              />
+              <Text style={styles.toastText}>{toastMessage}</Text>
+            </View>
+            {lastAddedItem && (
+              <TouchableOpacity
+                style={styles.undoButton}
+                onPress={handleUndoAddItem}
+              >
+                <Text style={styles.undoButtonText}>UNDO</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </Animated.View>
+      )}
     </SafeAreaView>
   );
 };
@@ -686,31 +927,31 @@ const styles = StyleSheet.create({
     height: 24,
     borderColor: "#00A86B",
   },
-  cornerTL: { 
-    top: 0, 
-    left: 0, 
-    borderLeftWidth: 3, 
+  cornerTL: {
+    top: 0,
+    left: 0,
+    borderLeftWidth: 3,
     borderTopWidth: 3,
     borderTopLeftRadius: 8,
   },
-  cornerTR: { 
-    top: 0, 
-    right: 0, 
-    borderRightWidth: 3, 
+  cornerTR: {
+    top: 0,
+    right: 0,
+    borderRightWidth: 3,
     borderTopWidth: 3,
     borderTopRightRadius: 8,
   },
-  cornerBL: { 
-    bottom: 0, 
-    left: 0, 
-    borderLeftWidth: 3, 
+  cornerBL: {
+    bottom: 0,
+    left: 0,
+    borderLeftWidth: 3,
     borderBottomWidth: 3,
     borderBottomLeftRadius: 8,
   },
-  cornerBR: { 
-    bottom: 0, 
-    right: 0, 
-    borderRightWidth: 3, 
+  cornerBR: {
+    bottom: 0,
+    right: 0,
+    borderRightWidth: 3,
     borderBottomWidth: 3,
     borderBottomRightRadius: 8,
   },
@@ -1021,6 +1262,144 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
+  },
+  // Manual Barcode Modal Styles
+  manualModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  manualModalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 24,
+    width: "100%",
+    maxWidth: 400,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  manualModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  manualModalTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#1E293B",
+  },
+  manualInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 24,
+    borderWidth: 2,
+    borderColor: "#E2E8F0",
+  },
+  barcodeIcon: {
+    marginRight: 12,
+  },
+  barcodeInput: {
+    flex: 1,
+    fontSize: 16,
+    color: "#1E293B",
+    paddingVertical: 8,
+  },
+  manualModalActions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#475569",
+  },
+  submitButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: "#1D4ED8",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  submitButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#fff",
+  },
+  manualButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  toastContainer: {
+    position: "absolute",
+    top: 70,
+    left: 16,
+    right: 16,
+    zIndex: 100,
+  },
+  toastContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#1E293B",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderLeftWidth: 4,
+    borderLeftColor: "#1D4ED8",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  toastMessage: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  toastText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "500",
+    flex: 1,
+  },
+  undoButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: "rgba(29, 78, 216, 0.2)",
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  undoButtonText: {
+    color: "#1D4ED8",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.5,
   },
 });
 

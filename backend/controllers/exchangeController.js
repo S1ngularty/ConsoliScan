@@ -27,7 +27,6 @@ async function initiateExchange(req, res) {
       exchangeId: exchange._id,
       qrToken: exchange.qrToken,
       status: exchange.status,
-      expiresAt: exchange.qrExpiresAt,
       price: exchange.price,
       itemName: exchange.originalItemName,
     });

@@ -124,7 +124,7 @@ exports.managePoints = async (orderData) => {
   const earnedPoints = Number(pointsEarned) || 0;
 
   user.loyaltyPoints = currentPoints - usedPoints;
-  user.loyaltyPoints += earnedPoints;
+  user.loyaltyPoints += Number(earnedPoints.toFixed(2));
 
   // Initialize and update history
   user.loyaltyHistory = user.loyaltyHistory || [];
@@ -132,7 +132,7 @@ exports.managePoints = async (orderData) => {
   if (usedPoints > 0) {
     user.loyaltyHistory.push({
       event: "redeem",
-      points: usedPoints,
+      points: usedPoints.toFixed(2),
       date: new Date(),
     });
   }
@@ -140,7 +140,7 @@ exports.managePoints = async (orderData) => {
   if (earnedPoints > 0) {
     user.loyaltyHistory.push({
       event: "earn",
-      points: earnedPoints,
+      points: earnedPoints.toFixed(2),
       date: new Date(),
     });
   }
@@ -148,7 +148,7 @@ exports.managePoints = async (orderData) => {
   await user.save();
   console.log("New points total:", user.loyaltyPoints.toFixed(2));
 
-  return user.loyaltyPoints;
+  return user.loyaltyPoints.toFixed(2);
 };
 
 exports.promoUpdateUsage = async (orderData) => {

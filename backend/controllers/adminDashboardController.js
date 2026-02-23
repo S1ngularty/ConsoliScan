@@ -18,17 +18,20 @@ exports.getSalesAnalytics = controllerWrapper((request) => {
 
 // Product Analytics
 exports.getProductAnalytics = controllerWrapper((request) => {
-  const { limit, sortBy } = request.query;
+  const { limit, sortBy, startDate, endDate } = request.query;
   return adminDashboardService.getProductAnalytics({
-    limit: limit || 10,
+    limit: limit ? parseInt(limit, 10) : 10,
     sortBy: sortBy || "sales",
+    startDate,
+    endDate,
   });
 });
 
 // Category Analytics
-exports.getCategoryAnalytics = controllerWrapper(
-  adminDashboardService.getCategoryAnalytics,
-);
+exports.getCategoryAnalytics = controllerWrapper((request) => {
+  const { startDate, endDate } = request.query;
+  return adminDashboardService.getCategoryAnalytics({ startDate, endDate });
+});
 
 // User Analytics
 exports.getUserAnalytics = controllerWrapper((request) => {
@@ -48,9 +51,10 @@ exports.getInventoryAnalytics = controllerWrapper(
 );
 
 // Promotion Analytics
-exports.getPromotionAnalytics = controllerWrapper(
-  adminDashboardService.getPromotionAnalytics,
-);
+exports.getPromotionAnalytics = controllerWrapper((request) => {
+  const { startDate, endDate } = request.query;
+  return adminDashboardService.getPromotionAnalytics({ startDate, endDate });
+});
 
 // Activity Logs
 exports.getActivityLogs = controllerWrapper((request) => {

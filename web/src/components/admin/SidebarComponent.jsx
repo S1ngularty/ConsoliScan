@@ -25,6 +25,11 @@ import {
   Coins,
   CoinsIcon,
   HandCoins,
+  Warehouse,
+  ClipboardList,
+  Truck,
+  Heart,
+  LineChart
 } from "lucide-react";
 import "../../styles/css/SidebarStyle.css";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -87,7 +92,7 @@ const Sidebar = ({ breadcrumb }) => {
   const handleNavigation = (item) => {
     setActiveItem(item.name);
     if (item.navigate) {
-      breadcrumb(item.location)
+      breadcrumb(item.location);
       navigate(item.navigate);
     }
   };
@@ -108,7 +113,7 @@ const Sidebar = ({ breadcrumb }) => {
 
   const managementItems = [
     {
-      section: "Management",
+      section: "ERP Modules",
       items: [
         {
           name: "User Management",
@@ -127,7 +132,7 @@ const Sidebar = ({ breadcrumb }) => {
               navigate: "/admin/users/roles",
               location: "Admin / Users / Roles",
             },
-             {
+            {
               name: "Eligible Members",
               icon: <BadgeCheck size={18} />,
               navigate: "/admin/users/beneficiary",
@@ -135,77 +140,72 @@ const Sidebar = ({ breadcrumb }) => {
             },
             {
               name: "Activity Logs",
-              icon: <FileText size={18} />,
+              icon: <ClipboardList size={18} />,
               navigate: "/admin/users/activity",
               location: "Admin / Users / Activity",
             },
           ],
         },
         {
-          name: "Product Management",
-          icon: <Package size={22} />,
+          name: "Inventory Control",
+          icon: <Warehouse size={22} />,
           hasDropdown: true,
           dropdown: [
             {
-              name: "All Products",
-              icon: <ShoppingBag size={18} />,
+              name: "Item Master",
+              icon: <Package size={18} />,
               navigate: "/admin/products",
-              location: "Admin / Products ",
+              location: "Admin / Inventory / Items ",
             },
             {
-              name: "Inventory",
+              name: "Stock Status",
               icon: <Database size={18} />,
               navigate: "/admin/products/inventory",
-              location: "Admin / Products / Inventory ",
+              location: "Admin / Inventory / Status ",
             },
-          ],
-        },
-        {
-          name: "Category Management",
-          icon: <Layers size={22} />,
-          hasDropdown: true,
-          dropdown: [
             {
-              name: "All Categories",
-              icon: <Tag size={18} />,
+              name: "Categories",
+              icon: <Layers size={18} />,
               navigate: "/admin/categories",
-              location: "Admin / Categories ",
-            },
-          ],
-        },
-          {
-          name: "Discount Management",
-          icon: <Percent size={22} />,
-          hasDropdown: true,
-          dropdown: [
-            {
-              name: "Promos",
-              icon: <Tags size={18} />,
-              navigate: "/admin/discount/promo",
-              location: "Admin / Discount / Promo ",
-            },
-             {
-              name: "Loyalty Points",
-              icon: <Coins size={18} />,
-              navigate: "/admin/discount/loyalty",
-              location: "Admin / Discount / Loyalty Points ",
+              location: "Admin / Inventory / Categories ",
             },
           ],
         },
         {
-          name: "Order Management",
+          name: "Sales & Distribution",
           icon: <ShoppingCart size={22} />,
           hasDropdown: true,
           dropdown: [
             {
-              name: "All Orders",
-              icon: <ShoppingBag size={18} />,
+              name: "Sales Orders",
+              icon: <FileText size={18} />,
               navigate: "/admin/orders",
+              location: "Admin / Sales / Orders",
             },
             {
-              name: "Pending Orders",
-              icon: <BarChart3 size={18} />,
+              name: "Pending Fulfillment",
+              icon: <Truck size={18} />,
               navigate: "/admin/orders/pending",
+              location: "Admin / Sales / Pending",
+            },
+          ],
+        },
+        {
+          name: "CRM & Marketing",
+          icon: <Heart size={22} />,
+          hasDropdown: true,
+          dropdown: [
+            {
+              name: "Promotions",
+              icon: <Tags size={18} />,
+              navigate: "/admin/discount/promo",
+              location: "Admin / CRM / Promo ",
+            },
+             {
+              name: "Loyalty Program",
+              icon: <Coins size={18} />,
+              navigate: "/admin/discount/loyalty",
+              location: "Admin / CRM / Loyalty ",
             },
           ],
         },
@@ -215,22 +215,17 @@ const Sidebar = ({ breadcrumb }) => {
 
   const otherItems = [
     {
-      section: "Other",
+      section: "System",
       items: [
+        {
+          name: "Business Reports",
+          icon: <LineChart size={22} />,
+          navigate: "/admin/reports",
+        },
         {
           name: "Settings",
           icon: <Settings size={22} />,
           navigate: "/admin/settings",
-        },
-        {
-          name: "Analytics",
-          icon: <BarChart3 size={22} />,
-          navigate: "/admin/analytics",
-        },
-        {
-          name: "Reports",
-          icon: <FileText size={22} />,
-          navigate: "/admin/reports",
         },
       ],
     },

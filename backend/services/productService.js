@@ -207,10 +207,10 @@ const updateStock = async (request) => {
 const getBarcode = async (request) => {
   console.log(request.query);
   const { type, data } = request.query;
-  const parseType = parseBarcodeType(type);
+  // const parseType = parseBarcodeType(type);
+  console.log(type, data);
   const scannedProduct = await Product.findOne({
     barcode: data,
-    barcodeType: parseType,
   }).populate("category")
   if (!scannedProduct) throw new Error("scanned Product not found");
   return scannedProduct;

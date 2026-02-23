@@ -99,6 +99,12 @@ const userSchema = new mongoose.Schema(
       weekStart: Date,
       weekEnd: Date,
     },
+    savedItems: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Product",
+      },
+    ],
     status: {
       type: String,
       default: "active",

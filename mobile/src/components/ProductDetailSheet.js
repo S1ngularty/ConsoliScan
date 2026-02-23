@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   View,
@@ -7,24 +7,80 @@ import {
   TouchableOpacity,
   Platform,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import {
+  addToSaved,
+  removeFromSaved,
+  checkIsSaved,
+} from "../api/savedItems.api";
 
 const ProductDetailSheet = ({ product, onConfirm, onCancel }) => {
   const [quantity, setQuantity] = useState(1);
+  const [isSaved, setIsSaved] = useState(false);
+  const [savingLoading, setSavingLoading] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(true);
 
   const imageUrl = product?.images?.[0]?.url;
   const secondaryImage = product?.images?.[1]?.url;
-  
+
+  // Check if product is already saved on mount
+  useEffect(() => {
+    const checkSavedStatus = async () => {
+      try {
+        setCheckingStatus(true);
+        const result = await checkIsSaved(product?._id);
+        setIsSaved(result.isSaved);
+      } catch (error) {
+        console.error("Error checking saved status:", error);
+      } finally {
+        setCheckingStatus(false);
+      }
+    };
+
+    if (product?._id) {
+      checkSavedStatus();
+    }
+  }, [product?._id]);
+
   // Format date
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
     });
+  };
+
+  const handleSaveProduct = async () => {
+    if (!product?._id) {
+      Alert.alert("Error", "Product ID is missing");
+      return;
+    }
+
+    setSavingLoading(true);
+    try {
+      if (isSaved) {
+        // Remove from saved
+        await removeFromSaved(product._id);
+        setIsSaved(false);
+        Alert.alert("Removed", "Item removed from saved");
+      } else {
+        // Add to saved
+        await addToSaved(product._id);
+        setIsSaved(true);
+        Alert.alert("Saved", "Item added to saved items");
+      }
+    } catch (error) {
+      console.error("Error saving/removing item:", error);
+      Alert.alert("Error", "Failed to save/remove item. Please try again.");
+    } finally {
+      setSavingLoading(false);
+    }
   };
 
   return (
@@ -35,10 +91,24 @@ const ProductDetailSheet = ({ product, onConfirm, onCancel }) => {
           <MaterialCommunityIcons name="chevron-left" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Product Details</Text>
-        <View style={styles.placeholder} />
+        <TouchableOpacity
+          style={styles.saveButton}
+          onPress={handleSaveProduct}
+          disabled={checkingStatus || savingLoading}
+        >
+          {savingLoading ? (
+            <ActivityIndicator size="small" color="#E11D48" />
+          ) : (
+            <MaterialCommunityIcons
+              name={isSaved ? "heart" : "heart-outline"}
+              size={24}
+              color={isSaved ? "#E11D48" : "#666"}
+            />
+          )}
+        </TouchableOpacity>
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
@@ -74,7 +144,11 @@ const ProductDetailSheet = ({ product, onConfirm, onCancel }) => {
         {/* Product Stats */}
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
-            <MaterialCommunityIcons name="package-variant" size={18} color="#666" />
+            <MaterialCommunityIcons
+              name="package-variant"
+              size={18}
+              color="#666"
+            />
             <Text style={styles.statLabel}>Stock</Text>
             <Text style={styles.statValue}>{product?.stockQuantity || 0}</Text>
           </View>
@@ -142,10 +216,12 @@ const ProductDetailSheet = ({ product, onConfirm, onCancel }) => {
               style={styles.qtyButton}
               disabled={quantity >= (product?.stockQuantity || 99)}
             >
-              <MaterialCommunityIcons 
-                name="plus" 
-                size={20} 
-                color={quantity >= (product?.stockQuantity || 99) ? "#ccc" : "#000"} 
+              <MaterialCommunityIcons
+                name="plus"
+                size={20}
+                color={
+                  quantity >= (product?.stockQuantity || 99) ? "#ccc" : "#000"
+                }
               />
             </TouchableOpacity>
           </View>
@@ -188,6 +264,14 @@ const styles = StyleSheet.create({
     borderBottomColor: "#f0f0f0",
   },
   backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#f5f5f5",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  saveButton: {
     width: 40,
     height: 40,
     borderRadius: 20,

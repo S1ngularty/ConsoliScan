@@ -212,20 +212,22 @@ const QRScanValidationScreen = () => {
           {
             text: "Complete",
             onPress: () =>
-              navigation.navigate("OrderDetails", {
+              navigation.navigate("Payment", {
                 validationResult: result,
                 checkoutCode,
                 checkoutData: route.params?.checkoutData,
+                appUser: route.params?.checkoutData?.userType === "user",
               }),
           },
         ],
       );
       return;
     }
-    navigation.navigate("OrderDetails", {
+    navigation.navigate("Payment", {
       validationResult: result,
       checkoutCode,
       checkoutData: route.params?.checkoutData,
+      appUser: route.params?.checkoutData?.userType === "user",
     });
   };
 

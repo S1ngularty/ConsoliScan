@@ -18,6 +18,7 @@ const {
   exchange,
   cashier,
   adminDashboard,
+  savedItems,
 } = require("./routes/index");
 const productModel = require("./models/productModel");
 
@@ -53,6 +54,7 @@ app.use(cookieParser());
 app.use("/api/v1", product);
 app.use("/api/v1", auth);
 app.use("/api/v1", user);
+app.use("/api/v1/saved-items", savedItems);
 app.use("/api/v1", category);
 app.use("/api/v1", activityLogs);
 app.use("/api/v1", eligible);

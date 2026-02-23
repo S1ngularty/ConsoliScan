@@ -77,12 +77,6 @@ const ExchangeSchema = new mongoose.Schema(
       index: true,
     },
 
-    qrExpiresAt: {
-      type: Date,
-      required: true,
-      index: { expireAfterSeconds: 0 },
-    },
-
     /* ======================
        STATE MACHINE
        PENDING   — customer generated QR, not yet at cashier
@@ -135,10 +129,6 @@ const ExchangeSchema = new mongoose.Schema(
 );
 
 /* ── Virtuals ─────────────────────────────────────────────────────────────── */
-ExchangeSchema.virtual("isExpired").get(function () {
-  return this.qrExpiresAt && new Date() > this.qrExpiresAt;
-});
-
 ExchangeSchema.virtual("isComplete").get(function () {
   return this.status === "COMPLETED";
 });
