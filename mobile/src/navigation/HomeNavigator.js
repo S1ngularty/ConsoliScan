@@ -14,6 +14,7 @@ import MenuScreen from "../screens/customer/MenuScreen";
 import CartScreen from "../screens/customer/CartScreen";
 import OrderHistoryScreen from "../screens/customer/OrderHistory";
 import ScanningScreen from "../screens/customer/ScanningScreen";
+import FloatingChatbot from "../components/FloatingChatbot";
 
 const Tab = createBottomTabNavigator();
 
@@ -121,14 +122,14 @@ export default function HomeNavigator() {
   return (
     <Tab.Navigator
       tabBar={(props) => <CustomTabBar {...props} />}
-      screenOptions={{
+      screenOptions={{ 
         headerShown: false,
         tabBarStyle: {
-          position: "absolute", // Required for floating effect
-          backgroundColor: "transparent",
+          position: 'absolute', // Required for floating effect
+          backgroundColor: 'transparent',
           borderTopWidth: 0,
           elevation: 0,
-        },
+        }
       }}
     >
       <Tab.Screen
@@ -139,26 +140,20 @@ export default function HomeNavigator() {
       <Tab.Screen
         name="History"
         component={OrderHistoryScreen}
-        options={{
-          title: "History",
-          tabBarStyle: { display: "none" },
-        }}
+        options={{ title: "History" }}
       />
       <Tab.Screen
         name="Scan"
         component={ScanningScreen}
-        options={{
+        options={{ 
           title: "Scan",
-          tabBarStyle: { display: "none" }, // Optionally hide tab bar on scan screen
+          tabBarStyle: { display: 'none' } // Optionally hide tab bar on scan screen
         }}
       />
       <Tab.Screen
         name="Cart"
         component={CartScreen}
-        options={{
-          title: "Cart",
-          tabBarStyle: { display: "none" },
-        }}
+        options={{ title: "Cart" }}
       />
       <Tab.Screen
         name="Menu"

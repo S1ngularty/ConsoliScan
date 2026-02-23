@@ -462,7 +462,8 @@ const EligibilityPrompt = ({ navigation }) => (
         color="#FF9800"
       />
     </View>
-    <Text style={styles.eligibilityTitle}>Verify Your Eligibility</Text>
+    <Text style={styles.eligibilityTitle}>Are you a PWD/Senior Citizen?</Text>
+    <Text style={styles.eligibilityTitle}>Verify Your Eligibility!</Text>
     <Text style={styles.eligibilityText}>
       Get access to PWD/Senior discounts by verifying your eligibility status
     </Text>
