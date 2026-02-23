@@ -9,7 +9,8 @@ import {
   Calendar,
   Filter,
   BarChart2,
-  PieChart
+  PieChart,
+  DollarSign
 } from "lucide-react";
 import { 
   BarChart, 
@@ -63,6 +64,24 @@ const ReportPage = () => {
             groupBy: parseInt(timeRange) > 60 ? "month" : "day"
           });
           break;
+        case "profit": // New profit case
+          // In a real scenario, this would be a separate API call or derived from sales data
+          // For now, we'll derive it from sales data assuming a fixed margin or if backend provides it
+          const salesData = await getSalesAnalytics({ 
+            startDate: startDate.toISOString().split('T')[0], 
+            endDate: endDate.toISOString().split('T')[0],
+            groupBy: parseInt(timeRange) > 60 ? "month" : "day"
+          });
+          // Mocking profit calculation: 20% markup on average
+          data = {
+            ...salesData,
+            totalProfit: (salesData.totalSales || 0) * 0.2,
+            data: salesData.data.map(item => ({
+              ...item,
+              profit: (item.totalSales || 0) * 0.2
+            }))
+          };
+          break;
         case "products":
           data = await getProductAnalytics({ limit: 10, sortBy: "sales" });
           break;
@@ -90,6 +109,32 @@ const ReportPage = () => {
     // Implementation for exporting report as CSV/PDF
     console.log("Exporting report...");
     alert("Report export started...");
+  };
+
+  const renderProfitChart = () => {
+    if (!reportData?.data) return null;
+    
+    const chartData = reportData.data.map(item => ({
+      name: item._id || item.date,
+      profit: item.profit || 0
+    }));
+
+    return (
+      <div className="chart-container">
+        <h3>Gross Profit Trends (Estimated 20% Markup)</h3>
+        <div className="chart-wrapper">
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={chartData}>
+              <XAxis dataKey="name" />
+              <YAxis />
+              <CartesianGrid strokeDasharray="3 3" />
+              <Tooltip formatter={(value) => [`₱${value.toLocaleString()}`, "Profit"]} />
+              <Bar dataKey="profit" fill="#10B981" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    );
   };
 
   const renderSalesChart = () => {
@@ -157,6 +202,12 @@ const ReportPage = () => {
           onClick={() => setActiveTab("sales")}
         >
           <TrendingUp size={18} /> Sales & Revenue
+        </button>
+        <button 
+          className={`tab-btn ${activeTab === "profit" ? "active" : ""}`}
+          onClick={() => setActiveTab("profit")}
+        >
+          <DollarSign size={18} /> Profit & Markup
         </button>
         <button 
           className={`tab-btn ${activeTab === "users" ? "active" : ""}`}
@@ -229,6 +280,35 @@ const ReportPage = () => {
                           <td>{item.orderCount}</td>
                           <td>₱{item.totalSales?.toLocaleString()}</td>
                           <td>₱{Math.round(item.totalSales / item.orderCount || 0).toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "profit" && (
+              <div className="tab-content">
+                {renderProfitChart()}
+                <div className="data-table-container">
+                  <h3>Profit & Discount Analysis</h3>
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Total Revenue</th>
+                        <th>Est. Gross Profit (20%)</th>
+                        <th>PWD/Senior Discounts Given</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {reportData?.data?.map((item, index) => (
+                        <tr key={index}>
+                          <td>{item._id || item.date}</td>
+                          <td>₱{item.totalSales?.toLocaleString()}</td>
+                          <td style={{ color: "#10B981", fontWeight: "bold" }}>₱{item.profit?.toLocaleString()}</td>
+                          <td style={{ color: "#EF4444" }}>₱{Math.round((item.totalSales * 0.05)).toLocaleString()} (Est.)</td>
                         </tr>
                       ))}
                     </tbody>

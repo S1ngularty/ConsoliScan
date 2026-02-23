@@ -7,6 +7,7 @@ import "../styles/css/aboutUs.css";
 import egoImage from "../styles/assets/Ego.png";
 import sachzieImage from "../styles/assets/sachzie.jpg";
 import leviImage from "../styles/assets/levi.jpg";
+import developmentImage from "../styles/assets/development.jpg";
 import { QrCode, ShieldCheck, BrainCircuit, Star, Tag, FileText, LayoutDashboard, History } from "lucide-react";
 
 const AboutUs = () => {
@@ -46,13 +47,15 @@ const AboutUs = () => {
 
       {/* Hero Section */}
       <section className="about-hero">
-        <h1>About ConsoliScan</h1>
+        <h1 className="hero__title">
+          <span className="title__line">About ConsoliScan</span>
+        </h1>
         <p>A Smart Solution for Efficient Grocery Shopping</p>
       </section>
 
-{/* Team */}
+      {/* Team */}
       <section className="about-section">
-        <div className="about-section-header">
+        <div className="about-section-header center">
           <span className="section-label">Our Team</span>
           <h2>The Students Behind ConsoliScan</h2>
         </div>
@@ -104,7 +107,7 @@ const AboutUs = () => {
       {/* Our Story Container */}
       <div className="distinctive-container">
         <section className="about-section">
-          <div className="about-section-header">
+          <div className="about-section-header center">
             <span className="section-label">Our Story</span>
           </div>
           <div className="story-container">
@@ -124,8 +127,7 @@ const AboutUs = () => {
               </p>
             </div>
             <div className="story-image">
-              {/* Image Placeholder */}
-              <span>[Story Image Placeholder]</span>
+              <img src={developmentImage} alt="ConsoliScan Development Story" />
             </div>
           </div>
         </section>
@@ -134,7 +136,7 @@ const AboutUs = () => {
       {/* Core Features Container */}
       <div className="distinctive-container">
         <section className="about-section">
-          <div className="about-section-header">
+          <div className="about-section-header center">
             <span className="section-label">Core Features</span>
             <h2>What Drives Our Project</h2>
           </div>
