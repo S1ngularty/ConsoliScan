@@ -26,7 +26,9 @@ import {
   getDashboardSummary,
   getSalesAnalytics,
   getOrderAnalytics,
+  getProductAnalytics
 } from "../../services/dashboardService";
+import { fetchProducts } from "../../services/productService";
 
 // ─── Custom Tooltip ──────────────────────────────────────────────────────────
 const CustomTooltip = ({ active, payload, label }) => {
@@ -121,12 +123,15 @@ function DashboardPage() {
   const [dashboardData, setDashboardData] = React.useState(null);
   const [chartData, setChartData] = React.useState([]);
   const [selectedDays, setSelectedDays] = React.useState(7);
-  const [chartType, setChartType] = React.useState("area"); // "area" | "bar"
+  const [chartType, setChartType] = React.useState("area");
+  const [lowStockItems, setLowStockItems] = React.useState([]);
+  const [topProducts, setTopProducts] = React.useState([]);
+  
   const [stats, setStats] = React.useState([
     { title: "Total Sales", rawValue: 0, value: "₱0.00", icon: <DollarSign size={20} />, trend: "+0%", color: "green" },
+    { title: "Low Stock Items", rawValue: 0, value: "0", icon: <Package size={20} />, trend: "Action Needed", color: "orange" },
+    { title: "Active Products", rawValue: 0, value: "0", icon: <TrendingUp size={20} />, trend: "In Stock", color: "purple" },
     { title: "Total Users", rawValue: 0, value: "0", icon: <Users size={20} />, trend: "+0%", color: "blue" },
-    { title: "Total Orders", rawValue: 0, value: "0", icon: <Package size={20} />, trend: "+0%", color: "orange" },
-    { title: "Products", rawValue: 0, value: "0", icon: <TrendingUp size={20} />, trend: "+0%", color: "purple" },
   ]);
 
   const showToast = React.useCallback((message, severity = "success") => {
@@ -213,20 +218,62 @@ function DashboardPage() {
   const fetchDashboardData = React.useCallback(async () => {
     try {
       setLoading(true);
-      const summaryResponse = await getDashboardSummary();
+      
+      // 1. Parallel Fetching for Efficiency
+      const [summaryResponse, allProducts, topProductsResponse] = await Promise.all([
+        getDashboardSummary(),
+        fetchProducts(),
+        getProductAnalytics({ limit: 5, sortBy: "sales" })
+      ]);
+
       const summary = summaryResponse.result || summaryResponse;
       setDashboardData(summary);
 
+      // 2. Process Inventory Data (Real-time stock analysis)
+      const lowStock = allProducts.filter(p => p.stockQuantity <= 20).sort((a, b) => a.stockQuantity - b.stockQuantity);
+      setLowStockItems(lowStock.slice(0, 5)); // Top 5 critical items
+
+      const activeProducts = allProducts.length;
+      const topSelling = topProductsResponse.data || [];
+      setTopProducts(topSelling);
+
       const totalRevenue = summary.totalRevenue || 0;
       const totalUsers = summary.totalUsers || 0;
-      const totalOrders = summary.totalOrders || 0;
-      const totalProducts = summary.totalProducts || 0;
-
+      
+      // 3. Update Stats with Inventory Insights
       setStats([
-        { title: "Total Sales", rawValue: totalRevenue, value: `₱${totalRevenue.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: <DollarSign size={20} />, trend: "+12.5%", color: "green" },
-        { title: "Total Users", rawValue: totalUsers, value: totalUsers.toString(), icon: <Users size={20} />, trend: "+3.2%", color: "blue" },
-        { title: "Total Orders", rawValue: totalOrders, value: totalOrders.toString(), icon: <Package size={20} />, trend: "+18%", color: "orange" },
-        { title: "Products", rawValue: totalProducts, value: totalProducts.toString(), icon: <TrendingUp size={20} />, trend: "-0.5%", color: "purple" },
+        { 
+          title: "Total Sales", 
+          rawValue: totalRevenue, 
+          value: `₱${totalRevenue.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 
+          icon: <DollarSign size={20} />, 
+          trend: "+12.5%", 
+          color: "green" 
+        },
+        { 
+          title: "Low Stock Items", 
+          rawValue: lowStock.length, 
+          value: lowStock.length.toString(), 
+          icon: <Package size={20} />, 
+          trend: lowStock.length > 0 ? "Reorder Now" : "Healthy", 
+          color: lowStock.length > 0 ? "orange" : "green" 
+        },
+        { 
+          title: "Total Products", 
+          rawValue: activeProducts, 
+          value: activeProducts.toString(), 
+          icon: <TrendingUp size={20} />, 
+          trend: `${allProducts.length - lowStock.length} In Stock`, 
+          color: "purple" 
+        },
+        { 
+          title: "Total Users", 
+          rawValue: totalUsers, 
+          value: totalUsers.toString(), 
+          icon: <Users size={20} />, 
+          trend: "+3.2%", 
+          color: "blue" 
+        },
       ]);
 
       showToast("Dashboard refreshed!", "success");
@@ -397,8 +444,80 @@ function DashboardPage() {
         .stat-icon-box.purple .stat-icon-glow { background: rgba(139,92,246,0.15); }
 
         /* ── Dashboard Details ── */
-        .dashboard-details { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
-        @media (max-width: 1024px) { .dashboard-details { grid-template-columns: 1fr; } }
+        .dashboard-details { display: flex; flex-direction: column; gap: 24px; }
+        
+        .inventory-section {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+          gap: 24px;
+        }
+
+        /* ── Generic Card Styles ── */
+        .dashboard-card {
+          background: #fff;
+          border-radius: 18px;
+          padding: 24px;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+          border: 1px solid rgba(0,0,0,0.05);
+          animation: cardSlideIn 0.5s ease forwards;
+        }
+        
+        .card-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 20px;
+        }
+        
+        .card-title {
+          font-size: 16px;
+          font-weight: 700;
+          color: #111;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin: 0;
+        }
+
+        /* ── Product Lists ── */
+        .product-list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        
+        .product-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 12px;
+          border-radius: 12px;
+          background: #f9fafb;
+          transition: transform 0.2s ease;
+        }
+        .product-item:hover { transform: translateX(4px); background: #f3f4f6; }
+        
+        .product-info { display: flex; align-items: center; gap: 14px; }
+        .product-img { 
+          width: 42px; height: 42px; 
+          border-radius: 10px; 
+          object-fit: cover; 
+          background: #e5e7eb;
+        }
+        .product-details h4 { margin: 0 0 4px; font-size: 14px; font-weight: 600; color: #1f2937; }
+        .product-details p { margin: 0; font-size: 12px; color: #6b7280; }
+        
+        .stock-badge {
+          padding: 6px 12px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 700;
+          text-align: center;
+          min-width: 80px;
+        }
+        .stock-critical { background: #fee2e2; color: #ef4444; border: 1px solid #fecaca; }
+        .stock-warning { background: #ffedd5; color: #f97316; border: 1px solid #fed7aa; }
+        .stock-good { background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; }
 
         /* ── Chart Container ── */
         .chart-container {
@@ -409,6 +528,7 @@ function DashboardPage() {
           border: 1px solid rgba(0,0,0,0.05);
           animation: cardSlideIn 0.5s ease 0.3s forwards;
           opacity: 0;
+          min-height: 380px;
         }
         .chart-header {
           display: flex;
@@ -670,40 +790,88 @@ function DashboardPage() {
           </div>
         </div>
 
-        {/* Recent Activity */}
-        <div className="recent-activity">
-          <h3>
-            <Activity size={16} color="#5C6F2B" />
-            Recent Activity
-          </h3>
-
-          {dashboardData?.recentActivity && dashboardData.recentActivity.length > 0 ? (
-            <ul className="activity-list">
-              {dashboardData.recentActivity.slice(0, 6).map((activity, idx) => (
-                <li
-                  key={idx}
-                  className="activity-item"
-                  style={{ animation: `cardSlideIn 0.4s ease ${0.5 + idx * 0.07}s forwards`, opacity: 0 }}
-                >
-                  <div className="user-avatar">
-                    {activity.user?.name?.substring(0, 2).toUpperCase() || "NA"}
-                  </div>
-                  <div className="item-info">
-                    <p className="item-title">{activity.action}</p>
-                    <p className="item-time">{new Date(activity.createdAt).toLocaleString()}</p>
-                  </div>
-                  <p className="item-amount" style={{ color: activity.status === "SUCCESS" ? "#10b981" : "#ef4444" }}>
-                    {activity.status}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="activity-empty">
-              <div className="activity-empty-icon">📋</div>
-              <p>{loading ? "Loading activity…" : "No recent activity"}</p>
+        {/* Inventory & Sales Section */}
+        <div className="inventory-section">
+          
+          {/* Low Stock Alerts */}
+          <div className="dashboard-card">
+            <div className="card-header">
+              <h3 className="card-title">
+                <Package size={18} color="#ef4444" />
+                Low Stock Alerts
+              </h3>
+              <button className="btn-secondary" style={{ padding: "6px 12px", fontSize: "12px" }}>View All</button>
             </div>
-          )}
+
+            <div className="product-list">
+              {lowStockItems.length > 0 ? (
+                lowStockItems.map((product) => (
+                  <div key={product._id} className="product-item">
+                    <div className="product-info">
+                      <img 
+                        src={product.images?.[0]?.url || "https://via.placeholder.com/40"} 
+                        alt={product.name} 
+                        className="product-img"
+                      />
+                      <div className="product-details">
+                        <h4>{product.name}</h4>
+                        <p>{product.category?.name || "Uncategorized"}</p>
+                      </div>
+                    </div>
+                    <div className={`stock-badge ${product.stockQuantity === 0 ? "stock-critical" : "stock-warning"}`}>
+                      {product.stockQuantity === 0 ? "Out of Stock" : `${product.stockQuantity} Left`}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="activity-empty">
+                  <p>All stock levels are healthy! 🎉</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Top Selling Products */}
+          <div className="dashboard-card">
+            <div className="card-header">
+              <h3 className="card-title">
+                <TrendingUp size={18} color="#5C6F2B" />
+                Top Selling Products
+              </h3>
+              <button className="btn-secondary" style={{ padding: "6px 12px", fontSize: "12px" }}>View Report</button>
+            </div>
+
+            <div className="product-list">
+              {topProducts.length > 0 ? (
+                topProducts.map((product, index) => (
+                  <div key={product._id || index} className="product-item">
+                    <div className="product-info">
+                      <div style={{ 
+                        width: "24px", height: "24px", borderRadius: "50%", 
+                        background: index === 0 ? "#FFD700" : index === 1 ? "#C0C0C0" : "#CD7F32",
+                        color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: "12px", fontWeight: "bold"
+                      }}>
+                        {index + 1}
+                      </div>
+                      <div className="product-details">
+                        <h4>{product.name}</h4>
+                        <p>₱{product.price?.toLocaleString()} • {product.salesCount || 0} sold</p>
+                      </div>
+                    </div>
+                    <div className="stock-badge stock-good">
+                      ₱{(product.totalRevenue || 0).toLocaleString()}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="activity-empty">
+                  <p>No sales data yet.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
         </div>
       </div>
     </div>

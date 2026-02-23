@@ -77,5 +77,11 @@
   "private": true,
   "devDependencies": {
     "@react-native-community/cli": "^13.6.9"
+  },
+  "overrides": {
+    "minimatch": "^10.2.1",
+    "fast-xml-parser": "^5.3.6",
+    "send": "^0.19.0",
+    "tar": "^7.5.8"
   }
 }
