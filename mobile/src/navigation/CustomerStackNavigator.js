@@ -5,6 +5,8 @@ import UserProfileScreen from "../screens/customer/UserProfileScreen";
 import EligibilityIntroScreen from "../screens/customer/EligibilityIntroScreen";
 import EligibilityStatusScreen from "../screens/customer/EligibilityStatusScreen";
 import EligibilityApplyScreen from "../screens/customer/EligibilityApplyScreen";
+import CameraScreen from "../screens/customer/CameraScreen";
+import EligibilityFormScreen from "../screens/customer/EligibilityFormScreen";
 import SavedItemsScreen from "../screens/customer/SaveItemsScreen";
 import SharedNavigation from "./SharedNavigation";
 import ExchangeScreen from "../screens/customer/ExchangeScreen";
@@ -24,6 +26,11 @@ export default function CustomerStackNavigator() {
       <Stack.Screen
         name="EligibilityApply"
         component={EligibilityApplyScreen}
+      />
+      <Stack.Screen name="CameraScreen" component={CameraScreen} />
+      <Stack.Screen
+        name="EligibilityFormScreen"
+        component={EligibilityFormScreen}
       />
       <Stack.Screen
         name="EligibilityStatus"
