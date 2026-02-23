@@ -855,7 +855,7 @@ function DashboardPage() {
                         {index + 1}
                       </div>
                       <div className="product-details">
-                        <h4>{product.name}</h4>
+                        <h4>{product.productName}</h4>
                         <p>₱{product.price?.toLocaleString()} • {product.salesCount || 0} sold</p>
                       </div>
                     </div>
