@@ -1,11 +1,12 @@
 import React from "react";
 import DashboardPage from "../pages/admin/DashboardPage";
+import AnalyticsPage from "../pages/admin/AnalyticsPage";
 import UserPage from "../pages/admin/user/UserPage";
 import RolePermissions from "../pages/admin/user/RolesPermissions";
 import ActivityLogs from "../pages/admin/user/ActivityLogs";
 import ProductInventory from "../pages/admin/product/ProductInventory";
-import ProductPage from "../pages/admin/product/ProductPage"
-import CategoryPage from "../pages/admin/category/CategoryPage"
+import ProductPage from "../pages/admin/product/ProductPage";
+import CategoryPage from "../pages/admin/category/CategoryPage";
 import BeneficiaryManagement from "../pages/admin/user/UserBeneficiaryPage";
 import PromoListPage from "../pages/admin/discount/PromoPage";
 import LoyaltyConfigPage from "../pages/admin/discount/LoyaltyConfigPage";
@@ -16,6 +17,11 @@ function adminRoute() {
       component: <DashboardPage></DashboardPage>,
       path: "/admin/dashboard",
       index: true,
+    },
+    {
+      component: <AnalyticsPage></AnalyticsPage>,
+      path: "/admin/analytics",
+      index: false,
     },
     {
       component: <UserPage></UserPage>,
@@ -57,7 +63,7 @@ function adminRoute() {
       path: "/admin/discount/promo",
       index: false,
     },
-     {
+    {
       component: <LoyaltyConfigPage></LoyaltyConfigPage>,
       path: "/admin/discount/loyalty",
       index: false,
