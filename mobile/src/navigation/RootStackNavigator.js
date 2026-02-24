@@ -1,5 +1,5 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useState } from "react";
 
 import AuthNavigation from "./AuthNavigator";
@@ -7,6 +7,7 @@ import CustomerStackNavigator from "./CustomerStackNavigator";
 import CashierStackNavigator from "./CashierStackNavigator";
 import SplashScreen from "../screens/SplashScreen";
 import GuestNavigator from "./GuestNavigator";
+import productThunks from "../features/slices/product/productThunks";
 
 const ROLES = {
   Customer: "user",
@@ -18,18 +19,25 @@ const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
   const { loading, isLoggedIn, role } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
 
   //  useEffect(() => {
   //   console.log(loading, isLoggedIn, role);
   // }, [loading, isLoggedIn, role]);
 
-
   const [appIsReady, setAppIsReady] = useState(false);
+
+  useEffect(() => {
+    if (!appIsReady) return;
+    if (isLoggedIn) {
+      dispatch(productThunks.fetchCatalogFromServer());
+    }
+  }, [appIsReady, isLoggedIn, dispatch]);
+
   if (!appIsReady) {
     return <SplashScreen onReady={() => setAppIsReady(true)} />;
   }
 
- 
   return (
     <Stack.Navigator id="RootStack" screenOptions={{ headerShown: false }}>
       {role === ROLES.Customer ? (

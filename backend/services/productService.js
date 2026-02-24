@@ -1,8 +1,30 @@
 const Product = require("../models/productModel");
+const CatalogVersion = require("../models/catalogVersionModel");
 const { uploadImage, deleteAssets } = require("../utils/cloundinaryUtil");
 const { createLog } = require("./activityLogsService");
 const slugify = require("slugify");
 const { parseBarcodeType } = require("../utils/barcodeParserUtil");
+
+const bumpCatalogVersion = async () => {
+  const updated = await CatalogVersion.findOneAndUpdate(
+    {},
+    { $inc: { version: 1 } },
+    { new: true, upsert: true },
+  );
+  return updated?.version || 1;
+};
+
+const getCatalogVersion = async () => {
+  const current = await CatalogVersion.findOne();
+  if (current) return current.version;
+  const created = await CatalogVersion.create({ version: 1 });
+  return created.version;
+};
+
+const getCatalog = async () => {
+  const products = await Product.find({ deletedAt: null }).populate("category");
+  return products;
+};
 
 const create = async (request) => {
   if (!request.body) throw new Error(`theres no payload`);
@@ -31,11 +53,12 @@ const create = async (request) => {
     "SUCCESS",
     `create a new product named '${product.name}'`,
   );
+  await bumpCatalogVersion();
   return product;
 };
 
 const getAll = async (request) => {
-  const products = await Product.find().populate("category")
+  const products = await Product.find().populate("category");
   return products;
 };
 
@@ -61,8 +84,8 @@ const update = async (request = {}) => {
     deletedAt: null,
   };
 
-  if(request.body.discountScopes){
-    updateQuery.discountScopes = String(request.body.discountScopes).split(',') 
+  if (request.body.discountScopes) {
+    updateQuery.discountScopes = String(request.body.discountScopes).split(",");
   }
   if (newImages.length > 0) {
     updateQuery.$push = {
@@ -90,6 +113,7 @@ const update = async (request = {}) => {
     "SUCCESS",
     `updated the product named '${product.name}'`,
   );
+  await bumpCatalogVersion();
   return product;
 };
 
@@ -108,6 +132,7 @@ const removeImg = async (request) => {
   );
   console.log(updateProductImage.images);
   await updateProductImage.save();
+  await bumpCatalogVersion();
   return deletionStatus;
 };
 
@@ -138,7 +163,7 @@ const softDelete = async (request) => {
     "SUCCESS",
     `Failed to temporarily delete the product named '${isUpdated.name}'`,
   );
-
+  await bumpCatalogVersion();
   return isUpdated;
 };
 
@@ -167,6 +192,7 @@ const restore = async (request) => {
     "SUCCESS",
     `Successfully restored the deleted product named '${restoredProduct.name}'`,
   );
+  await bumpCatalogVersion();
   return true;
 };
 
@@ -192,6 +218,7 @@ const hardDelete = async (request) => {
     "SUCCESS",
     `Permanently deleted the product named '${deletedProduct.name}'`,
   );
+  await bumpCatalogVersion();
   return deletedProduct;
 };
 
@@ -201,6 +228,9 @@ const updateStock = async (request) => {
   const isUpdated = await Product.findByIdAndUpdate(productId, request.body, {
     new: true,
   });
+  if (isUpdated) {
+    await bumpCatalogVersion();
+  }
   return isUpdated;
 };
 
@@ -211,7 +241,7 @@ const getBarcode = async (request) => {
   // console.log(type, data);
   const scannedProduct = await Product.findOne({
     barcode: data,
-  }).populate("category")
+  }).populate("category");
   if (!scannedProduct) throw new Error("scanned Product not found");
   return scannedProduct;
 };
@@ -219,6 +249,8 @@ const getBarcode = async (request) => {
 module.exports = {
   create,
   getAll,
+  getCatalog,
+  getCatalogVersion,
   getById,
   update,
   removeImg,
