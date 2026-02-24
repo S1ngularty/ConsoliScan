@@ -1,6 +1,7 @@
 import axios from "axios";
 import { API_URL } from "../constants/config";
 import { getToken } from "../utils/authUtil";
+import { handleApiError, markServerUp } from "../utils/apiErrorHandler";
 
 const axiosInstance = axios.create({
   baseURL: API_URL,
@@ -20,19 +21,10 @@ const loyaltyApi = {
         timeout: 10000, // 10 second timeout
       });
       console.log(response.data.result);
+      markServerUp();
       return response.data.result;
     } catch (error) {
-      if (error.code === "ECONNABORTED") {
-        throw new Error(
-          "Request timeout - server is taking too long to respond",
-        );
-      } else if (
-        error.message === "Network Error" ||
-        error.code === "ERR_NETWORK"
-      ) {
-        throw new Error("Cannot reach server - please check your connection");
-      }
-      throw new Error(error.message || "Failed to fetch loyalty config");
+      throw handleApiError(error);
     }
   },
 };

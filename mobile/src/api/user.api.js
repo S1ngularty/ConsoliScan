@@ -2,6 +2,11 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getToken } from "../utils/authUtil";
 import { API_URL } from "../constants/config";
+import {
+  apiFetch,
+  handleApiError,
+  markServerUp,
+} from "../utils/apiErrorHandler";
 
 export const PersonalInfo = async (userId) => {
   if (!userId) throw new Error("missing user ID");
@@ -15,21 +20,14 @@ export const PersonalInfo = async (userId) => {
       },
       timeout: 10000, // 10 second timeout
     });
+    markServerUp();
 
     if (!respose)
       throw new Error("failed to fetch your info. Please try again later");
 
     return respose.data.result;
   } catch (error) {
-    if (error.code === "ECONNABORTED") {
-      throw new Error("Request timeout - server is taking too long to respond");
-    } else if (
-      error.message === "Network Error" ||
-      error.code === "ERR_NETWORK"
-    ) {
-      throw new Error("Cannot reach server - please check your connection");
-    }
-    throw new Error(error.message || "Failed to fetch user info");
+    throw handleApiError(error);
   }
 };
 
@@ -50,14 +48,13 @@ export const updateProfile = async (id, data) => {
     }
   }
 
-  const result = await fetch(`${API_URL}api/v1/profile/user/${id}`, {
+  const result = await apiFetch(`${API_URL}api/v1/profile/user/${id}`, {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${token}`,
     },
     body: formData,
   });
-  if (!result.ok) throw new Error("failed to update your profile");
   let responseData = await result.json();
   return responseData;
 };
@@ -94,7 +91,7 @@ export const ApplyEligibility = async (id, data) => {
     }
   }
 
-  const response = await fetch(`${API_URL}api/v1/eligible/${id}`, {
+  const response = await apiFetch(`${API_URL}api/v1/eligible/${id}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -102,23 +99,23 @@ export const ApplyEligibility = async (id, data) => {
     body: body,
   });
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || "failed to submit the request");
-  }
-
   const responseData = await response.json();
   return responseData;
 };
 
 export const fetchHomeData = async () => {
   const token = await getToken();
-  const response = await axios.get(`${API_URL}api/v1/customer/home`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  if (!response) throw new Error("failed to fetch the data");
-  // console.log(response.data.result)
-  return response.data?.result;
+  try {
+    const response = await axios.get(`${API_URL}api/v1/customer/home`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      timeout: 10000,
+    });
+    markServerUp();
+    if (!response) throw new Error("failed to fetch the data");
+    return response.data?.result;
+  } catch (error) {
+    throw handleApiError(error);
+  }
 };

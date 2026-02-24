@@ -1,6 +1,11 @@
 import axios from "axios";
 import { API_URL } from "../constants/config";
 import { getToken } from "../utils/authUtil";
+import {
+  apiFetch,
+  handleApiError,
+  markServerUp,
+} from "../utils/apiErrorHandler";
 
 export const checkout = async (data) => {
   if (!data) throw new Error("empty cart");
@@ -14,17 +19,10 @@ export const checkout = async (data) => {
     });
 
     const queueId = result.data.result;
+    markServerUp();
     return queueId;
   } catch (error) {
-    if (error.code === "ECONNABORTED") {
-      throw new Error("Request timeout - server is taking too long to respond");
-    } else if (
-      error.message === "Network Error" ||
-      error.code === "ERR_NETWORK"
-    ) {
-      throw new Error("Cannot reach server - please check your connection");
-    }
-    throw new Error(error.message || "Failed to checkout");
+    throw handleApiError(error);
   }
 };
 
@@ -42,24 +40,17 @@ export const getCheckoutDetails = async (checkoutCode) => {
         timeout: 10000, // 10 second timeout
       },
     );
+    markServerUp();
     return result.data.result;
   } catch (error) {
-    if (error.code === "ECONNABORTED") {
-      throw new Error("Request timeout - server is taking too long to respond");
-    } else if (
-      error.message === "Network Error" ||
-      error.code === "ERR_NETWORK"
-    ) {
-      throw new Error("Cannot reach server - please check your connection");
-    }
-    throw new Error("Failed to get the checkout details");
+    throw handleApiError(error);
   }
 };
 
 export const lockedOrder = async (checkoutCode) => {
   const token = await getToken();
   if (!token) throw new Error("missing token");
-  const response = await fetch(`${API_URL}api/v1/checkout/${checkoutCode}`, {
+  const response = await apiFetch(`${API_URL}api/v1/checkout/${checkoutCode}`, {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -68,8 +59,6 @@ export const lockedOrder = async (checkoutCode) => {
     },
   });
 
-  if (!response.ok) throw new Error("Failed to locked the order");
-
   const result = await response.json();
   return result;
 };
@@ -77,7 +66,7 @@ export const lockedOrder = async (checkoutCode) => {
 export const payOrder = async (checkoutCode) => {
   const token = await getToken();
   if (!token) return;
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_URL}api/v1/checkout/paid/${checkoutCode}`,
     {
       method: "PUT",
@@ -88,8 +77,6 @@ export const payOrder = async (checkoutCode) => {
       },
     },
   );
-
-  if (!response.ok) throw new Error("Failed to locked the order");
 
   const result = await response.json();
   return result;

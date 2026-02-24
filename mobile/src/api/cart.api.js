@@ -1,6 +1,7 @@
 import axios from "axios";
 import { API_URL } from "../constants/config";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { handleApiError, markServerUp } from "../utils/apiErrorHandler";
 
 export const syncCartApi = async (cart) => {
   if (!cart) throw new Error("empty cart");
@@ -15,17 +16,10 @@ export const syncCartApi = async (cart) => {
       },
       timeout: 15000, // 15 second timeout
     });
+    markServerUp();
     return result.data.success;
   } catch (error) {
-    if (error.code === "ECONNABORTED") {
-      throw new Error("Request timeout - server is taking too long to respond");
-    } else if (
-      error.message === "Network Error" ||
-      error.code === "ERR_NETWORK"
-    ) {
-      throw new Error("Cannot reach server - please check your connection");
-    }
-    throw new Error(error.message || "Failed to sync cart");
+    throw handleApiError(error);
   }
 };
 
@@ -40,17 +34,10 @@ export const getCart = async () => {
       },
       timeout: 10000, // 10 second timeout
     });
+    markServerUp();
     return result.data.result;
   } catch (error) {
-    if (error.code === "ECONNABORTED") {
-      throw new Error("Request timeout - server is taking too long to respond");
-    } else if (
-      error.message === "Network Error" ||
-      error.code === "ERR_NETWORK"
-    ) {
-      throw new Error("Cannot reach server - please check your connection");
-    }
-    throw new Error(error.message || "Failed to fetch cart");
+    throw handleApiError(error);
   }
 };
 
@@ -65,16 +52,9 @@ export const clearCart = async () => {
       },
       timeout: 10000, // 10 second timeout
     });
+    markServerUp();
     return result.data;
   } catch (error) {
-    if (error.code === "ECONNABORTED") {
-      throw new Error("Request timeout - server is taking too long to respond");
-    } else if (
-      error.message === "Network Error" ||
-      error.code === "ERR_NETWORK"
-    ) {
-      throw new Error("Cannot reach server - please check your connection");
-    }
-    throw new Error(error.message || "Failed to clear cart");
+    throw handleApiError(error);
   }
 };
