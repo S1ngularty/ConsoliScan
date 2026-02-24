@@ -1,17 +1,33 @@
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from "react-native";
-import React, { useRef, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Dimensions,
+  TouchableOpacity,
+} from "react-native";
+import React, { useRef, useState, useEffect } from "react";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 const BarcodeScanner = ({ onDetect }) => {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanning, setScanning] = useState(false);
   const isProcessingRef = useRef(false);
+  const processingTimeoutRef = useRef(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (processingTimeoutRef.current) {
+        clearTimeout(processingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   if (!permission) return <View style={styles.container} />;
-  
+
   if (!permission.granted) {
     return (
       <View style={styles.permissionContainer}>
@@ -21,8 +37,8 @@ const BarcodeScanner = ({ onDetect }) => {
           <Text style={styles.permissionMessage}>
             Camera is needed to scan barcode
           </Text>
-          <TouchableOpacity 
-            style={styles.permissionButton} 
+          <TouchableOpacity
+            style={styles.permissionButton}
             onPress={requestPermission}
             activeOpacity={0.8}
           >
@@ -39,14 +55,20 @@ const BarcodeScanner = ({ onDetect }) => {
     setScanning(true);
 
     try {
-      await onDetect(data, type);
+      await onDetect(type, data);
     } catch (err) {
       console.log(err);
     } finally {
-      setTimeout(() => {
+      // Clear any existing timeout before setting new one
+      if (processingTimeoutRef.current) {
+        clearTimeout(processingTimeoutRef.current);
+      }
+
+      // Reduced timeout for faster scanning
+      processingTimeoutRef.current = setTimeout(() => {
         isProcessingRef.current = false;
         setScanning(false);
-      }, 2000);
+      }, 150);
     }
   };
 
@@ -63,7 +85,7 @@ const BarcodeScanner = ({ onDetect }) => {
 
       <View style={styles.overlay}>
         <View style={[styles.mask, styles.topMask]} />
-        
+
         <View style={styles.scannerFrameContainer}>
           <View style={styles.sideMask} />
           <View style={styles.scannerFrame}>
@@ -71,10 +93,14 @@ const BarcodeScanner = ({ onDetect }) => {
             <View style={[styles.corner, styles.cornerTR]} />
             <View style={[styles.corner, styles.cornerBL]} />
             <View style={[styles.corner, styles.cornerBR]} />
-            
+
             {scanning ? (
               <View style={styles.scanningIndicator}>
-                <MaterialCommunityIcons name="magnify-scan" size={24} color="#00A86B" />
+                <MaterialCommunityIcons
+                  name="magnify-scan"
+                  size={24}
+                  color="#00A86B"
+                />
               </View>
             ) : (
               <View style={styles.scanLine} />
@@ -82,13 +108,13 @@ const BarcodeScanner = ({ onDetect }) => {
           </View>
           <View style={styles.sideMask} />
         </View>
-        
+
         <View style={[styles.mask, styles.bottomMask]}>
           <View style={styles.instructionContainer}>
-            <MaterialCommunityIcons 
-              name="barcode-scan" 
-              size={22} 
-              color="#fff" 
+            <MaterialCommunityIcons
+              name="barcode-scan"
+              size={22}
+              color="#fff"
             />
             <Text style={styles.instruction}>
               {scanning ? "Scanning..." : "Align barcode"}
@@ -107,47 +133,47 @@ const styles = StyleSheet.create({
   },
   permissionContainer: {
     flex: 1,
-    backgroundColor: '#000',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#000",
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   permissionCard: {
-    backgroundColor: '#111',
+    backgroundColor: "#111",
     borderRadius: 20,
     padding: 30,
-    alignItems: 'center',
-    width: '100%',
+    alignItems: "center",
+    width: "100%",
     maxWidth: 320,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: "#333",
   },
   permissionTitle: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: "700",
     marginTop: 20,
     marginBottom: 8,
   },
   permissionMessage: {
-    color: '#aaa',
+    color: "#aaa",
     fontSize: 14,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 20,
     marginBottom: 24,
   },
   permissionButton: {
-    backgroundColor: '#00A86B',
+    backgroundColor: "#00A86B",
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 12,
-    width: '100%',
-    alignItems: 'center',
+    width: "100%",
+    alignItems: "center",
   },
   permissionButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -160,8 +186,8 @@ const styles = StyleSheet.create({
   },
   bottomMask: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   scannerFrameContainer: {
     flexDirection: "row",
@@ -174,59 +200,59 @@ const styles = StyleSheet.create({
   scannerFrame: {
     width: 280,
     backgroundColor: "transparent",
-    position: 'relative',
-    overflow: 'hidden',
+    position: "relative",
+    overflow: "hidden",
   },
   corner: {
-    position: 'absolute',
+    position: "absolute",
     width: 24,
     height: 24,
-    borderColor: '#00A86B',
+    borderColor: "#00A86B",
   },
-  cornerTL: { 
-    top: 0, 
-    left: 0, 
-    borderLeftWidth: 3, 
+  cornerTL: {
+    top: 0,
+    left: 0,
+    borderLeftWidth: 3,
     borderTopWidth: 3,
     borderTopLeftRadius: 6,
   },
-  cornerTR: { 
-    top: 0, 
-    right: 0, 
-    borderRightWidth: 3, 
+  cornerTR: {
+    top: 0,
+    right: 0,
+    borderRightWidth: 3,
     borderTopWidth: 3,
     borderTopRightRadius: 6,
   },
-  cornerBL: { 
-    bottom: 0, 
-    left: 0, 
-    borderLeftWidth: 3, 
+  cornerBL: {
+    bottom: 0,
+    left: 0,
+    borderLeftWidth: 3,
     borderBottomWidth: 3,
     borderBottomLeftRadius: 6,
   },
-  cornerBR: { 
-    bottom: 0, 
-    right: 0, 
-    borderRightWidth: 3, 
+  cornerBR: {
+    bottom: 0,
+    right: 0,
+    borderRightWidth: 3,
     borderBottomWidth: 3,
     borderBottomRightRadius: 6,
   },
   scanLine: {
-    position: 'absolute',
-    top: '50%',
+    position: "absolute",
+    top: "50%",
     left: 0,
     right: 0,
     height: 2,
-    backgroundColor: '#00A86B',
+    backgroundColor: "#00A86B",
   },
   scanningIndicator: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
+    position: "absolute",
+    top: "50%",
+    left: "50%",
     transform: [{ translateX: -12 }, { translateY: -12 }],
   },
   instructionContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     gap: 10,
   },
   instruction: {
@@ -236,4 +262,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default BarcodeScanner;   
+export default BarcodeScanner;

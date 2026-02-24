@@ -7,16 +7,30 @@ export const PersonalInfo = async (userId) => {
   if (!userId) throw new Error("missing user ID");
   const token = await getToken();
   if (!token) throw new Error("unauthorized access");
-  const respose = await axios.get(`${API_URL}api/v1/user/${userId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
 
-  if (!respose)
-    throw new Error("failed to fetch your info. Please try again later");
+  try {
+    const respose = await axios.get(`${API_URL}api/v1/user/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      timeout: 10000, // 10 second timeout
+    });
 
-  return respose.data.result;
+    if (!respose)
+      throw new Error("failed to fetch your info. Please try again later");
+
+    return respose.data.result;
+  } catch (error) {
+    if (error.code === "ECONNABORTED") {
+      throw new Error("Request timeout - server is taking too long to respond");
+    } else if (
+      error.message === "Network Error" ||
+      error.code === "ERR_NETWORK"
+    ) {
+      throw new Error("Cannot reach server - please check your connection");
+    }
+    throw new Error(error.message || "Failed to fetch user info");
+  }
 };
 
 export const updateProfile = async (id, data) => {

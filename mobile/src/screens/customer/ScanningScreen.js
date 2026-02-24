@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Modal,
@@ -16,17 +16,20 @@ import {
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import BarcodeScanner from "../../components/BarcodeScanner";
 import ProductDetailSheet from "../../components/ProductDetailSheet";
 import { scanProduct } from "../../api/product.api";
+import { checkNetworkStatus } from "../../utils/netUtil";
 import {
   addToCart,
   removeFromCart,
 } from "../../features/slices/cart/cartSlice";
 import { useDispatch, useSelector } from "react-redux";
 import { debounceCartSync } from "../../features/slices/cart/cartDebounce";
+import { fetchCatalogFromServer } from "../../features/slices/product/productThunks";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -48,10 +51,22 @@ const ScanningScreen = ({ navigation }) => {
   const scanLockTimeoutRef = useRef(null);
   const toastTimeoutRef = useRef(null);
   const isUndoActionRef = useRef(false);
+  // ✅ FIX: Use a ref to track toast visibility so timeout callbacks
+  // always read the current value instead of a stale closure value.
+  const isToastVisibleRef = useRef(false);
 
   const dispatch = useDispatch();
   const cartState = useSelector((state) => state.cart);
   const userState = useSelector((state) => state.auth);
+  const catalogProducts = useSelector((state) => state.product?.products || []);
+  console.log("Catalog Products:", catalogProducts.length);
+
+  // Refresh catalog when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      dispatch(fetchCatalogFromServer());
+    }, [dispatch]),
+  );
 
   useEffect(() => {
     return () => {
@@ -105,34 +120,10 @@ const ScanningScreen = ({ navigation }) => {
     }),
   ).current;
 
-  const showToastNotification = (message, isUndo = false) => {
-    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-
-    setToastMessage(message);
-    setShowToast(true);
-
-    Animated.parallel([
-      Animated.spring(toastPosition, {
-        toValue: 0, // Changed from 80 to 0 - now it sits at bottom with margin
-        useNativeDriver: true,
-        tension: 50,
-        friction: 8,
-      }),
-      Animated.timing(toastOpacity, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    if (!isUndo) {
-      toastTimeoutRef.current = setTimeout(() => {
-        hideToastNotification();
-      }, 2500);
-    }
-  };
-
   const hideToastNotification = () => {
+    // ✅ FIX: Check the ref instead of the stale `showToast` state value.
+    if (!isToastVisibleRef.current) return;
+
     Animated.parallel([
       Animated.spring(toastPosition, {
         toValue: 100,
@@ -146,6 +137,7 @@ const ScanningScreen = ({ navigation }) => {
         useNativeDriver: true,
       }),
     ]).start(() => {
+      isToastVisibleRef.current = false;
       setShowToast(false);
       setToastMessage(null);
       setLastAddedItem(null);
@@ -157,9 +149,74 @@ const ScanningScreen = ({ navigation }) => {
     });
   };
 
+  const showToastNotification = (
+    message,
+    item,
+    isUndo = false,
+    isContinuous = false,
+  ) => {
+    // Clear any existing timeout
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+      toastTimeoutRef.current = null;
+    }
+
+    const showNewToast = () => {
+      setToastMessage(message);
+      setLastAddedItem(item);
+      setShowToast(true);
+      isToastVisibleRef.current = true; // ✅ FIX: Keep ref in sync with state
+
+      Animated.parallel([
+        Animated.spring(toastPosition, {
+          toValue: 0,
+          useNativeDriver: true,
+          tension: 50,
+          friction: 8,
+        }),
+        Animated.timing(toastOpacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // ✅ FIX: hideToastNotification now reads from the ref, so this
+      // timeout will correctly hide the toast when it fires.
+      const duration = isContinuous ? 1200 : 2500;
+      toastTimeoutRef.current = setTimeout(() => {
+        hideToastNotification();
+      }, duration);
+    };
+
+    // ✅ FIX: Check ref instead of showToast state for current visibility
+    if (isToastVisibleRef.current) {
+      // Animate out quickly, then show new toast
+      Animated.parallel([
+        Animated.timing(toastPosition, {
+          toValue: 100,
+          useNativeDriver: true,
+          duration: 150,
+        }),
+        Animated.timing(toastOpacity, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        showNewToast();
+      });
+    } else {
+      showNewToast();
+    }
+  };
+
   const handleUndoAddToCart = () => {
     if (lastAddedItem) {
-      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current);
+        toastTimeoutRef.current = null;
+      }
 
       dispatch(removeFromCart(lastAddedItem._id));
       isUndoActionRef.current = true;
@@ -174,7 +231,6 @@ const ScanningScreen = ({ navigation }) => {
 
   const handleDetection = async (type, data) => {
     if (isScanningLocked) {
-      console.log("Scan locked - ignoring rapid scan");
       return;
     }
 
@@ -182,7 +238,13 @@ const ScanningScreen = ({ navigation }) => {
       setIsScanningLocked(true);
       console.log(`Searching for: ${data} (${type})`);
 
-      const response = await scanProduct(type, data);
+      let response = catalogProducts.find(
+        (product) => String(product.barcode) === String(data),
+      );
+
+      if (!response) {
+        const networkStatus = await checkNetworkStatus();
+      }
 
       if (response) {
         await handleScanHistory(response);
@@ -196,11 +258,15 @@ const ScanningScreen = ({ navigation }) => {
       }
     } catch (err) {
       console.log("Product not found or API error:", err);
-      showToastNotification("Product not found", true);
+      showToastNotification("Product not found", null, false, false);
     } finally {
+      if (scanLockTimeoutRef.current) {
+        clearTimeout(scanLockTimeoutRef.current);
+      }
+
       scanLockTimeoutRef.current = setTimeout(() => {
         setIsScanningLocked(false);
-      }, 1000);
+      }, 150);
     }
   };
 
@@ -214,7 +280,13 @@ const ScanningScreen = ({ navigation }) => {
     setLastAddedItem(newItem);
     dispatch(addToCart(newItem));
     debounceCartSync(dispatch);
-    showToastNotification(`${product.name} added to cart`);
+
+    showToastNotification(
+      `${product.name} added to cart`,
+      newItem,
+      false,
+      true,
+    );
   };
 
   const handleAddToCart = (product, quantity) => {
@@ -228,7 +300,13 @@ const ScanningScreen = ({ navigation }) => {
     dispatch(addToCart(newItem));
     debounceCartSync(dispatch);
     closeSheet();
-    showToastNotification(`${product.name} added to cart`);
+
+    showToastNotification(
+      `${product.name} added to cart`,
+      newItem,
+      false,
+      false,
+    );
   };
 
   const handleManualBarcodeSubmit = async () => {
@@ -240,7 +318,25 @@ const ScanningScreen = ({ navigation }) => {
     setIsSearching(true);
     try {
       console.log(`Searching for barcode: ${manualBarcode}`);
-      const response = await scanProduct(manualBarcode.trim());
+
+      let response = catalogProducts.find(
+        (product) => String(product.barcode) === String(manualBarcode.trim()),
+      );
+
+      if (!response) {
+        const networkStatus = await checkNetworkStatus();
+
+        if (!networkStatus.isConnected) {
+          Alert.alert(
+            "Product Not Found",
+            "Product not found in local catalog and you are offline",
+          );
+          setIsSearching(false);
+          return;
+        }
+
+        response = await scanProduct(manualBarcode.trim());
+      }
 
       if (response) {
         setScannedProduct(response);
@@ -288,7 +384,6 @@ const ScanningScreen = ({ navigation }) => {
 
   const translateY = sheetPosition;
 
-  // Helper function to get image URL
   const getProductImageUrl = (product) => {
     if (product?.images && product.images.length > 0) {
       return product.images[0].url;
@@ -306,19 +401,15 @@ const ScanningScreen = ({ navigation }) => {
 
       <BarcodeScanner onDetect={handleDetection} />
 
-      {/* Gradient Overlay for better header visibility */}
       <LinearGradient
         colors={["rgba(0,0,0,0.7)", "transparent"]}
         style={styles.gradientOverlay}
         pointerEvents="none"
       />
 
-      {/* Header */}
       <SafeAreaView style={styles.header} edges={["top"]}>
         <View style={styles.headerContent}>
-          <View style={styles.headerLeft}>
-            {/* Empty view for balance */}
-          </View>
+          <View style={styles.headerLeft}>{/* Empty view for balance */}</View>
 
           <View style={styles.headerRight}>
             <TouchableOpacity
@@ -382,7 +473,6 @@ const ScanningScreen = ({ navigation }) => {
         </View>
       </SafeAreaView>
 
-      {/* Simple instruction text only - removed duplicate corners */}
       <View style={styles.instructionContainer}>
         <Text style={styles.instructionText}>Align barcode within frame</Text>
       </View>
@@ -497,8 +587,8 @@ const ScanningScreen = ({ navigation }) => {
         </View>
       </Modal>
 
-      {/* Toast Notification with Product Image - Positioned higher */}
-      {showToast && lastAddedItem && (
+      {/* Toast Notification */}
+      {showToast && (
         <Animated.View
           style={[
             styles.toastContainer,
@@ -510,26 +600,26 @@ const ScanningScreen = ({ navigation }) => {
         >
           <View style={styles.toastContent}>
             <View style={styles.toastLeftSection}>
-              {/* Product Image */}
-              <View style={styles.toastImageContainer}>
-                {getProductImageUrl(lastAddedItem) ? (
-                  <Image
-                    source={{ uri: getProductImageUrl(lastAddedItem) }}
-                    style={styles.toastImage}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View style={styles.toastImagePlaceholder}>
-                    <MaterialCommunityIcons
-                      name="image-off"
-                      size={16}
-                      color="#94A3B8"
+              {lastAddedItem && (
+                <View style={styles.toastImageContainer}>
+                  {getProductImageUrl(lastAddedItem) ? (
+                    <Image
+                      source={{ uri: getProductImageUrl(lastAddedItem) }}
+                      style={styles.toastImage}
+                      resizeMode="cover"
                     />
-                  </View>
-                )}
-              </View>
+                  ) : (
+                    <View style={styles.toastImagePlaceholder}>
+                      <MaterialCommunityIcons
+                        name="image-off"
+                        size={16}
+                        color="#94A3B8"
+                      />
+                    </View>
+                  )}
+                </View>
+              )}
 
-              {/* Message */}
               <View style={styles.toastMessage}>
                 <MaterialCommunityIcons
                   name="check-circle"
@@ -542,14 +632,15 @@ const ScanningScreen = ({ navigation }) => {
               </View>
             </View>
 
-            {/* UNDO Button */}
-            <TouchableOpacity
-              style={styles.undoButton}
-              onPress={handleUndoAddToCart}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.undoButtonText}>UNDO</Text>
-            </TouchableOpacity>
+            {lastAddedItem && (
+              <TouchableOpacity
+                style={styles.undoButton}
+                onPress={handleUndoAddToCart}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.undoButtonText}>UNDO</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </Animated.View>
       )}
@@ -654,7 +745,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     paddingHorizontal: 4,
   },
-  // Simple instruction text only - removed duplicate corners
   instructionContainer: {
     position: "absolute",
     bottom: 110,
@@ -778,7 +868,7 @@ const styles = StyleSheet.create({
   },
   toastContainer: {
     position: "absolute",
-    bottom: 30, // Increased from 40 to 90 to lift it higher
+    bottom: 30,
     left: 16,
     right: 16,
     zIndex: 100,

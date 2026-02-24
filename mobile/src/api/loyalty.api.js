@@ -12,13 +12,28 @@ const axiosInstance = axios.create({
 const loyaltyApi = {
   getConfig: async () => {
     const token = await getToken();
-    const response = await axiosInstance.get("api/v1/loyalty/config", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    console.log(response.data.result);
-    return response.data.result;
+    try {
+      const response = await axiosInstance.get("api/v1/loyalty/config", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        timeout: 10000, // 10 second timeout
+      });
+      console.log(response.data.result);
+      return response.data.result;
+    } catch (error) {
+      if (error.code === "ECONNABORTED") {
+        throw new Error(
+          "Request timeout - server is taking too long to respond",
+        );
+      } else if (
+        error.message === "Network Error" ||
+        error.code === "ERR_NETWORK"
+      ) {
+        throw new Error("Cannot reach server - please check your connection");
+      }
+      throw new Error(error.message || "Failed to fetch loyalty config");
+    }
   },
 };
 

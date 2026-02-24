@@ -1,8 +1,15 @@
-import NetInfo from '@react-native-community/netinfo';
+import NetInfo from "@react-native-community/netinfo";
 
-const netInfo = NetInfo.fetch().then(state => {
-    console.log("Connection type", state.type);
-    console.log("Is connected?", state.isConnected);   
-})
-
-export default netInfo;
+export const checkNetworkStatus = async () => {
+  try {
+    const state = await NetInfo.fetch();
+    return {
+      isConnected: state.isConnected,
+      isInternetReachable: state.isInternetReachable,
+      type: state.type,
+    };
+  } catch (error) {
+    console.error("Network check error:", error);
+    return { isConnected: false, isInternetReachable: false };
+  }
+};

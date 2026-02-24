@@ -18,8 +18,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { scanProduct } from "../../api/product.api";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { clearCart } from "../../features/slices/cart/cartSlice";
+import { checkNetworkStatus } from "../../utils/netUtil";
 
 const { width, height } = Dimensions.get("window");
 
@@ -36,14 +37,25 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
   const [showToast, setShowToast] = useState(false);
   const [lastAddedItem, setLastAddedItem] = useState(null);
   const isProcessingRef = useRef(false);
+  const processingTimeoutRef = useRef(null);
   const cameraRef = useRef(null);
   const toastPosition = useRef(new Animated.Value(-100)).current;
 
   const dispatch = useDispatch();
+  const catalogProducts = useSelector((state) => state.product?.products || []);
 
   // Get user eligibility from route params if coming from TransactionScreen
   const userEligibility = route.params?.userEligibility || {};
   const { isSenior = false, isPWD = false } = userEligibility;
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (processingTimeoutRef.current) {
+        clearTimeout(processingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Calculate total price when scanned items change
   useEffect(() => {
@@ -124,8 +136,26 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
           `Qty: ${updatedItems[existingItemIndex].quantity} - ${updatedItems[existingItemIndex].name}`,
         );
       } else {
-        // New item, fetch from API
-        const response = await scanProduct(data, type);
+        // New item, look for it in local catalog first
+        let response = catalogProducts.find(
+          (product) => String(product.barcode) === String(data),
+        );
+
+        // If not found locally, check internet before API call
+        if (!response) {
+          const networkStatus = await checkNetworkStatus();
+
+          if (!networkStatus.isConnected) {
+            Alert.alert(
+              "Product Not Found",
+              `Product not found in local catalog and you are offline: ${data}`,
+              [{ text: "OK", onPress: () => setIsScanning(true) }],
+            );
+            return;
+          }
+
+          response = await scanProduct(data, type);
+        }
 
         if (response && response._id) {
           // Extract BNPC eligibility from category
@@ -168,11 +198,17 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
         { text: "OK", onPress: () => setIsScanning(true) },
       ]);
     } finally {
-      setTimeout(() => {
+      // Clear any existing timeout before setting new one
+      if (processingTimeoutRef.current) {
+        clearTimeout(processingTimeoutRef.current);
+      }
+
+      // Reduced timeout for faster scanning (matches BarcodeScanner)
+      processingTimeoutRef.current = setTimeout(() => {
         isProcessingRef.current = false;
         setLoading(false);
         setIsScanning(true);
-      }, 1000);
+      }, 300);
     }
   };
 
@@ -185,7 +221,27 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
     setIsSearching(true);
     try {
       console.log(`Searching for barcode: ${manualBarcode}`);
-      const response = await scanProduct(manualBarcode.trim(), "ean13");
+
+      // Look for product in local catalog first
+      let response = catalogProducts.find(
+        (product) => String(product.barcode) === String(manualBarcode.trim()),
+      );
+
+      // If not found locally, check internet before API call
+      if (!response) {
+        const networkStatus = await checkNetworkStatus();
+
+        if (!networkStatus.isConnected) {
+          Alert.alert(
+            "Product Not Found",
+            "Product not found in local catalog and you are offline",
+          );
+          setIsSearching(false);
+          return;
+        }
+
+        response = await scanProduct(manualBarcode.trim(), "ean13");
+      }
 
       if (response && response._id) {
         // Check if item already exists
