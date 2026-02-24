@@ -32,6 +32,13 @@ const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
+    authMode: (state, action) => {
+      const payload = action.payload;
+      state.role = payload.user.role;
+      state.user = payload.user;
+      state.eligible = payload.eligibilityStatus || null;
+      state.isLoggedIn = true;
+    },
     guestMode: (state, action) => {
       state.role = "guest";
     },
@@ -52,7 +59,6 @@ const authSlice = createSlice({
 
       .addCase(register.pending, pendingState)
       .addCase(register.fulfilled, (state, action) => {
-        console.log(action.payload);
         state.user = action.payload.user;
         state.role = action.payload.user.role;
         state.isLoggedIn = true;
@@ -77,6 +83,6 @@ const authSlice = createSlice({
   },
 });
 
-export const { guestMode, resetState } = authSlice.actions;
+export const { guestMode, resetState, authMode } = authSlice.actions;
 
 export default authSlice.reducer;

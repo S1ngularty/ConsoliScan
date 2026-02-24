@@ -18,5 +18,8 @@ export const register = createAsyncThunk("auth/register", async (userData) => {
 });
 
 export const logout = createAsyncThunk("auth/logout", async () => {
-  return await AsyncStorage.setItem("token", "");
+    await AsyncStorage.setItem("user", "");
+    await AsyncStorage.setItem("eligibilityStatus", "");
+   await AsyncStorage.setItem("token", "");
+   return
 });

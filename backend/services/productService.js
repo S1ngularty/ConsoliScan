@@ -208,7 +208,7 @@ const getBarcode = async (request) => {
   console.log(request.query);
   const { type, data } = request.query;
   // const parseType = parseBarcodeType(type);
-  console.log(type, data);
+  // console.log(type, data);
   const scannedProduct = await Product.findOne({
     barcode: data,
   }).populate("category")

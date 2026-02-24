@@ -17,10 +17,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Loader from "../../components/Loader";
 import * as Haptics from "expo-haptics";
-import { getToken } from "../../utils/authUtil";
+import { getToken, getUser } from "../../utils/authUtil";
 import { useDispatch, useSelector } from "react-redux";
 import { login, verifyToken } from "../../features/slices/auth/authThunks";
-import { guestMode } from "../../features/slices/auth/authSlice";
+import { guestMode, authMode } from "../../features/slices/auth/authSlice";
 import { LinearGradient } from "expo-linear-gradient";
 
 const { width, height } = Dimensions.get("window");
@@ -64,7 +64,7 @@ const LoginScreen = ({ navigation }) => {
   const [showPassword, setShowPassword] = useState(false);
   const { loading, error } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
-  
+
   // Onboarding State
   const scrollX = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef(null);
@@ -123,11 +123,18 @@ const LoginScreen = ({ navigation }) => {
   React.useEffect(() => {
     (async () => {
       try {
-        const token = await getToken();
-        if (!token) return;
-        const result = await dispatch(verifyToken(token));
-        if (verifyToken.fulfilled.match(result))
+        const user = await getUser();
+        if (user) {
+          dispatch(authMode({ user }));
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          return;
+        } else {
+          // const token = await getToken();
+          // if (!token) return;
+          // const result = await dispatch(verifyToken(token));
+          // if (verifyToken.fulfilled.match(result))
+          //   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
       } catch (error) {
         console.log(error);
       }
@@ -137,11 +144,21 @@ const LoginScreen = ({ navigation }) => {
   const renderOnboardingItem = ({ item }) => {
     return (
       <View style={{ width, alignItems: "center", padding: 20 }}>
-        <View style={[styles.iconContainer, { backgroundColor: item.color + "20" }]}>
-          <MaterialCommunityIcons name={item.icon} size={100} color={item.color} />
+        <View
+          style={[styles.iconContainer, { backgroundColor: item.color + "20" }]}
+        >
+          <MaterialCommunityIcons
+            name={item.icon}
+            size={100}
+            color={item.color}
+          />
         </View>
-        <Text style={[styles.onboardingTitle, { color: COLORS.text }]}>{item.title}</Text>
-        <Text style={[styles.onboardingDesc, { color: COLORS.muted }]}>{item.description}</Text>
+        <Text style={[styles.onboardingTitle, { color: COLORS.text }]}>
+          {item.title}
+        </Text>
+        <Text style={[styles.onboardingDesc, { color: COLORS.muted }]}>
+          {item.description}
+        </Text>
       </View>
     );
   };
@@ -150,7 +167,11 @@ const LoginScreen = ({ navigation }) => {
     return (
       <View style={styles.dotContainer}>
         {ONBOARDING_DATA.map((_, index) => {
-          const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
+          const inputRange = [
+            (index - 1) * width,
+            index * width,
+            (index + 1) * width,
+          ];
           const dotWidth = scrollX.interpolate({
             inputRange,
             outputRange: [10, 20, 10],
@@ -178,7 +199,7 @@ const LoginScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.light} />
-      
+
       {/* Background Decorative Blobs */}
       <View style={styles.backgroundContainer} pointerEvents="none">
         <View style={[styles.blob, styles.blob1]} />
@@ -194,9 +215,9 @@ const LoginScreen = ({ navigation }) => {
         <View style={{ flex: 1 }}>
           <View style={styles.onboardingContainer}>
             <View style={styles.onboardingHeader}>
-               <Text style={styles.appName}>ConsoliScan</Text>
+              <Text style={styles.appName}>ConsoliScan</Text>
             </View>
-            
+
             <View style={{ flex: 3 }}>
               <Animated.FlatList
                 ref={flatListRef}
@@ -208,33 +229,53 @@ const LoginScreen = ({ navigation }) => {
                 showsHorizontalScrollIndicator={false}
                 onScroll={Animated.event(
                   [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-                  { useNativeDriver: false }
+                  { useNativeDriver: false },
                 )}
                 onMomentumScrollEnd={(event) => {
-                  setCurrentIndex(Math.round(event.nativeEvent.contentOffset.x / width));
+                  setCurrentIndex(
+                    Math.round(event.nativeEvent.contentOffset.x / width),
+                  );
                 }}
               />
             </View>
 
-            <View style={{ flex: 1, alignItems: "center", justifyContent: "space-between", paddingBottom: 40 }}>
+            <View
+              style={{
+                flex: 1,
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingBottom: 40,
+              }}
+            >
               {renderDotIndicator()}
-              
+
               {currentIndex === ONBOARDING_DATA.length - 1 ? (
-                <TouchableOpacity style={styles.getStartedButton} onPress={handleGetStarted}>
+                <TouchableOpacity
+                  style={styles.getStartedButton}
+                  onPress={handleGetStarted}
+                >
                   <LinearGradient
-                    colors={[COLORS.green, '#4a5d20']}
+                    colors={[COLORS.green, "#4a5d20"]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.gradientButton}
                   >
                     <Text style={styles.getStartedText}>Get Started</Text>
-                    <MaterialCommunityIcons name="arrow-right" size={24} color="#fff" />
+                    <MaterialCommunityIcons
+                      name="arrow-right"
+                      size={24}
+                      color="#fff"
+                    />
                   </LinearGradient>
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity 
-                  style={styles.nextButton} 
-                  onPress={() => flatListRef.current?.scrollToIndex({ index: currentIndex + 1 })}
+                <TouchableOpacity
+                  style={styles.nextButton}
+                  onPress={() =>
+                    flatListRef.current?.scrollToIndex({
+                      index: currentIndex + 1,
+                    })
+                  }
                 >
                   <Text style={styles.nextText}>Next</Text>
                 </TouchableOpacity>
@@ -244,16 +285,26 @@ const LoginScreen = ({ navigation }) => {
 
           {/* Login Sheet Overlay */}
           {showLogin && (
-            <Animated.View 
+            <Animated.View
               style={[
-                styles.loginSheetContainer, 
-                { opacity: formOpacity, transform: [{ translateY: formTranslateY }] }
+                styles.loginSheetContainer,
+                {
+                  opacity: formOpacity,
+                  transform: [{ translateY: formTranslateY }],
+                },
               ]}
             >
               <View style={styles.sheetHandle} />
-              
-              <TouchableOpacity style={styles.backButton} onPress={handleBackToOnboarding}>
-                <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.text} />
+
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={handleBackToOnboarding}
+              >
+                <MaterialCommunityIcons
+                  name="arrow-left"
+                  size={24}
+                  color={COLORS.text}
+                />
                 <Text style={styles.backText}>Back</Text>
               </TouchableOpacity>
 
@@ -263,14 +314,21 @@ const LoginScreen = ({ navigation }) => {
               >
                 <View style={styles.loginHeader}>
                   <Text style={styles.loginTitle}>Welcome Back!</Text>
-                  <Text style={styles.loginSubtitle}>Sign in to continue smart shopping</Text>
+                  <Text style={styles.loginSubtitle}>
+                    Sign in to continue smart shopping
+                  </Text>
                 </View>
 
                 <View style={styles.form}>
                   <View style={styles.inputWrapper}>
                     <Text style={styles.inputLabel}>Email Address</Text>
                     <View style={styles.inputContainer}>
-                      <MaterialCommunityIcons name="email-outline" size={20} color={COLORS.muted} style={styles.inputIcon} />
+                      <MaterialCommunityIcons
+                        name="email-outline"
+                        size={20}
+                        color={COLORS.muted}
+                        style={styles.inputIcon}
+                      />
                       <TextInput
                         style={styles.input}
                         placeholder="john@example.com"
@@ -286,7 +344,12 @@ const LoginScreen = ({ navigation }) => {
                   <View style={styles.inputWrapper}>
                     <Text style={styles.inputLabel}>Password</Text>
                     <View style={styles.inputContainer}>
-                      <MaterialCommunityIcons name="lock-outline" size={20} color={COLORS.muted} style={styles.inputIcon} />
+                      <MaterialCommunityIcons
+                        name="lock-outline"
+                        size={20}
+                        color={COLORS.muted}
+                        style={styles.inputIcon}
+                      />
                       <TextInput
                         style={styles.input}
                         placeholder="••••••••"
@@ -295,7 +358,9 @@ const LoginScreen = ({ navigation }) => {
                         onChangeText={setPassword}
                         secureTextEntry={!showPassword}
                       />
-                      <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                      <TouchableOpacity
+                        onPress={() => setShowPassword(!showPassword)}
+                      >
                         <MaterialCommunityIcons
                           name={showPassword ? "eye-off" : "eye"}
                           size={20}
@@ -311,7 +376,7 @@ const LoginScreen = ({ navigation }) => {
 
                   <TouchableOpacity activeOpacity={0.8} onPress={handleLogin}>
                     <LinearGradient
-                      colors={[COLORS.green, '#4a5d20']}
+                      colors={[COLORS.green, "#4a5d20"]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                       style={styles.signInButton}
@@ -326,15 +391,24 @@ const LoginScreen = ({ navigation }) => {
                     <View style={styles.line} />
                   </View>
 
-                  <TouchableOpacity style={styles.guestButton} onPress={handleGuest}>
-                    <MaterialCommunityIcons name="account-outline" size={24} color={COLORS.green} />
+                  <TouchableOpacity
+                    style={styles.guestButton}
+                    onPress={handleGuest}
+                  >
+                    <MaterialCommunityIcons
+                      name="account-outline"
+                      size={24}
+                      color={COLORS.green}
+                    />
                     <Text style={styles.guestText}>Continue as Guest</Text>
                   </TouchableOpacity>
                 </View>
 
                 <View style={styles.footer}>
                   <Text style={styles.footerText}>Don't have an account? </Text>
-                  <TouchableOpacity onPress={() => navigation.navigate("Register")}>
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate("Register")}
+                  >
                     <Text style={styles.signupText}>Sign Up</Text>
                   </TouchableOpacity>
                 </View>
@@ -404,7 +478,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: COLORS.green,
     letterSpacing: 1,
-    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowColor: "rgba(0, 0, 0, 0.1)",
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },
@@ -416,7 +490,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 40,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.5)',
+    borderColor: "rgba(255,255,255,0.5)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.1,
@@ -477,10 +551,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
   },
-  
+
   // Login Sheet Styles
   loginSheetContainer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
@@ -498,21 +572,21 @@ const styles = StyleSheet.create({
   sheetHandle: {
     width: 40,
     height: 4,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: "#E2E8F0",
     borderRadius: 2,
-    alignSelf: 'center',
+    alignSelf: "center",
     marginBottom: 20,
   },
   backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 20,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
   backText: {
     marginLeft: 4,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.text,
   },
   loginHeader: {
@@ -536,7 +610,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.text,
     marginBottom: 8,
     marginLeft: 4,
