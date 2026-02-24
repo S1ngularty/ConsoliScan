@@ -44,6 +44,8 @@ const ScanningScreen = ({ navigation }) => {
   const [lastAddedItem, setLastAddedItem] = useState(null);
   const [showToast, setShowToast] = useState(false);
   const [isScanningLocked, setIsScanningLocked] = useState(false);
+  const [scanStatus, setScanStatus] = useState("Ready to scan");
+  const [scanProgress, setScanProgress] = useState(0);
 
   const toastPosition = useRef(new Animated.Value(100)).current;
   const toastOpacity = useRef(new Animated.Value(0)).current;
@@ -54,6 +56,12 @@ const ScanningScreen = ({ navigation }) => {
   // ✅ FIX: Use a ref to track toast visibility so timeout callbacks
   // always read the current value instead of a stale closure value.
   const isToastVisibleRef = useRef(false);
+
+  // Scan consistency verification
+  const scanBufferRef = useRef([]);
+  const CONSISTENCY_THRESHOLD = 10; // Number of identical scans needed
+  const SCAN_TIMEOUT_MS = 1000; // Clear scans older than this
+  const resetTimeoutRef = useRef(null);
 
   const dispatch = useDispatch();
   const cartState = useSelector((state) => state.cart);
@@ -72,6 +80,7 @@ const ScanningScreen = ({ navigation }) => {
     return () => {
       if (scanLockTimeoutRef.current) clearTimeout(scanLockTimeoutRef.current);
       if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+      if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current);
     };
   }, []);
 
@@ -234,12 +243,83 @@ const ScanningScreen = ({ navigation }) => {
       return;
     }
 
-    try {
-      setIsScanningLocked(true);
-      console.log(`Searching for: ${data} (${type})`);
+    const now = Date.now();
 
+    // Add current scan to buffer
+    scanBufferRef.current.push({
+      barcode: data,
+      type: type,
+      timestamp: now,
+    });
+
+    // Remove old scans outside the time window
+    scanBufferRef.current = scanBufferRef.current.filter(
+      (scan) => now - scan.timestamp < SCAN_TIMEOUT_MS,
+    );
+
+    // Get the last N scans
+    const recentScans = scanBufferRef.current.slice(-CONSISTENCY_THRESHOLD);
+
+    // Calculate progress percentage
+    const progress = (recentScans.length / CONSISTENCY_THRESHOLD) * 100;
+    setScanProgress(progress);
+
+    // Auto-reset: Clear progress if no new scans for 1.5 seconds
+    if (resetTimeoutRef.current) {
+      clearTimeout(resetTimeoutRef.current);
+    }
+    resetTimeoutRef.current = setTimeout(() => {
+      if (!isScanningLocked) {
+        setScanProgress(0);
+        scanBufferRef.current = [];
+        setScanStatus("Ready to scan");
+      }
+    }, 1500);
+
+    // Update status
+    const uniqueBarcodes = new Set(scanBufferRef.current.map((s) => s.barcode));
+    if (recentScans.length < CONSISTENCY_THRESHOLD) {
+      setScanStatus(
+        `Verifying... ${recentScans.length}/${CONSISTENCY_THRESHOLD}`,
+      );
+      return;
+    }
+
+    // Check if all recent scans are identical
+    const allSame = recentScans.every(
+      (scan) => scan.barcode === recentScans[0].barcode,
+    );
+
+    if (!allSame) {
+      setScanStatus(`Scanning... (${uniqueBarcodes.size} detected)`);
+      return;
+    }
+
+    // Consistency verified! Process the scan
+    const verifiedBarcode = recentScans[0].barcode;
+    console.log(
+      `✓ Scan verified: ${verifiedBarcode} (${CONSISTENCY_THRESHOLD}x consistent)`,
+    );
+
+    // Clear auto-reset timeout since we're processing
+    if (resetTimeoutRef.current) {
+      clearTimeout(resetTimeoutRef.current);
+    }
+
+    // Lock scanning and clear buffer
+    setIsScanningLocked(true);
+    scanBufferRef.current = [];
+    setScanStatus("Processing...");
+
+    // Keep progress at 100% briefly to show completion animation
+    // Then reset after animation completes (500ms for bounce effect)
+    setTimeout(() => {
+      setScanProgress(0);
+    }, 500);
+
+    try {
       let response = catalogProducts.find(
-        (product) => String(product.barcode) === String(data),
+        (product) => String(product.barcode) === String(verifiedBarcode),
       );
 
       if (!response) {
@@ -255,6 +335,8 @@ const ScanningScreen = ({ navigation }) => {
           setScannedProduct(response);
           openSheet();
         }
+      } else {
+        showToastNotification("Product not found", null, false, false);
       }
     } catch (err) {
       console.log("Product not found or API error:", err);
@@ -264,9 +346,13 @@ const ScanningScreen = ({ navigation }) => {
         clearTimeout(scanLockTimeoutRef.current);
       }
 
+      // Minimum 1 second delay to ensure data is fully fetched/processed
+      // before allowing next scan
       scanLockTimeoutRef.current = setTimeout(() => {
         setIsScanningLocked(false);
-      }, 150);
+        setScanProgress(0); // Final reset to ensure clean state
+        setScanStatus("Ready to scan");
+      }, 1200);
     }
   };
 
@@ -399,7 +485,7 @@ const ScanningScreen = ({ navigation }) => {
         translucent
       />
 
-      <BarcodeScanner onDetect={handleDetection} />
+      <BarcodeScanner onDetect={handleDetection} scanProgress={scanProgress} />
 
       <LinearGradient
         colors={["rgba(0,0,0,0.7)", "transparent"]}
@@ -474,7 +560,7 @@ const ScanningScreen = ({ navigation }) => {
       </SafeAreaView>
 
       <View style={styles.instructionContainer}>
-        <Text style={styles.instructionText}>Align barcode within frame</Text>
+        <Text style={styles.instructionText}>{scanStatus}</Text>
       </View>
 
       {/* Product Detail Modal */}
