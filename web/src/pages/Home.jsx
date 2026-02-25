@@ -12,7 +12,7 @@ import Hero from "../components/home components/Hero";
 import Carousel from "../components/home components/Carousel";
 import AppDownloadBanner from "../components/home components/AppDownloadBanner";
 import Footer from "../components/home components/Footer";
-import ChatBot from "../components/home components/ChatBot";
+import ChatBot from "../components/common/Chatbot";
 import TopEvents from "../components/home components/TopEvents";
 
 const Home = () => {

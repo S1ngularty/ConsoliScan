@@ -325,7 +325,7 @@ const EligibilityApplyScreen = ({ navigation, route }) => {
           {/* Image Uploads */}
           {renderImageUpload("ID Front Photo", "idFront")}
           {renderImageUpload("ID Back Photo", "idBack")}
-          {renderImageUpload("Passport-sized Photo", "userPhoto")}
+          {renderImageUpload("Selfie with ID", "userPhoto")}
 
           {/* Terms and Conditions */}
           <View style={styles.termsContainer}>

@@ -1,28 +1,28 @@
 import React from "react";
 import { Outlet } from "react-router-dom";
-import UserSidebar from "../components/user/UserSidebarComponent";
-import "../styles/layouts/AdminLayoutStyle.css"; // Reuse admin layout styles for consistency
+import UserNavbar from "../components/user/UserNavbar";
+import Chatbot from "../components/common/Chatbot";
+import "../styles/layouts/UserLayoutStyle.css";
 
 function UserLayout() {
-  const [path, setPath] = React.useState('User / Dashboard');
-
   return (
-    <div className="admin-layout-wrapper"> {/* Reusing wrapper class */}
-      <UserSidebar breadcrumb={setPath} />
-
-      <div className="admin-main-container">
-        <header className="admin-top-nav">
-          <div className="breadcrumb">{path}</div>
-          <div className="admin-profile">
-            <span>User</span>
-            <div className="profile-badge" style={{ backgroundColor: '#DE802B' }}>U</div>
-          </div>
-        </header>
-
-        <main className="admin-content-body">
-          <Outlet />
-        </main>
+    <div className="user-layout-wrapper">
+      <div className="user-background-container">
+        <div className="user-blob user-blob1"></div>
+        <div className="user-blob user-blob2"></div>
+        <div className="user-blob user-blob3"></div>
       </div>
+
+      <UserNavbar />
+
+      <main className="user-main-container">
+        <div className="user-content-body">
+          <Outlet />
+        </div>
+      </main>
+
+      {/* Floating Chatbot available on all user pages */}
+      <Chatbot />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import UserProfile from "./pages/user/UserProfile";
 import OrderHistory from "./pages/user/OrderHistory";
 import SavedItems from "./pages/user/SavedItems";
 import LoyaltyPoints from "./pages/user/LoyaltyPoints";
+import HelpSupport from "./pages/user/HelpSupport";
 
 function App() {
   return (
@@ -41,6 +42,7 @@ function App() {
           <Route path="orders" element={<OrderHistory />} />
           <Route path="saved" element={<SavedItems />} />
           <Route path="loyalty" element={<LoyaltyPoints />} />
+          <Route path="help" element={<HelpSupport />} />
         </Route>
 
       </Routes>

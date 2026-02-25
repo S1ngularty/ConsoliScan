@@ -152,3 +152,40 @@ export async function verificationRequest(userId, data) {
   const isSuccess = await axios.put(`/api/v1/eligible/${userId}`, data);
   return isSuccess.data;
 }
+
+export async function applyEligibility(id, data) {
+  try {
+    if (!id || !data) throw new Error("Missing ID or data");
+    
+    // Convert data to FormData if it isn't already
+    let formData;
+    if (data instanceof FormData) {
+      formData = data;
+    } else {
+      formData = new FormData();
+      // Explicitly append files and fields
+      if (data.idFront) formData.append('idFront', data.idFront);
+      if (data.idBack) formData.append('idBack', data.idBack);
+      if (data.userPhoto) formData.append('userPhoto', data.userPhoto);
+      
+      formData.append('idNumber', data.idNumber);
+      formData.append('idType', data.idType);
+      formData.append('dateIssued', data.dateIssued);
+      if (data.expiryDate) formData.append('expiryDate', data.expiryDate);
+      if (data.typeOfDisability) formData.append('typeOfDisability', data.typeOfDisability);
+    }
+
+    // Pass the ID as a URL parameter, NOT in the body
+    const response = await axios.post(`api/v1/eligible/${id}`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    if (!response) throw new Error("Failed to send request");
+    return response.data;
+  } catch (error) {
+    console.error("Apply eligibility error:", error);
+    throw error;
+  }
+}

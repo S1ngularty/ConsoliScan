@@ -218,7 +218,8 @@ function UserModalComponent({ isOpen, data, mode, onClose, onSave }) {
                     onChange={(e) => handleInput("role", e.target.value)}
                   >
                     <option value="user">User</option>
-                    <option value="admin">Admin</option>
+                    <option value="admin">Store Manager (Admin)</option>
+                    <option value="super_admin">System Owner (Super Admin)</option>
                     <option value="checker">Checker</option>
                   </select>
                 </div>
