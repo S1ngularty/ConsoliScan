@@ -92,7 +92,7 @@ const Sidebar = ({ breadcrumb }) => {
   const handleNavigation = (item) => {
     setActiveItem(item.name);
     if (item.navigate) {
-      breadcrumb(item.location)
+      breadcrumb(item.location);
       navigate(item.navigate);
     }
   };
@@ -132,7 +132,7 @@ const Sidebar = ({ breadcrumb }) => {
               navigate: "/admin/users/roles",
               location: "Admin / Users / Roles",
             },
-             {
+            {
               name: "Eligible Members",
               icon: <BadgeCheck size={18} />,
               navigate: "/admin/users/beneficiary",

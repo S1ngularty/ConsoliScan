@@ -35,7 +35,7 @@ exports.roleAccess = (allowedRoles) => {
           error: "User not authenticated. Please provide a valid token.",
         });
       }
-      console.log(`User role: ${req.user.role}, Allowed roles: ${allowedRoles}`);
+      // console.log(`User role: ${req.user.role}, Allowed roles: ${allowedRoles}`);
       // Convert single role to array for uniform processing
       const rolesArray = Array.isArray(allowedRoles)
         ? allowedRoles

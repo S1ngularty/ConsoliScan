@@ -4,6 +4,14 @@ axios.defaults.withCredentials = true;
 axios.defaults.baseURL = import.meta.env.VITE_APP_API;
 axios.defaults.headers.post["Content-Type"] = "application/json";
 
+const normalizeDataArray = (payload) => {
+  const result = payload?.result;
+  if (Array.isArray(result)) return result;
+  if (Array.isArray(result?.data)) return result.data;
+  if (Array.isArray(payload?.data)) return payload.data;
+  return [];
+};
+
 // Get dashboard summary
 export async function getDashboardSummary() {
   try {
@@ -30,9 +38,7 @@ export async function getSalesAnalytics(params = {}) {
         groupBy,
       },
     });
-    console.log("Sales Analytics Full Response:", response.data);
-    const dataArray = response.data?.result?.data || response.data?.data || [];
-    console.log("Sales Analytics Data Array:", dataArray);
+    const dataArray = normalizeDataArray(response.data);
     return {
       ...response.data,
       data: dataArray, // Flatten the nested data array to top level
@@ -47,14 +53,16 @@ export async function getSalesAnalytics(params = {}) {
 // Get product analytics
 export async function getProductAnalytics(params = {}) {
   try {
-    const { limit = 10, sortBy = "sales" } = params;
+    const { limit = 10, sortBy = "sales", startDate, endDate } = params;
     const response = await axios.get("/api/v1/admin/analytics/products", {
       params: {
         limit,
         sortBy,
+        startDate,
+        endDate,
       },
     });
-    const dataArray = response.data?.result?.data || response.data?.data || [];
+    const dataArray = normalizeDataArray(response.data);
     return {
       ...response.data,
       data: dataArray,
@@ -66,10 +74,16 @@ export async function getProductAnalytics(params = {}) {
 }
 
 // Get category analytics
-export async function getCategoryAnalytics() {
+export async function getCategoryAnalytics(params = {}) {
   try {
-    const response = await axios.get("/api/v1/admin/analytics/categories");
-    const dataArray = response.data?.result?.data || response.data?.data || [];
+    const { startDate, endDate } = params;
+    const response = await axios.get("/api/v1/admin/analytics/categories", {
+      params: {
+        startDate,
+        endDate,
+      },
+    });
+    const dataArray = normalizeDataArray(response.data);
     return {
       ...response.data,
       data: dataArray,
@@ -90,7 +104,7 @@ export async function getUserAnalytics(params = {}) {
         endDate,
       },
     });
-    const dataArray = response.data?.result?.data || response.data?.data || [];
+    const dataArray = normalizeDataArray(response.data);
     return {
       ...response.data,
       data: dataArray,
@@ -111,7 +125,7 @@ export async function getOrderAnalytics(params = {}) {
         endDate,
       },
     });
-    const dataArray = response.data?.result?.data || response.data?.data || [];
+    const dataArray = normalizeDataArray(response.data);
     return {
       ...response.data,
       data: dataArray,
@@ -126,7 +140,7 @@ export async function getOrderAnalytics(params = {}) {
 export async function getInventoryAnalytics() {
   try {
     const response = await axios.get("/api/v1/admin/analytics/inventory");
-    const dataArray = response.data?.result?.data || response.data?.data || [];
+    const dataArray = normalizeDataArray(response.data);
     return {
       ...response.data,
       data: dataArray,
@@ -138,10 +152,16 @@ export async function getInventoryAnalytics() {
 }
 
 // Get promotion analytics
-export async function getPromotionAnalytics() {
+export async function getPromotionAnalytics(params = {}) {
   try {
-    const response = await axios.get("/api/v1/admin/analytics/promotions");
-    const dataArray = response.data?.result?.data || response.data?.data || [];
+    const { startDate, endDate } = params;
+    const response = await axios.get("/api/v1/admin/analytics/promotions", {
+      params: {
+        startDate,
+        endDate,
+      },
+    });
+    const dataArray = normalizeDataArray(response.data);
     return {
       ...response.data,
       data: dataArray,
@@ -165,7 +185,7 @@ export async function getActivityLogs(params = {}) {
         status,
       },
     });
-    const dataArray = response.data?.result?.data || response.data?.data || [];
+    const dataArray = normalizeDataArray(response.data);
     return {
       ...response.data,
       data: dataArray,
