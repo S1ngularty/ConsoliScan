@@ -7,6 +7,7 @@ import {
   Animated,
   Easing,
 } from "react-native";
+import * as Haptics from "expo-haptics";
 import React, { useEffect, useRef } from "react";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -213,7 +214,8 @@ const BarcodeScanner = ({ onDetect, scanProgress = 0 }) => {
     );
   }
 
-  const handleScan = ({ data, type }) => {
+  const handleScan =  ({ data, type }) => {
+    Haptics.impactAsync(Haptics.NotificationFeedbackType.Success); // Haptic feedback on scan
     onDetect(type, data);
   };
 

@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import AuthNavigation from "./AuthNavigator";
 import CustomerStackNavigator from "./CustomerStackNavigator";
@@ -16,6 +17,10 @@ import {
   setServerDown,
 } from "../features/slices/network/networkSlice";
 import { setNetworkDispatch } from "../utils/apiErrorHandler";
+import {
+  syncCartToServer,
+  syncPendingCheckouts,
+} from "../features/slices/cart/cartThunks";
 
 const ROLES = {
   Customer: "user",
@@ -51,10 +56,43 @@ export default function RootNavigator() {
       dispatch(setOffline(offline));
       if (!offline) {
         dispatch(setServerDown(false));
+        // Check for pending cart sync when coming back online
+        checkPendingCartSync();
       }
     });
     return () => unsubscribe();
   }, [dispatch]);
+
+  // Check and trigger pending cart sync and checkouts
+  const checkPendingCartSync = async () => {
+    try {
+      // Sync pending cart changes
+      const needsSync = await AsyncStorage.getItem("cart_needs_sync");
+      if (needsSync === "true" && isLoggedIn && role === ROLES.Customer) {
+        console.log(
+          "🔄 [ROOT NAV] Network restored, triggering pending cart sync",
+        );
+        dispatch(syncCartToServer());
+      }
+
+      // Sync pending checkouts
+      const checkoutQueueJson = await AsyncStorage.getItem("checkout_queue");
+      if (checkoutQueueJson && isLoggedIn && role === ROLES.Customer) {
+        const queue = JSON.parse(checkoutQueueJson);
+        const pending = queue.filter((item) => !item.synced);
+        if (pending.length > 0) {
+          console.log(
+            "🔄 [ROOT NAV] Network restored, syncing",
+            pending.length,
+            "pending checkouts",
+          );
+          dispatch(syncPendingCheckouts());
+        }
+      }
+    } catch (error) {
+      console.error("❌ [ROOT NAV] Error checking pending sync:", error);
+    }
+  };
 
   useEffect(() => {
     setNetworkDispatch(dispatch);

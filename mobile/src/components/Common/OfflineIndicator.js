@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet,StatusBar } from "react-native";
 import { useSelector } from "react-redux";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -25,6 +25,7 @@ const OfflineIndicator = ({ message, style }) => {
 
   return (
     <View style={[styles.container, style]}>
+        <StatusBar barStyle="dark-content" backgroundColor="#F9FAFB" />
       <View style={styles.iconContainer}>
         <Ionicons
           name={isOffline ? "cloud-offline" : "server-outline"}
