@@ -14,6 +14,7 @@ import axios from "axios";
 import { useFocusEffect } from "@react-navigation/native";
 
 import { useSelector, useDispatch } from "react-redux";
+import OfflineIndicator from "../../components/Common/OfflineIndicator";
 
 const EligibilityStatusScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
@@ -21,9 +22,19 @@ const EligibilityStatusScreen = ({ navigation }) => {
   const [userProfile, setUserProfile] = useState(null);
 
   const authState = useSelector((state) => state.auth);
+  const networkState = useSelector((state) => state.network);
   const userState = authState.user;
   const eligibilityState = authState.eligible;
 
+  // Local state to trigger re-renders when network state changes
+  const [isOffline, setIsOffline] = useState(false);
+  const [isServerDown, setIsServerDown] = useState(false);
+
+  // Sync with Redux network state
+  useEffect(() => {
+    setIsOffline(networkState.isOffline);
+    setIsServerDown(networkState.isServerDown);
+  }, [networkState.isOffline, networkState.isServerDown]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -104,10 +115,25 @@ const EligibilityStatusScreen = ({ navigation }) => {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00A86B" />
-          <Text style={styles.loadingText}>Loading eligibility status...</Text>
-        </View>
+        {isOffline || isServerDown ? (
+          <OfflineIndicator message="Cannot load eligibility status" />
+        ) : (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#00A86B" />
+            <Text style={styles.loadingText}>
+              Loading eligibility status...
+            </Text>
+          </View>
+        )}
+      </SafeAreaView>
+    );
+  }
+
+  // Show offline indicator if server is down (even after loading failed)
+  if (isOffline || isServerDown) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <OfflineIndicator message="Cannot load eligibility status" />
       </SafeAreaView>
     );
   }
@@ -332,11 +358,14 @@ const EligibilityStatusScreen = ({ navigation }) => {
         {/* Help Section */}
         <View style={styles.helpSection}>
           <Text style={styles.sectionTitle}>Need Help?</Text>
-          <TouchableOpacity style={styles.helpCard} onPress={()=>{
-            navigation.navigate("Shared",{
-              screen:"Help"
-            })
-          }}>
+          <TouchableOpacity
+            style={styles.helpCard}
+            onPress={() => {
+              navigation.navigate("Shared", {
+                screen: "Help",
+              });
+            }}
+          >
             <MaterialCommunityIcons
               name="help-circle"
               size={24}

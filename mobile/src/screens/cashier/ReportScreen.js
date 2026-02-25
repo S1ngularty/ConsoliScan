@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,7 +12,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
+import { useSelector } from "react-redux";
 import { getSalesReports } from "../../api/cashier.api";
+import OfflineIndicator from "../../components/Common/OfflineIndicator";
 
 const { width } = Dimensions.get("window");
 
@@ -21,6 +23,17 @@ const ReportsScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState("today");
+  const networkState = useSelector((state) => state.network);
+
+  // Local state to trigger re-renders when network state changes
+  const [isOffline, setIsOffline] = useState(false);
+  const [isServerDown, setIsServerDown] = useState(false);
+
+  // Sync with Redux network state
+  useEffect(() => {
+    setIsOffline(networkState.isOffline);
+    setIsServerDown(networkState.isServerDown);
+  }, [networkState.isOffline, networkState.isServerDown]);
 
   useFocusEffect(
     useCallback(() => {
@@ -94,10 +107,14 @@ const ReportsScreen = ({ navigation }) => {
         <PeriodButton period="month" label="This Month" />
       </View>
 
-      {loading && !refreshing ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00A86B" />
-        </View>
+      {(loading || isOffline || isServerDown) && !refreshing ? (
+        isOffline || isServerDown ? (
+          <OfflineIndicator />
+        ) : (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#00A86B" />
+          </View>
+        )
       ) : (
         <ScrollView
           style={styles.content}

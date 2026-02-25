@@ -16,6 +16,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { PersonalInfo, updateProfile } from "../../api/user.api";
 import { useSelector, useDispatch } from "react-redux";
 import * as ImagePicker from "expo-image-picker";
+import OfflineIndicator from "../../components/Common/OfflineIndicator";
 
 const UserProfileScreen = ({ navigation, route }) => {
   const [isLoading, setIsLoading] = useState(true);
@@ -29,6 +30,17 @@ const UserProfileScreen = ({ navigation, route }) => {
 
   const dispatch = useDispatch();
   const userState = useSelector((state) => state.auth.user);
+  const networkState = useSelector((state) => state.network);
+
+  // Local state to trigger re-renders when network state changes
+  const [isOffline, setIsOffline] = useState(false);
+  const [isServerDown, setIsServerDown] = useState(false);
+
+  // Sync with Redux network state
+  useEffect(() => {
+    setIsOffline(networkState.isOffline);
+    setIsServerDown(networkState.isServerDown);
+  }, [networkState.isOffline, networkState.isServerDown]);
 
   // Fetch user data
   useEffect(() => {
@@ -397,15 +409,33 @@ const UserProfileScreen = ({ navigation, route }) => {
           <Text style={styles.headerTitle}>Profile</Text>
           <View style={styles.editButton} />
         </View>
-        <ScrollView>
-          <View style={styles.profileCard}>
-            <View style={styles.skeletonCircle} />
-            <View style={styles.skeletonTextContainer}>
-              <Text style={styles.skeletonText}></Text>
-              <Text style={styles.skeletonText}></Text>
+        {isOffline || isServerDown ? (
+          <OfflineIndicator message="Cannot load profile" />
+        ) : (
+          <ScrollView>
+            <View style={styles.profileCard}>
+              <View style={styles.skeletonCircle} />
+              <View style={styles.skeletonTextContainer}>
+                <Text style={styles.skeletonText}></Text>
+                <Text style={styles.skeletonText}></Text>
+              </View>
             </View>
-          </View>
-        </ScrollView>
+          </ScrollView>
+        )}
+      </SafeAreaView>
+    );
+  }
+
+  // Show offline indicator if server is down (even after loading failed)
+  if ((isOffline || isServerDown) && !user) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <View style={styles.backButton} />
+          <Text style={styles.headerTitle}>Profile</Text>
+          <View style={styles.editButton} />
+        </View>
+        <OfflineIndicator message="Cannot load profile" />
       </SafeAreaView>
     );
   }

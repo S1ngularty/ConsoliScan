@@ -12,11 +12,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
+import { useSelector } from "react-redux";
 import {
   getDashboardStats,
   getRecentTransactions,
 } from "../../api/cashier.api";
 import ScanMethodModal from "../../components/cashier/ScanMethodModal";
+import OfflineIndicator from "../../components/Common/OfflineIndicator";
 
 const { width } = Dimensions.get("window");
 
@@ -33,6 +35,17 @@ const HomeScreen = ({ navigation }) => {
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const networkState = useSelector((state) => state.network);
+
+  // Local state to trigger re-renders when network state changes
+  const [isOffline, setIsOffline] = useState(false);
+  const [isServerDown, setIsServerDown] = useState(false);
+
+  // Sync with Redux network state
+  useEffect(() => {
+    setIsOffline(networkState.isOffline);
+    setIsServerDown(networkState.isServerDown);
+  }, [networkState.isOffline, networkState.isServerDown]);
 
   useEffect(() => {
     updateTime();
@@ -156,11 +169,15 @@ const HomeScreen = ({ navigation }) => {
         </View>
       </View>
 
-      {loading && !refreshing ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00A86B" />
-          <Text style={styles.loadingText}>Loading dashboard...</Text>
-        </View>
+      {(loading || isOffline || isServerDown) && !refreshing ? (
+        isOffline || isServerDown ? (
+          <OfflineIndicator message="Cannot load dashboard" />
+        ) : (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#00A86B" />
+            <Text style={styles.loadingText}>Loading dashboard...</Text>
+          </View>
+        )
       ) : (
         <ScrollView
           style={styles.content}
