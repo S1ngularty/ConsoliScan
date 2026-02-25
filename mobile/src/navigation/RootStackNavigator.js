@@ -1,6 +1,6 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useDispatch, useSelector } from "react-redux";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -20,7 +20,10 @@ import { setNetworkDispatch } from "../utils/apiErrorHandler";
 import {
   syncCartToServer,
   syncPendingCheckouts,
+  syncOfflineTransactions,
 } from "../features/slices/cart/cartThunks";
+import { getPromos } from "../api/promo.api";
+import { writePromos } from "../utils/promoStorage";
 
 const ROLES = {
   Customer: "user",
@@ -32,6 +35,7 @@ const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
   const { loading, isLoggedIn, role } = useSelector((state) => state.auth);
+  const network = useSelector((state) => state.network);
   const dispatch = useDispatch();
 
   //  useEffect(() => {
@@ -39,11 +43,29 @@ export default function RootNavigator() {
   // }, [loading, isLoggedIn, role]);
 
   const [appIsReady, setAppIsReady] = useState(false);
+  const wasOnlineRef = useRef(false);
 
   useEffect(() => {
     if (!appIsReady) return;
     if (isLoggedIn) {
       dispatch(productThunks.fetchCatalogFromServer());
+      const syncPromos = async () => {
+        try {
+          const serverPromos = await getPromos();
+          const unlimitedPromos = serverPromos.filter((promo) => {
+            const limit = Number(promo.usageLimit || 0);
+            return limit <= 0 && promo.active !== false;
+          });
+          await writePromos(unlimitedPromos);
+          console.log(
+            "🔖 [ROOT NAV] Promo catalog synced:",
+            unlimitedPromos.length,
+          );
+        } catch (error) {
+          console.log("⚠️ [ROOT NAV] Failed to sync promos:", error);
+        }
+      };
+      syncPromos();
     }
   }, [appIsReady, isLoggedIn, dispatch]);
 
@@ -56,6 +78,7 @@ export default function RootNavigator() {
       dispatch(setOffline(offline));
       if (!offline) {
         dispatch(setServerDown(false));
+        console.log("📶 [ROOT NAV] Network restored - checking pending sync");
         // Check for pending cart sync when coming back online
         checkPendingCartSync();
       }
@@ -63,9 +86,19 @@ export default function RootNavigator() {
     return () => unsubscribe();
   }, [dispatch]);
 
+  useEffect(() => {
+    const isOnline = !network.isOffline && !network.isServerDown;
+    if (isOnline && !wasOnlineRef.current) {
+      console.log("📶 [ROOT NAV] Network state online - triggering sync");
+      checkPendingCartSync();
+    }
+    wasOnlineRef.current = isOnline;
+  }, [network.isOffline, network.isServerDown, isLoggedIn, role]);
+
   // Check and trigger pending cart sync and checkouts
   const checkPendingCartSync = async () => {
     try {
+      console.log("🔎 [ROOT NAV] Checking pending sync items");
       // Sync pending cart changes
       const needsSync = await AsyncStorage.getItem("cart_needs_sync");
       if (needsSync === "true" && isLoggedIn && role === ROLES.Customer) {
@@ -87,6 +120,22 @@ export default function RootNavigator() {
             "pending checkouts",
           );
           dispatch(syncPendingCheckouts());
+        }
+      }
+
+      // Sync offline cashier transactions
+      const offlineTransactionsJson = await AsyncStorage.getItem(
+        "offline_transactions",
+      );
+      if (offlineTransactionsJson && isLoggedIn && role === ROLES.Cashier) {
+        const transactions = JSON.parse(offlineTransactionsJson);
+        if (Array.isArray(transactions) && transactions.length > 0) {
+          console.log(
+            "🔄 [ROOT NAV] Network restored, syncing",
+            transactions.length,
+            "offline transactions",
+          );
+          dispatch(syncOfflineTransactions());
         }
       }
     } catch (error) {

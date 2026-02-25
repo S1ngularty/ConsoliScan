@@ -1,6 +1,7 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { clearCart, getCart, syncCartApi } from "../../../api/cart.api";
+import { confirmOrder } from "../../../api/order.api";
 
 // ─── Save cart to local storage ─────────────────────────────────────────────
 export const saveLocally = createAsyncThunk(
@@ -336,6 +337,136 @@ export const syncPendingCheckouts = createAsyncThunk(
         error.message,
       );
       throw error;
+    }
+  },
+);
+
+// ─── Sync offline cashier transactions ─────────────────────────────────────
+export const syncOfflineTransactions = createAsyncThunk(
+  "cart/syncOfflineTransactions",
+  async (_, { getState }) => {
+    const { auth, network } = getState();
+
+    console.log("🔄 [OFFLINE TXN SYNC] Checking for offline transactions");
+
+    const syncLock = await AsyncStorage.getItem("offline_txn_sync_lock");
+    if (syncLock === "true") {
+      console.log("⏳ [OFFLINE TXN SYNC] Sync already in progress, skipping");
+      return { synced: 0, failed: 0, skipped: true };
+    }
+
+    await AsyncStorage.setItem("offline_txn_sync_lock", "true");
+
+    try {
+      if (!auth.isLoggedIn) {
+        console.log("⚠️ [OFFLINE TXN SYNC] User not logged in");
+        return { synced: 0, failed: 0 };
+      }
+
+      if (network.isOffline || network.isServerDown) {
+        console.log("🔌 [OFFLINE TXN SYNC] Still offline, skipping sync");
+        return { synced: 0, failed: 0 };
+      }
+
+      const transactionsJson = await AsyncStorage.getItem(
+        "offline_transactions",
+      );
+      console.log(
+        "📦 [OFFLINE TXN SYNC] Storage payload:",
+        transactionsJson ? "found" : "empty",
+      );
+      if (!transactionsJson) {
+        console.log("✅ [OFFLINE TXN SYNC] No offline transactions");
+        return { synced: 0, failed: 0 };
+      }
+
+      const transactions = JSON.parse(transactionsJson);
+      console.log(
+        "📦 [OFFLINE TXN SYNC] Loaded transactions:",
+        Array.isArray(transactions) ? transactions.length : "invalid",
+      );
+      if (!Array.isArray(transactions) || !transactions.length) {
+        await AsyncStorage.removeItem("offline_transactions");
+        console.log("✅ [OFFLINE TXN SYNC] Empty offline transactions list");
+        return { synced: 0, failed: 0 };
+      }
+
+      const uniqueByCode = new Map();
+      const withoutCode = [];
+      for (const txn of transactions) {
+        if (!txn?.checkoutCode) {
+          withoutCode.push(txn);
+          continue;
+        }
+        if (!uniqueByCode.has(txn.checkoutCode)) {
+          uniqueByCode.set(txn.checkoutCode, txn);
+        }
+      }
+
+      const uniqueTransactions = Array.from(uniqueByCode.values());
+      const dedupedCount = transactions.length - uniqueTransactions.length;
+      if (dedupedCount > 0) {
+        console.log(
+          "🧹 [OFFLINE TXN SYNC] Deduped transactions:",
+          dedupedCount,
+        );
+      }
+
+      let synced = 0;
+      let failed = 0;
+      const remaining = [...withoutCode];
+
+      for (const transaction of uniqueTransactions) {
+        try {
+          console.log(
+            "📤 [OFFLINE TXN SYNC] Syncing transaction:",
+            transaction.checkoutCode,
+          );
+          await confirmOrder(transaction);
+          synced++;
+        } catch (error) {
+          console.error(
+            "❌ [OFFLINE TXN SYNC] Failed to sync transaction",
+            transaction.checkoutCode,
+            error.message,
+          );
+          failed++;
+          remaining.push(transaction);
+        }
+      }
+
+      if (remaining.length > 0) {
+        await AsyncStorage.setItem(
+          "offline_transactions",
+          JSON.stringify(remaining),
+        );
+        console.log(
+          "🧾 [OFFLINE TXN SYNC] Keeping",
+          remaining.length,
+          "transactions for retry",
+        );
+      } else {
+        await AsyncStorage.removeItem("offline_transactions");
+        console.log("🧾 [OFFLINE TXN SYNC] Cleared offline transaction cache");
+      }
+
+      console.log(
+        "✅ [OFFLINE TXN SYNC] Sync complete:",
+        synced,
+        "synced,",
+        failed,
+        "failed",
+      );
+
+      return { synced, failed };
+    } catch (error) {
+      console.error(
+        "❌ [OFFLINE TXN SYNC] Error syncing offline transactions:",
+        error.message,
+      );
+      throw error;
+    } finally {
+      await AsyncStorage.removeItem("offline_txn_sync_lock");
     }
   },
 );

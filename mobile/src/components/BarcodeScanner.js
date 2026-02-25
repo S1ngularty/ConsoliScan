@@ -188,7 +188,7 @@ const progressStyles = StyleSheet.create({
   },
 });
 
-const BarcodeScanner = ({ onDetect, scanProgress = 0 }) => {
+const BarcodeScanner = ({ onDetect, scanProgress = 0, barcodeTypes = ["ean8", "ean13", "upc_a", "upc_e", "code128"] }) => {
   const [permission, requestPermission] = useCameraPermissions();
 
   if (!permission) return <View style={styles.container} />;
@@ -216,6 +216,7 @@ const BarcodeScanner = ({ onDetect, scanProgress = 0 }) => {
 
   const handleScan =  ({ data, type }) => {
     Haptics.impactAsync(Haptics.NotificationFeedbackType.Success); // Haptic feedback on scan
+    // console.log(data)
     onDetect(type, data);
   };
 
@@ -225,7 +226,7 @@ const BarcodeScanner = ({ onDetect, scanProgress = 0 }) => {
         style={StyleSheet.absoluteFillObject}
         facing="back"
         barcodeScannerSettings={{
-          barcodeTypes: ["ean8", "ean13", "upc_a", "upc_e", "code128"],
+          barcodeTypes,
         }}
         onBarcodeScanned={handleScan}
       />

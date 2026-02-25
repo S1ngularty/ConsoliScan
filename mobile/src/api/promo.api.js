@@ -40,3 +40,20 @@ export const applyGuestPromo = async (promoCode, cart) => {
     throw handleApiError(error);
   }
 };
+
+export const getPromos = async () => {
+  const token = await getToken();
+
+  try {
+    const result = await axios.get(`${API_URL}api/v1/promo`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      timeout: 10000,
+    });
+    markServerUp();
+    return result.data?.result || [];
+  } catch (error) {
+    throw handleApiError(error);
+  }
+};

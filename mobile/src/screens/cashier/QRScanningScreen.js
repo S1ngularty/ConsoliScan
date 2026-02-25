@@ -117,6 +117,7 @@ const QRScannerScreen = () => {
         throw new Error("Invalid checkout code format. Expected: CHK-XXXXXXXX");
 
       const response = await getCheckoutDetails(checkoutCode);
+      console.log("✅ [QR SCAN] Checkout details retrieved:", response);
       await new Promise((r) => setTimeout(r, 1000));
 
       if (response.status === "PAID")
