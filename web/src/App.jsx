@@ -5,6 +5,12 @@ import Home from "./pages/Home";
 import AboutUs from "./pages/AboutUs";
 import adminRoute from "./routes/adminRoute.jsx";
 import AdminLayout from "./layouts/AdminLayout.jsx";
+import UserLayout from "./layouts/UserLayout.jsx";
+import UserDashboard from "./pages/user/UserDashboard";
+import UserProfile from "./pages/user/UserProfile";
+import OrderHistory from "./pages/user/OrderHistory";
+import SavedItems from "./pages/user/SavedItems";
+import LoyaltyPoints from "./pages/user/LoyaltyPoints";
 
 function App() {
   return (
@@ -13,6 +19,8 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/about-us" element={<AboutUs />} />
         <Route path="/login" element={<LoginPage />} />
+        
+        {/* Admin Routes */}
         <Route path="/admin" element={<AdminLayout />}>
           {adminRoute().map((route) => {
             return (
@@ -25,6 +33,16 @@ function App() {
             );
           })}
         </Route>
+
+        {/* User Routes */}
+        <Route path="/user" element={<UserLayout />}>
+          <Route path="dashboard" element={<UserDashboard />} />
+          <Route path="profile" element={<UserProfile />} />
+          <Route path="orders" element={<OrderHistory />} />
+          <Route path="saved" element={<SavedItems />} />
+          <Route path="loyalty" element={<LoyaltyPoints />} />
+        </Route>
+
       </Routes>
     </BrowserRouter>
   );

@@ -5,6 +5,17 @@ axios.defaults.withCredentials = true;
 axios.defaults.baseURL = import.meta.env.VITE_APP_API;
 axios.defaults.headers.post["Content-Type"] = "application/json";
 
+export async function getMe() {
+  try {
+    const result = await axios.post(`api/v1/me`);
+    if (!result) throw new Error("failed to get current user");
+    return result.data.user;
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+}
+
 export async function getAllUser() {
   try {
     const result = await axios.get(`api/v1/user`, {
