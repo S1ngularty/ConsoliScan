@@ -5,6 +5,17 @@ axios.defaults.withCredentials = true;
 axios.defaults.baseURL = import.meta.env.VITE_APP_API;
 axios.defaults.headers.post["Content-Type"] = "application/json";
 
+export async function getMe() {
+  try {
+    const result = await axios.post(`api/v1/me`);
+    if (!result) throw new Error("failed to get current user");
+    return result.data.user;
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+}
+
 export async function getAllUser() {
   try {
     const result = await axios.get(`api/v1/user`, {
@@ -140,4 +151,41 @@ export async function verificationRequest(userId, data) {
   if (!userId) throw new Error("undefined user Id");
   const isSuccess = await axios.put(`/api/v1/eligible/${userId}`, data);
   return isSuccess.data;
+}
+
+export async function applyEligibility(id, data) {
+  try {
+    if (!id || !data) throw new Error("Missing ID or data");
+    
+    // Convert data to FormData if it isn't already
+    let formData;
+    if (data instanceof FormData) {
+      formData = data;
+    } else {
+      formData = new FormData();
+      // Explicitly append files and fields
+      if (data.idFront) formData.append('idFront', data.idFront);
+      if (data.idBack) formData.append('idBack', data.idBack);
+      if (data.userPhoto) formData.append('userPhoto', data.userPhoto);
+      
+      formData.append('idNumber', data.idNumber);
+      formData.append('idType', data.idType);
+      formData.append('dateIssued', data.dateIssued);
+      if (data.expiryDate) formData.append('expiryDate', data.expiryDate);
+      if (data.typeOfDisability) formData.append('typeOfDisability', data.typeOfDisability);
+    }
+
+    // Pass the ID as a URL parameter, NOT in the body
+    const response = await axios.post(`api/v1/eligible/${id}`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    if (!response) throw new Error("Failed to send request");
+    return response.data;
+  } catch (error) {
+    console.error("Apply eligibility error:", error);
+    throw error;
+  }
 }
