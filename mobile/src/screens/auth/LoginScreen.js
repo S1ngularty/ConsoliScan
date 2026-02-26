@@ -17,7 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Loader from "../../components/Loader";
 import * as Haptics from "expo-haptics";
-import { getToken, getUser } from "../../utils/authUtil";
+import { getToken, getUser, getEligibilityStatus } from "../../utils/authUtil";
 import { useDispatch, useSelector } from "react-redux";
 import { login, verifyToken } from "../../features/slices/auth/authThunks";
 import { guestMode, authMode } from "../../features/slices/auth/authSlice";
@@ -124,8 +124,9 @@ const LoginScreen = ({ navigation }) => {
     (async () => {
       try {
         const user = await getUser();
+        const eligibilityStatus = await getEligibilityStatus();
         if (user) {
-          dispatch(authMode({ user }));
+          dispatch(authMode({ user, eligibilityStatus }));
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           return;
         } else {

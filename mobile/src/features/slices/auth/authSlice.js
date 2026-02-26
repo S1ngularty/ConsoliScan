@@ -34,7 +34,7 @@ const authSlice = createSlice({
   reducers: {
     authMode: (state, action) => {
       const payload = action.payload;
-      // console.log("Auth mode payload:", payload);
+      console.log("Auth mode payload:", payload);
       state.role = payload.user.role;
       state.user = payload.user;
       state.eligible = payload.eligibilityStatus || null;

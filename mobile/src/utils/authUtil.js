@@ -29,6 +29,7 @@ export const getUser = async () => {
 }
 
 export const storeEligibilityStatus = async (status) => {
+  console.log("Storing eligibility status:", status);
   const isStored = await asyncStorage.setItem("eligibilityStatus", JSON.stringify(status));
   if (isStored) return true;
   return false;
