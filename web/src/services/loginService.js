@@ -86,3 +86,31 @@ export async function autoLogin(navigate) {
     navigate("/user/dashboard");
   }
 }
+
+export async function register(userData, navigate) {
+  try {
+    const response = await axios.post(
+      `${import.meta.env.VITE_APP_API}api/v1/register`,
+      userData,
+      {
+        headers: { "Content-Type": "application/json" },
+        withCredentials: true,
+      }
+    );
+
+    if (!response.data.success) {
+      throw new Error(response.data.message || "Registration failed");
+    }
+
+    const data = response.data;
+    sessionStorage.setItem("isLogin", "true");
+
+    // Redirect to user dashboard
+    navigate("/user/dashboard");
+
+    return true;
+  } catch (error) {
+    console.error("Registration Error:", error.response?.data?.message || error.message);
+    throw new Error(error.response?.data?.message || "Registration failed");
+  }
+}

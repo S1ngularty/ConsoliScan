@@ -77,11 +77,10 @@
 }
 
 .features-container {
-  background: white;
-  border-radius: 30px;
-  padding: 48px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-  border: 1px solid rgba(0,0,0,0.03);
+  background: #f7f7f7;
+  border-radius: 36px;
+  padding: 34px;
+  box-shadow: var(--shadow-soft);
   height: 100%;
 }
 
@@ -94,7 +93,7 @@
 }
 
 .section-label {
-  color: #DE802B;
+  color: var(--orange);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 2px;
@@ -104,8 +103,8 @@
 }
 
 .section-header h2 {
-  font-size: clamp(32px, 5vw, 64px); /* Matched to Hero Title */
-  color: #1a1a1a;
+  font-size: clamp(32px, 5vw, 64px);
+  color: var(--green);
   font-weight: 800;
   line-height: 1.05;
   margin: 0;
@@ -122,12 +121,12 @@
   border-radius: 20px;
   text-align: center;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: #f8f9fa;
+  background: white;
   border: 1px solid transparent;
+  box-shadow: var(--shadow-soft);
 }
 
 .feature-card:hover {
-  background: white;
   transform: translateY(-4px);
   box-shadow: 0 8px 24px rgba(0,0,0,0.06);
   border-color: rgba(92, 111, 43, 0.2);
@@ -174,11 +173,10 @@
   display: grid;
   grid-template-columns: 1fr; /* Stacked internally when side-by-side */
   gap: 40px;
-  background: white;
-  border-radius: 30px;
-  padding: 48px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-  border: 1px solid rgba(0,0,0,0.03);
+  background: #f7f7f7;
+  border-radius: 36px;
+  padding: 34px;
+  box-shadow: var(--shadow-soft);
   height: 100%;
   align-content: start;
 }
@@ -200,11 +198,11 @@
   font-size: clamp(32px, 5vw, 64px); /* Matched to Hero Title */
   line-height: 1.05;
   font-weight: 800;
-  color: #1a1a1a;
+  color: var(--green);
 }
 
 .confidence-title .title__accent {
-  color: #5C6F2B;
+  color: var(--orange);
   display: block;
 }
 
@@ -246,10 +244,11 @@
 }
 
 .budget-card {
-  background: #f8f9fa;
+  background: white;
   padding: 48px;
   border-radius: 24px;
-  border: 2px solid #e9ecef;
+  border: 1px solid transparent;
+  box-shadow: var(--shadow-soft);
   text-align: center;
   width: 100%;
   height: 100%;
@@ -262,7 +261,8 @@
 
 .budget-card:hover {
   transform: translateY(-5px);
-  border-color: #5C6F2B;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+  border-color: rgba(92, 111, 43, 0.2);
 }
 
 .budget-icon {
