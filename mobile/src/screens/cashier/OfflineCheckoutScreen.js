@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -31,6 +31,7 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
   const [customerCart, setCustomerCart] = useState(null);
   const [scannedItems, setScannedItems] = useState([]);
   const [scanProgress, setScanProgress] = useState(0);
+  const [itemScanProgress, setItemScanProgress] = useState(0);
   const [eligibilityType, setEligibilityType] = useState(null);
   const [promoCode, setPromoCode] = useState("");
   const [appliedPromo, setAppliedPromo] = useState(null);
@@ -39,6 +40,14 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
   const [qrError, setQrError] = useState("");
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [pendingProduct, setPendingProduct] = useState(null);
+
+  // Scan consistency verification
+  const scanBufferRef = useRef([]);
+  const itemScanBufferRef = useRef([]);
+  const CONSISTENCY_THRESHOLD = 5; // Number of identical scans needed
+  const SCAN_TIMEOUT_MS = 1000; // Clear scans older than this
+  const resetTimeoutRef = useRef(null);
+  const itemResetTimeoutRef = useRef(null);
 
   const dispatch = useDispatch();
   const userState = useSelector((state) => state.auth);
@@ -58,6 +67,18 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
     }
     setLocalIsOnline(isOnline);
   }, [isOnline]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (resetTimeoutRef.current) {
+        clearTimeout(resetTimeoutRef.current);
+      }
+      if (itemResetTimeoutRef.current) {
+        clearTimeout(itemResetTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -219,8 +240,55 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
     };
   }, []);
 
-  // STAGE 1: Scan Customer QR Code
+  // STAGE 1: Scan Customer QR Code (with consistency checking)
   const handleQRScanned = useCallback((_, qrData) => {
+    const now = Date.now();
+
+    // Add current scan to buffer
+    scanBufferRef.current.push({
+      data: qrData,
+      timestamp: now,
+    });
+
+    // Remove old scans outside the time window
+    scanBufferRef.current = scanBufferRef.current.filter(
+      (scan) => now - scan.timestamp < SCAN_TIMEOUT_MS,
+    );
+
+    // Get the last N scans
+    const recentScans = scanBufferRef.current.slice(-CONSISTENCY_THRESHOLD);
+
+    // Calculate progress percentage
+    const progress = (recentScans.length / CONSISTENCY_THRESHOLD) * 100;
+    setScanProgress(progress);
+
+    // Auto-reset: Clear progress if no new scans for 1.5 seconds
+    if (resetTimeoutRef.current) {
+      clearTimeout(resetTimeoutRef.current);
+    }
+    resetTimeoutRef.current = setTimeout(() => {
+      scanBufferRef.current = [];
+      setScanProgress(0);
+    }, 1500);
+
+    // Check if all recent scans are identical
+    if (recentScans.length < CONSISTENCY_THRESHOLD) {
+      return; // Not enough consistent scans yet
+    }
+
+    const allMatch = recentScans.every((scan) => scan.data === qrData);
+    if (!allMatch) {
+      return; // Scans don't match, keep waiting
+    }
+
+    // Clear buffer after successful scan
+    scanBufferRef.current = [];
+    setScanProgress(0);
+    if (resetTimeoutRef.current) {
+      clearTimeout(resetTimeoutRef.current);
+    }
+
+    // Process the QR code
     console.log("📱 [OFFLINE CHECKOUT] QR scanned, parsing data...");
     try {
       // Parse QR data - expecting JSON with cart info
@@ -268,7 +336,7 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
     }
   }, []);
 
-  // STAGE 2: Scan Items and Validate Against Customer Cart
+  // STAGE 2: Scan Items and Validate Against Customer Cart (with consistency checking)
   const handleItemBarcodeScanned = useCallback(
     (_, barcode) => {
       if (!customerCart) {
@@ -276,7 +344,53 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
         return;
       }
 
-      console.log("¤ [OFFLINE CHECKOUT] Item barcode scanned:", barcode);
+      const now = Date.now();
+
+      // Add current scan to buffer
+      itemScanBufferRef.current.push({
+        barcode: barcode,
+        timestamp: now,
+      });
+
+      // Remove old scans outside the time window
+      itemScanBufferRef.current = itemScanBufferRef.current.filter(
+        (scan) => now - scan.timestamp < SCAN_TIMEOUT_MS,
+      );
+
+      // Get the last N scans
+      const recentScans = itemScanBufferRef.current.slice(-CONSISTENCY_THRESHOLD);
+
+      // Calculate progress percentage
+      const progress = (recentScans.length / CONSISTENCY_THRESHOLD) * 100;
+      setItemScanProgress(progress);
+
+      // Auto-reset: Clear progress if no new scans for 1.5 seconds
+      if (itemResetTimeoutRef.current) {
+        clearTimeout(itemResetTimeoutRef.current);
+      }
+      itemResetTimeoutRef.current = setTimeout(() => {
+        itemScanBufferRef.current = [];
+        setItemScanProgress(0);
+      }, 1500);
+
+      // Check if all recent scans are identical
+      if (recentScans.length < CONSISTENCY_THRESHOLD) {
+        return; // Not enough consistent scans yet
+      }
+
+      const allMatch = recentScans.every((scan) => scan.barcode === barcode);
+      if (!allMatch) {
+        return; // Scans don't match, keep waiting
+      }
+
+      // Clear buffer after successful scan
+      itemScanBufferRef.current = [];
+      setItemScanProgress(0);
+      if (itemResetTimeoutRef.current) {
+        clearTimeout(itemResetTimeoutRef.current);
+      }
+
+      console.log("¤ [OFFLINE CHECKOUT] Item barcode scanned (verified):", barcode);
 
       const matchedProduct = getProductByBarcode(barcode);
       if (!matchedProduct) {
@@ -683,7 +797,11 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
       </View>
 
       <View style={styles.scannerContainer}>
-        <BarcodeScanner onDetect={handleQRScanned} barcodeTypes={["qrcode"]} />
+        <BarcodeScanner 
+          onDetect={handleQRScanned} 
+          barcodeTypes={["qrcode"]} 
+          scanProgress={scanProgress}
+        />
       </View>
 
       {qrError && (
@@ -717,7 +835,10 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
       </View>
 
       <View style={styles.scannerContainer}>
-        <BarcodeScanner onDetect={handleItemBarcodeScanned} />
+        <BarcodeScanner 
+          onDetect={handleItemBarcodeScanned} 
+          scanProgress={itemScanProgress}
+        />
       </View>
 
       {/* Progress */}
