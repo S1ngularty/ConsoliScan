@@ -11,9 +11,12 @@ export const saveLocally = createAsyncThunk(
 
     console.log("💾 [CART SAVE] Saving cart locally");
     console.log("💾 [CART SAVE] Items count:", cart.cart.length);
+    console.log("💾 [CART SAVE] Session active:", cart.sessionActive);
 
-    if (cart.cart.length <= 0) {
-      console.log("💾 [CART SAVE] Cart empty, clearing local storage");
+    if (cart.cart.length <= 0 && !cart.sessionActive) {
+      console.log(
+        "💾 [CART SAVE] Cart empty and no session, clearing local storage",
+      );
       await AsyncStorage.removeItem("cart");
       return;
     }
@@ -22,14 +25,18 @@ export const saveLocally = createAsyncThunk(
       items: cart.cart,
       itemCount: cart.itemCount,
       totalPrice: cart.totalPrice,
-      lastSync: new Date().toISOString(),
+      sessionActive: cart.sessionActive,
+      sessionId: cart.sessionId,
+      sessionStartTime: cart.sessionStartTime,
+      lastUpdated: new Date().toISOString(),
     };
 
     await AsyncStorage.setItem("cart", JSON.stringify(cartData));
     console.log(
       "💾 [CART SAVE] Cart saved locally with",
       cart.itemCount,
-      "total items",
+      "total items, session:",
+      cart.sessionId,
     );
   },
 );
@@ -52,13 +59,17 @@ export const loadLocalCart = createAsyncThunk(
       cartData.itemCount,
       "items",
     );
-    console.log("📂 [CART LOAD] Last sync:", cartData.lastSync);
+    console.log("📂 [CART LOAD] Session active:", cartData.sessionActive);
+    console.log("📂 [CART LOAD] Session ID:", cartData.sessionId);
+    console.log("📂 [CART LOAD] Last updated:", cartData.lastUpdated);
 
     return cartData;
   },
 );
 
-// ─── Sync cart to server (with offline handling) ───────────────────────────────
+// ─── DEPRECATED: Cart sync to backend (not used in session-based cart) ───────
+// This is kept for reference but not used in session-based shopping
+/*
 export const syncCartToServer = createAsyncThunk(
   "cart/syncCartToServer",
   async (_, { getState, dispatch }) => {
@@ -127,8 +138,11 @@ export const syncCartToServer = createAsyncThunk(
     }
   },
 );
+*/
 
-// ─── Get cart from server (with offline fallback) ─────────────────────────────
+// ─── DEPRECATED: Get cart from backend (not used in session-based cart) ───────
+// This is kept for reference but not used in session-based shopping
+/*
 export const getCartFromServer = createAsyncThunk(
   "cart/getCartFromServer",
   async (_, { getState, dispatch }) => {
@@ -223,39 +237,17 @@ export const getCartFromServer = createAsyncThunk(
     }
   },
 );
+*/
 
-// ─── Clear cart (server and local) ───────────────────────────────────────────
+// ─── Clear cart local storage ───────────────────────────────────────────
 export const clearCartToServer = createAsyncThunk(
   "cart/clearCartToServer",
-  async (_, { getState }) => {
-    const { auth, network } = getState();
+  async () => {
+    console.log("🗑️ [CART CLEAR] Clearing cart from local storage");
 
-    console.log("🗑️ [CART CLEAR] Clearing cart");
-
-    // Always clear local storage
+    // Clear local storage only (session-based cart)
     await AsyncStorage.removeItem("cart");
-    await AsyncStorage.removeItem("cart_needs_sync");
     console.log("🗑️ [CART CLEAR] Local cart cleared");
-
-    if (!auth.isLoggedIn) {
-      console.log("⚠️ [CART CLEAR] User not logged in, local clear only");
-      return;
-    }
-
-    // Try to clear on server if online
-    if (!network.isOffline && !network.isServerDown) {
-      try {
-        await clearCart();
-        console.log("✅ [CART CLEAR] Server cart cleared");
-      } catch (error) {
-        console.error(
-          "❌ [CART CLEAR] Failed to clear server cart:",
-          error.message,
-        );
-      }
-    } else {
-      console.log("🔌 [CART CLEAR] Offline mode, server clear skipped");
-    }
   },
 );
 

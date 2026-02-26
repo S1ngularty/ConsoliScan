@@ -18,8 +18,12 @@ router
   .get(authMiddleware.verifyToken, promoController.getSelection);
 
 router
+  .route("/promo/suggestions")
+  .get(authMiddleware.verifyToken, promoController.getSuggestedPromos);
+
+router
   .route("/promo/apply/:promoCode")
-  .get(authMiddleware.verifyToken, promoController.applyPromo);
+  .post(authMiddleware.verifyToken, promoController.applyPromo);
 
 router
   .route("/promo/guest/apply/:promoCode")

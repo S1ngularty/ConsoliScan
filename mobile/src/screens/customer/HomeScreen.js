@@ -16,7 +16,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import { useSelector, useDispatch } from "react-redux";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getCartFromServer } from "../../features/slices/cart/cartThunks";
 import { fetchHomeData } from "../../api/user.api";
 import OfflineIndicator from "../../components/Common/OfflineIndicator";
 
@@ -575,7 +574,7 @@ const HomeScreen = ({ navigation }) => {
     setLoading(true);
     try {
       if (userState.isLoggedIn) {
-        await dispatch(getCartFromServer());
+        // await dispatch(getCartFromServer());
         const response = await fetchHomeData();
         setHomeData(response);
 
@@ -600,7 +599,14 @@ const HomeScreen = ({ navigation }) => {
   };
 
   // Show offline indicator during initial load
-  console.log("Render HomeScreen - loading:", loading, "isOffline:", isOffline, "isServerDown:", isServerDown);
+  console.log(
+    "Render HomeScreen - loading:",
+    loading,
+    "isOffline:",
+    isOffline,
+    "isServerDown:",
+    isServerDown,
+  );
   if (loading && !refreshing) {
     return (
       <SafeAreaView style={styles.container}>

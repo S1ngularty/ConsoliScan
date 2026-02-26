@@ -10,6 +10,7 @@ import {
   Alert,
   TextInput,
   Modal,
+  BackHandler,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -21,18 +22,24 @@ import {
   removeFromCart,
   clearCart,
   setCart,
+  startSession,
+  endSession,
 } from "../../features/slices/cart/cartSlice";
 import {
   clearCartToServer,
-  getCartFromServer,
   saveLocally,
 } from "../../features/slices/cart/cartThunks";
 import { debounceCartSync } from "../../features/slices/cart/cartDebounce";
 import { checkout } from "../../api/checkout.api";
 import { getToken } from "../../utils/authUtil";
-import { applyPromo, applyGuestPromo } from "../../api/promo.api";
+import {
+  applyPromo,
+  applyGuestPromo,
+  getSuggestedPromos,
+} from "../../api/promo.api";
 import { fetchHomeData } from "../../api/user.api";
 import { getConfig } from "../../api/loyalty.api";
+import SessionModal from "../../components/Customer/SessionModal";
 
 const BNPC_PURCHASE_CAP = 2500;
 const BNPC_DISCOUNT_CAP = 125;
@@ -66,16 +73,23 @@ const CartScreen = ({ navigation, route }) => {
   });
   const [appliedPoints, setAppliedPoints] = useState(0);
   const [pointsDiscount, setPointsDiscount] = useState(0);
+  const [showSessionModal, setShowSessionModal] = useState(false);
+  const [suggestedPromos, setSuggestedPromos] = useState([]);
 
   const dispatch = useDispatch();
-  const { cart, itemCount, promo } = useSelector((state) => state.cart);
+  const { cart, itemCount, promo, sessionActive } = useSelector(
+    (state) => state.cart,
+  );
   const { isOffline, isServerDown } = useSelector((state) => state.network);
   const isEligibleUser = eligibilityStatus?.isVerified;
 
   useEffect(() => {
     (async () => {
-      userState.role === "user" && dispatch(getCartFromServer());
-      userState.role === "user" && (await fetchLoyaltyPointsData());
+      if (userState.role === "user") {
+        // Session and cart are already loaded in RootStackNavigator
+        // Just fetch loyalty data
+        await fetchLoyaltyPointsData();
+      }
     })();
   }, [userState.role]);
 
@@ -86,6 +100,19 @@ const CartScreen = ({ navigation, route }) => {
       setUserEligibility((p) => ({ ...p, isPWD: true }));
   }, [eligibilityStatus]);
 
+  const handleStartCartSession = async () => {
+    dispatch(startSession());
+    await dispatch(saveLocally());
+    setShowSessionModal(false);
+    console.log("🎬 [CART SCREEN] Shopping session started");
+  };
+
+  const handleCancelSession = () => {
+    setShowSessionModal(false);
+    // Navigate back to home
+    navigation.goBack();
+  };
+
   useEffect(() => {
     if (appliedPoints > 0) validateAndSetPoints(appliedPoints);
   }, [cart]);
@@ -93,19 +120,32 @@ const CartScreen = ({ navigation, route }) => {
   // Force cart refresh whenever screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      console.log("🔄 [CART SCREEN] Screen focused - refreshing cart");
+      console.log("🔄 [CART SCREEN] Screen focused - checking session");
       if (userState.role === "user") {
-        dispatch(getCartFromServer());
+        // Check if session is active using Redux state
+        if (!sessionActive) {
+          console.log("ℹ️ [CART SCREEN] No active session, showing modal");
+          setShowSessionModal(true);
+        } else {
+          console.log("✅ [CART SCREEN] Session active, cart ready");
+          setShowSessionModal(false);
+        }
       }
-    }, [userState.role, dispatch]),
+    }, [userState.role, sessionActive]),
   );
 
   async function fetchLoyaltyPointsData() {
     try {
-      const [homeData, config] = await Promise.all([
+      const [homeData, config, suggestedPromosData] = await Promise.all([
         fetchHomeData(),
         getConfig(),
+        userState.role === "user" ? getSuggestedPromos() : Promise.resolve([]),
       ]);
+      console.log(
+        "💰 [CART SCREEN] Suggested Promos Data:",
+        suggestedPromosData,
+      );
+      console.log("💎 [LOYALTY CONFIG] Retrieved from backend:", config);
       setAvailablePoints(homeData.loyaltyPoints);
       if (homeData.eligibilityDiscountUsage) {
         setWeeklyUsage({
@@ -116,6 +156,15 @@ const CartScreen = ({ navigation, route }) => {
         });
       }
       setLoyaltyConfig(config);
+      setSuggestedPromos(suggestedPromosData || []);
+      console.log(
+        "💰 [CART SCREEN] Loyalty data fetched, suggested promos:",
+        suggestedPromosData?.length,
+      );
+      console.log("💎 [LOYALTY CONFIG] Config state set to:", {
+        enabled: config?.enabled,
+        maxRedeemPercent: config?.maxRedeemPercent,
+      });
     } catch (error) {
       console.error("Error fetching loyalty data:", error);
     }
@@ -291,6 +340,14 @@ const CartScreen = ({ navigation, route }) => {
 
   const validateAndSetPoints = (points) => {
     const { subtotal } = calculateCartTotals();
+    console.log("💎 [LOYALTY] Validating points:", {
+      requestedPoints: points,
+      availablePoints,
+      subtotal,
+      enabled: loyaltyConfig.enabled,
+      maxRedeemPercent: loyaltyConfig.maxRedeemPercent,
+    });
+
     if (!loyaltyConfig.enabled) {
       Alert.alert(
         "Loyalty Program Disabled",
@@ -313,6 +370,13 @@ const CartScreen = ({ navigation, route }) => {
     const maxPointsAllowed = Math.floor(
       maxPointsValue / loyaltyConfig.pointsToCurrencyRate,
     );
+    console.log("💎 [LOYALTY] Max points calculation:", {
+      maxPointsValue,
+      maxPointsAllowed,
+      maxRedeemPercent: loyaltyConfig.maxRedeemPercent,
+      pointsToCurrencyRate: loyaltyConfig.pointsToCurrencyRate,
+    });
+
     if (points > maxPointsAllowed) {
       Alert.alert(
         "Max Points Exceeded",
@@ -323,6 +387,10 @@ const CartScreen = ({ navigation, route }) => {
     }
     setAppliedPoints(points);
     setPointsDiscount(points * loyaltyConfig.pointsToCurrencyRate);
+    console.log("✅ [LOYALTY] Points applied:", {
+      appliedPoints: points,
+      discount: points * loyaltyConfig.pointsToCurrencyRate,
+    });
     return true;
   };
 
@@ -364,6 +432,17 @@ const CartScreen = ({ navigation, route }) => {
       afterOtherDiscounts * (loyaltyConfig.maxRedeemPercent / 100);
     const effectiveLoyalty = Math.min(pointsDiscount, maxLoyaltyDiscount);
     const finalTotal = Math.max(0, afterOtherDiscounts - effectiveLoyalty);
+
+    if (pointsDiscount > 0) {
+      console.log("💎 [LOYALTY DISCOUNT] Calculation:", {
+        pointsRequested: pointsDiscount.toFixed(2),
+        maxAllowed: maxLoyaltyDiscount.toFixed(2),
+        maxRedeemPercent: loyaltyConfig.maxRedeemPercent,
+        afterOtherDiscounts: afterOtherDiscounts.toFixed(2),
+        effectiveDiscount: effectiveLoyalty.toFixed(2),
+      });
+    }
+
     return {
       subtotal,
       bnpcDiscount: discountDetails.discountApplied,
@@ -382,7 +461,7 @@ const CartScreen = ({ navigation, route }) => {
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      userState.role === "user" && (await dispatch(getCartFromServer()));
+      // Cart is session-based (no server sync) - only sync loyalty points
       await fetchLoyaltyPointsData();
     } catch (e) {
       console.error(e);
@@ -426,17 +505,20 @@ const CartScreen = ({ navigation, route }) => {
   };
 
   const clearAllItems = () => {
-    Alert.alert("Clear Cart", "Remove all items?", [
+    Alert.alert("Clear Cart", "Remove all items and end session?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Clear All",
         style: "destructive",
-        onPress: () => {
+        onPress: async () => {
           dispatch(clearCart());
+          dispatch(endSession());
           userState.role === "user" && dispatch(clearCartToServer());
+          await AsyncStorage.removeItem("session_snapshot");
           setLoyaltyPoints("");
           setAppliedPoints(0);
           setPointsDiscount(0);
+          console.log("🎬 [CART] Session ended by user");
         },
       },
     ]);
@@ -444,28 +526,29 @@ const CartScreen = ({ navigation, route }) => {
 
   const handleSelectPromo = async (promo) => {
     try {
+      // Build cart data for promo validation (same format for all user types)
+      const cartData = {
+        items: cart.map((item) => {
+          const n = normalizeCartItem(item);
+          return {
+            product: {
+              _id: n.product._id,
+              name: n.product.name,
+              price: n.product.price,
+              category: n.product.category,
+            },
+            qty: n.selectedQuantity,
+          };
+        }),
+      };
+
       let res;
 
-      // For guest users, use applyGuestPromo with cart data
+      // All users now send cart data (guest or authenticated)
       if (userState.role === "guest") {
-        const cartData = {
-          items: cart.map((item) => {
-            const n = normalizeCartItem(item);
-            return {
-              product: {
-                _id: n.product._id,
-                name: n.product.name,
-                price: n.product.price,
-                category: n.product.category,
-              },
-              qty: n.selectedQuantity,
-            };
-          }),
-        };
         res = await applyGuestPromo(promo.code, cartData);
       } else {
-        // For authenticated users, use applyPromo
-        res = await applyPromo(promo.code);
+        res = await applyPromo(promo.code, cartData);
       }
 
       if (!res.valid) {
@@ -789,15 +872,7 @@ const CartScreen = ({ navigation, route }) => {
         await AsyncStorage.setItem("checkout_queue", JSON.stringify(queue));
         console.log("📝 [CHECKOUT] Queued checkout locally:", checkoutQueue.id);
 
-        // Clear cart and show success message
-        dispatch(clearCart());
-        // Alert.alert(
-        //   "Checkout Queued",
-        //   "Your checkout is queued and will be processed when your connection is restored.",
-        //   [{ text: "OK" }],
-        // );
-
-        // Navigate to QR screen with pending status
+        // Navigate to QR screen with pending status (don't clear session yet)
         navigation.navigate("Shared", {
           screen: "QR",
           params: {
@@ -813,6 +888,8 @@ const CartScreen = ({ navigation, route }) => {
       // Online checkout - proceed normally
       const token = userState.role === "user" ? await getToken() : null;
       const queue = await checkout(checkoutData);
+
+      // Navigate to QR screen (don't clear session yet - wait for transaction to complete)
       navigation.navigate("Shared", {
         screen: "QR",
         params: { ...queue, token },
@@ -1135,9 +1212,9 @@ const CartScreen = ({ navigation, route }) => {
                   <Text style={styles.removeChipText}>Remove</Text>
                 </TouchableOpacity>
               </View>
-            ) : (
+            ) : suggestedPromos && suggestedPromos.length > 0 ? (
               <View style={{ gap: 10, marginTop: 4 }}>
-                {promo.map((p) => (
+                {suggestedPromos.map((p) => (
                   <TouchableOpacity
                     key={p._id}
                     style={styles.promoOption}
@@ -1162,6 +1239,8 @@ const CartScreen = ({ navigation, route }) => {
                   </TouchableOpacity>
                 ))}
               </View>
+            ) : (
+              <Text style={styles.noPromosText}>No promos available</Text>
             )}
           </View>
         )}
@@ -1169,7 +1248,8 @@ const CartScreen = ({ navigation, route }) => {
         {/* ── Loyalty Points Card ── */}
         {cart.length > 0 &&
           loyaltyConfig.enabled &&
-          userState.role === "user" && !isOffline && !isServerDown && (
+          userState.role === "user" &&
+          !isOffline && isServerDown === false && (
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <View
@@ -1490,6 +1570,12 @@ const CartScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
       )}
+
+      <SessionModal
+        visible={showSessionModal}
+        onStartSession={handleStartCartSession}
+        onCancel={handleCancelSession}
+      />
     </SafeAreaView>
   );
 };
@@ -1774,6 +1860,13 @@ const styles = StyleSheet.create({
   },
   promoOptionCode: { fontSize: 14, fontWeight: "600", color: "#0F172A" },
   promoOptionName: { fontSize: 12, color: "#64748B", marginTop: 2 },
+  noPromosText: {
+    fontSize: 14,
+    color: "#94a3b8",
+    textAlign: "center",
+    marginTop: 12,
+    fontStyle: "italic",
+  },
 
   // Loyalty balance
   balanceRow: {

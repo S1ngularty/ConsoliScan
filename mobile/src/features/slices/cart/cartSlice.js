@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { getCartFromServer, loadLocalCart, saveLocally } from "./cartThunks";
+import { loadLocalCart, saveLocally } from "./cartThunks";
 
 const normalizeQuantities = (items) =>
   (items || []).map((item) => {
@@ -16,13 +16,32 @@ const cartSlice = createSlice({
     promo: [],
     itemCount: 0,
     totalPrice: 0,
-    fromLocal: false,
-    needsSync: false,
+    sessionActive: false,
+    sessionId: null,
+    sessionStartTime: null,
     loading: false,
     error: null,
   },
 
   reducers: {
+    startSession: (state) => {
+      const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      state.sessionActive = true;
+      state.sessionId = sessionId;
+      state.sessionStartTime = new Date().toISOString();
+      console.log("🎬 [CART SLICE] Session started:", sessionId);
+    },
+
+    endSession: (state) => {
+      console.log("🛑 [CART SLICE] Session ended:", state.sessionId);
+      state.sessionActive = false;
+      state.sessionId = null;
+      state.sessionStartTime = null;
+      state.cart = [];
+      state.promo = [];
+      state.totalPrice = 0;
+      state.itemCount = 0;
+    },
     setCart: (state, action) => {
       console.log(
         "📝 [CART SLICE] setCart called with",
@@ -60,7 +79,6 @@ const cartSlice = createSlice({
       }
 
       recalcTotal(state);
-      state.needsSync = true;
     },
 
     adjustQuantity: (state, action) => {
@@ -84,7 +102,6 @@ const cartSlice = createSlice({
           selectedQuantity,
         );
         recalcTotal(state);
-        state.needsSync = true;
       } else {
         console.warn("⚠️ [CART SLICE] Item not found for adjustment:", _id);
       }
@@ -97,7 +114,6 @@ const cartSlice = createSlice({
 
       state.cart = state.cart.filter((i) => i._id !== itemId);
       recalcTotal(state);
-      state.needsSync = true;
     },
 
     clearCart: (state) => {
@@ -107,52 +123,14 @@ const cartSlice = createSlice({
         "items",
       );
       state.cart = [];
+      state.promo = [];
       state.totalPrice = 0;
       state.itemCount = 0;
-      state.needsSync = false;
-    },
-
-    markSyncComplete: (state) => {
-      console.log("✅ [CART SLICE] Cart sync marked complete");
-      state.needsSync = false;
     },
   },
 
   extraReducers: (builder) => {
     builder
-      .addCase(getCartFromServer.pending, (state) => {
-        console.log("⏳ [CART SLICE] getCartFromServer pending");
-        state.loading = true;
-      })
-      .addCase(getCartFromServer.fulfilled, (state, action) => {
-        console.log("✅ [CART SLICE] getCartFromServer fulfilled");
-
-        if (action.payload) {
-          state.cart = normalizeQuantities(action.payload?.formattedItems);
-          state.promo = action.payload?.promoSuggestionList || [];
-          state.fromLocal = action.payload?.fromLocal || false;
-
-          console.log(
-            "✅ [CART SLICE] Cart loaded:",
-            state.cart.length,
-            "items",
-          );
-          console.log("✅ [CART SLICE] From local:", state.fromLocal);
-
-          recalcTotal(state);
-        }
-
-        state.loading = false;
-      })
-      .addCase(getCartFromServer.rejected, (state, action) => {
-        console.error(
-          "❌ [CART SLICE] getCartFromServer rejected:",
-          action.error.message,
-        );
-        state.loading = false;
-        state.error = action.error.message;
-      })
-
       .addCase(loadLocalCart.fulfilled, (state, action) => {
         if (action.payload) {
           console.log(
@@ -161,7 +139,9 @@ const cartSlice = createSlice({
             "items",
           );
           state.cart = normalizeQuantities(action.payload.items);
-          state.fromLocal = true;
+          state.sessionActive = action.payload.sessionActive || false;
+          state.sessionId = action.payload.sessionId || null;
+          state.sessionStartTime = action.payload.sessionStartTime || null;
           recalcTotal(state);
         }
       })
@@ -191,12 +171,13 @@ const recalcTotal = (state) => {
 };
 
 export const {
+  startSession,
+  endSession,
   setCart,
   addToCart,
   adjustQuantity,
   removeFromCart,
   clearCart,
-  markSyncComplete,
 } = cartSlice.actions;
 
 export default cartSlice.reducer;

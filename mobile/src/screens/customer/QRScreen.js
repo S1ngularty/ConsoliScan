@@ -4,7 +4,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import QRCode from "react-native-qrcode-svg";
 import { io } from "socket.io-client";
 import { SOCKET_API } from "../../constants/config";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { clearCart, endSession } from "../../features/slices/cart/cartSlice";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 export default function CheckoutQRScreen({ route, navigation }) {
   const {
@@ -20,6 +23,7 @@ export default function CheckoutQRScreen({ route, navigation }) {
   const [orderData, setOrderData] = useState({});
   const [cashier, setCashier] = useState("");
   const userState = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
   const offlineQrValue = offlineMode
     ? JSON.stringify({
         checkoutCode,
@@ -142,7 +146,15 @@ export default function CheckoutQRScreen({ route, navigation }) {
       setOrderId(orderId);
       setStatus("COMPLETE");
 
-      setTimeout(() => {
+      setTimeout(async () => {
+        // Clear session and cart after transaction completes
+        dispatch(clearCart());
+        dispatch(endSession());
+        await AsyncStorage.removeItem("session_snapshot");
+        console.log(
+          "🎬 [QR SCREEN] Session ended after successful transaction",
+        );
+
         navigation.navigate("Shared", {
           screen: "Reciept",
           params: { orderId, checkoutCode, orderData, cashier },
@@ -297,8 +309,6 @@ export default function CheckoutQRScreen({ route, navigation }) {
     </SafeAreaView>
   );
 }
-
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const styles = StyleSheet.create({
   container: {
