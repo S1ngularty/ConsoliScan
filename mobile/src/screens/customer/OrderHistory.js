@@ -19,7 +19,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useSelector } from "react-redux";
 import { fetchOrders, downloadReceipt } from "../../api/order.api";
+import OfflineIndicator from "../../components/Common/OfflineIndicator";
 
 // ─── Animated Filter Chip ────────────────────────────────────────────────────
 const FilterChip = ({ label, isActive, onPress }) => {
@@ -933,14 +935,40 @@ const OrderHistoryScreen = ({ navigation }) => {
     setShowDetails(false);
   }, []);
 
+  const networkState = useSelector((state) => state.network);
+
+  // Local state to trigger re-renders when network state changes
+  const [isOffline, setIsOffline] = useState(false);
+  const [isServerDown, setIsServerDown] = useState(false);
+
+  // Sync with Redux network state
+  useEffect(() => {
+    setIsOffline(networkState.isOffline);
+    setIsServerDown(networkState.isServerDown);
+  }, [networkState.isOffline, networkState.isServerDown]);
+
   if (loading && !refreshing) {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00A86B" />
-          <Text style={styles.loadingText}>Loading orders…</Text>
-        </View>
+        {isOffline || isServerDown ? (
+          <OfflineIndicator />
+        ) : (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#00A86B" />
+            <Text style={styles.loadingText}>Loading orders…</Text>
+          </View>
+        )}
+      </SafeAreaView>
+    );
+  }
+
+  // Show offline indicator if server is down (even after loading failed)
+  if ((isOffline || isServerDown) && !refreshing) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
+        <OfflineIndicator />
       </SafeAreaView>
     );
   }

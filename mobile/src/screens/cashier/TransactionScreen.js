@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,8 +11,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
+import { useSelector } from "react-redux";
 import { getTransactionHistory } from "../../api/cashier.api";
 import ScanMethodModal from "../../components/cashier/ScanMethodModal";
+import OfflineIndicator from "../../components/Common/OfflineIndicator";
 
 const TransactionScreen = ({ navigation }) => {
   const [showScanModal, setShowScanModal] = useState(false);
@@ -23,6 +25,17 @@ const TransactionScreen = ({ navigation }) => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const networkState = useSelector((state) => state.network);
+
+  // Local state to trigger re-renders when network state changes
+  const [isOffline, setIsOffline] = useState(false);
+  const [isServerDown, setIsServerDown] = useState(false);
+
+  // Sync with Redux network state
+  useEffect(() => {
+    setIsOffline(networkState.isOffline);
+    setIsServerDown(networkState.isServerDown);
+  }, [networkState.isOffline, networkState.isServerDown]);
 
   useFocusEffect(
     useCallback(() => {
@@ -266,10 +279,14 @@ const TransactionScreen = ({ navigation }) => {
       </View>
 
       {/* Transaction List */}
-      {loading && !refreshing ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00A86B" />
-        </View>
+      {(loading || isOffline || isServerDown) && !refreshing ? (
+        isOffline || isServerDown ? (
+          <OfflineIndicator />
+        ) : (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#00A86B" />
+          </View>
+        )
       ) : (
         <FlatList
           data={transactions}

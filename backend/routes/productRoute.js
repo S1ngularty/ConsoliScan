@@ -38,6 +38,9 @@ router
   .route("/product/stocks/:productId")
   .put(authMiddleware.verifyToken, productController.updateProductStock);
 
+router.route("/catalog").get(productController.getCatalog);
+router.route("/catalog/version").get(productController.getCatalogVersion);
+
 router.route("/scan/product").get(productController.getScannedProduct);
 
 module.exports = router;

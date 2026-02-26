@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   LayoutDashboard,
   BadgeCheck,
@@ -35,14 +35,30 @@ import "../../styles/css/SidebarStyle.css";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import ConfirmModalComponent from "../common/ConfirmModalComponent";
+import { getMe } from "../../services/userService";
 
 const Sidebar = ({ breadcrumb }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeItem, setActiveItem] = useState("");
   const [openDropdowns, setOpenDropdowns] = useState([]);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [userRole, setUserRole] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      try {
+        const user = await getMe();
+        if (user) {
+          setUserRole(user.role);
+        }
+      } catch (error) {
+        console.error("Failed to fetch user role", error);
+      }
+    };
+    fetchUserRole();
+  }, []);
 
   // Initialize active item based on current route
   useEffect(() => {
@@ -51,10 +67,10 @@ const Sidebar = ({ breadcrumb }) => {
     // Find which item corresponds to the current path
     const allItems = [
       ...menuItems.flatMap((section) => section.items),
-      ...managementItems.flatMap((section) =>
+      ...filteredManagementItems.flatMap((section) =>
         section.items.flatMap((item) => (item.dropdown ? item.dropdown : [])),
       ),
-      ...otherItems.flatMap((section) => section.items),
+      ...filteredOtherItems.flatMap((section) => section.items),
     ];
 
     const currentItem = allItems.find((item) => item.navigate === path);
@@ -66,7 +82,7 @@ const Sidebar = ({ breadcrumb }) => {
         setOpenDropdowns((prev) => [...new Set([...prev, currentItem.parent])]);
       }
     }
-  }, [location.pathname]);
+  }, [location.pathname, userRole]);
 
   async function logout() {
     try {
@@ -97,139 +113,45 @@ const Sidebar = ({ breadcrumb }) => {
     }
   };
 
-  // Grouped menu items
-  const menuItems = [
-    {
-      section: "Main",
-      items: [
-        {
-          name: "Dashboard",
-          icon: <LayoutDashboard size={22} />,
-          navigate: "/admin/dashboard",
-        },
-      ],
-    },
-  ];
+  const filteredManagementItems = useMemo(() => {
+    if (userRole === "super_admin") return managementItems;
 
-  const managementItems = [
-    {
-      section: "ERP Modules",
-      items: [
-        {
-          name: "User Management",
-          icon: <Users size={22} />,
-          hasDropdown: true,
-          dropdown: [
-            {
-              name: "All Users",
-              icon: <Users size={18} />,
-              navigate: "/admin/users",
-              location: "Admin / Users",
-            },
-            {
-              name: "Roles & Permissions",
-              icon: <Shield size={18} />,
-              navigate: "/admin/users/roles",
-              location: "Admin / Users / Roles",
-            },
-            {
-              name: "Eligible Members",
-              icon: <BadgeCheck size={18} />,
-              navigate: "/admin/users/beneficiary",
-              location: "Admin / Users / Beneficiary",
-            },
-            {
-              name: "Activity Logs",
-              icon: <ClipboardList size={18} />,
-              navigate: "/admin/users/activity",
-              location: "Admin / Users / Activity",
-            },
-          ],
-        },
-        {
-          name: "Inventory Control",
-          icon: <Warehouse size={22} />,
-          hasDropdown: true,
-          dropdown: [
-            {
-              name: "Item Master",
-              icon: <Package size={18} />,
-              navigate: "/admin/products",
-              location: "Admin / Inventory / Items ",
-            },
-            {
-              name: "Stock Status",
-              icon: <Database size={18} />,
-              navigate: "/admin/products/inventory",
-              location: "Admin / Inventory / Status ",
-            },
-            {
-              name: "Categories",
-              icon: <Layers size={18} />,
-              navigate: "/admin/categories",
-              location: "Admin / Inventory / Categories ",
-            },
-          ],
-        },
-        {
-          name: "Sales & Distribution",
-          icon: <ShoppingCart size={22} />,
-          hasDropdown: true,
-          dropdown: [
-            {
-              name: "Sales Orders",
-              icon: <FileText size={18} />,
-              navigate: "/admin/orders",
-              location: "Admin / Sales / Orders",
-            },
-            {
-              name: "Pending Fulfillment",
-              icon: <Truck size={18} />,
-              navigate: "/admin/orders/pending",
-              location: "Admin / Sales / Pending",
-            },
-          ],
-        },
-        {
-          name: "CRM & Marketing",
-          icon: <Heart size={22} />,
-          hasDropdown: true,
-          dropdown: [
-            {
-              name: "Promotions",
-              icon: <Tags size={18} />,
-              navigate: "/admin/discount/promo",
-              location: "Admin / CRM / Promo ",
-            },
-             {
-              name: "Loyalty Program",
-              icon: <Coins size={18} />,
-              navigate: "/admin/discount/loyalty",
-              location: "Admin / CRM / Loyalty ",
-            },
-          ],
-        },
-      ],
-    },
-  ];
+    if (userRole === "admin") {
+      return managementItems.map((section) => ({
+        ...section,
+        items: section.items.map((item) => {
+          if (item.name === "User Management") {
+            return {
+              ...item,
+              dropdown: item.dropdown.filter(
+                (d) => d.name !== "Roles & Permissions"
+              ),
+            };
+          }
+          return item;
+        }),
+      }));
+    }
 
-  const otherItems = [
-    {
-      section: "System",
-      items: [
-        {
-          name: "Business Reports",
-          icon: <LineChart size={22} />,
-          navigate: "/admin/reports",
-        },
-        {
-          name: "Settings",
-          icon: <Settings size={22} />,
-          navigate: "/admin/settings",
-        },
-      ],
-    },
-  ];
+    if (!userRole) return [];
+
+    return managementItems;
+  }, [userRole]);
+
+  const filteredOtherItems = useMemo(() => {
+    if (userRole === "super_admin") return otherItems;
+
+    if (userRole === "admin") {
+      return otherItems.map((section) => ({
+        ...section,
+        items: section.items.filter((item) => item.name !== "Settings"),
+      }));
+    }
+
+    if (!userRole) return [];
+
+    return otherItems;
+  }, [userRole]);
 
   const renderSection = (sectionData, index) => (
     <div key={index} className="sidebar-section">
@@ -347,10 +269,10 @@ const Sidebar = ({ breadcrumb }) => {
         {menuItems.map(renderSection)}
 
         {/* Management Section */}
-        {managementItems.map(renderSection)}
+        {filteredManagementItems.map(renderSection)}
 
         {/* Other Section */}
-        {otherItems.map(renderSection)}
+        {filteredOtherItems.map(renderSection)}
       </nav>
 
       {/* Sidebar Footer */}
@@ -369,5 +291,139 @@ const Sidebar = ({ breadcrumb }) => {
     </div>
   );
 };
+
+// Static Data
+const menuItems = [
+  {
+    section: "Main",
+    items: [
+      {
+        name: "Dashboard",
+        icon: <LayoutDashboard size={22} />,
+        navigate: "/admin/dashboard",
+      },
+    ],
+  },
+];
+
+const managementItems = [
+  {
+    section: "ERP Modules",
+    items: [
+      {
+        name: "User Management",
+        icon: <Users size={22} />,
+        hasDropdown: true,
+        dropdown: [
+          {
+            name: "All Users",
+            icon: <Users size={18} />,
+            navigate: "/admin/users",
+            location: "Admin / Users",
+          },
+          {
+            name: "Roles & Permissions",
+            icon: <Shield size={18} />,
+            navigate: "/admin/users/roles",
+            location: "Admin / Users / Roles",
+          },
+          {
+            name: "Eligible Members",
+            icon: <BadgeCheck size={18} />,
+            navigate: "/admin/users/beneficiary",
+            location: "Admin / Users / Beneficiary",
+          },
+          {
+            name: "Activity Logs",
+            icon: <ClipboardList size={18} />,
+            navigate: "/admin/users/activity",
+            location: "Admin / Users / Activity",
+          },
+        ],
+      },
+      {
+        name: "Inventory Control",
+        icon: <Warehouse size={22} />,
+        hasDropdown: true,
+        dropdown: [
+          {
+            name: "Item Master",
+            icon: <Package size={18} />,
+            navigate: "/admin/products",
+            location: "Admin / Inventory / Items ",
+          },
+          {
+            name: "Stock Status",
+            icon: <Database size={18} />,
+            navigate: "/admin/products/inventory",
+            location: "Admin / Inventory / Status ",
+          },
+          {
+            name: "Categories",
+            icon: <Layers size={18} />,
+            navigate: "/admin/categories",
+            location: "Admin / Inventory / Categories ",
+          },
+        ],
+      },
+      {
+        name: "Sales & Distribution",
+        icon: <ShoppingCart size={22} />,
+        hasDropdown: true,
+        dropdown: [
+          {
+            name: "Sales Orders",
+            icon: <FileText size={18} />,
+            navigate: "/admin/orders",
+            location: "Admin / Sales / Orders",
+          },
+          {
+            name: "Pending Fulfillment",
+            icon: <Truck size={18} />,
+            navigate: "/admin/orders/pending",
+            location: "Admin / Sales / Pending",
+          },
+        ],
+      },
+      {
+        name: "CRM & Marketing",
+        icon: <Heart size={22} />,
+        hasDropdown: true,
+        dropdown: [
+          {
+            name: "Promotions",
+            icon: <Tags size={18} />,
+            navigate: "/admin/discount/promo",
+            location: "Admin / CRM / Promo ",
+          },
+          {
+            name: "Loyalty Program",
+            icon: <Coins size={18} />,
+            navigate: "/admin/discount/loyalty",
+            location: "Admin / CRM / Loyalty ",
+          },
+        ],
+      },
+    ],
+  },
+];
+
+const otherItems = [
+  {
+    section: "System",
+    items: [
+      {
+        name: "Business Reports",
+        icon: <LineChart size={22} />,
+        navigate: "/admin/reports",
+      },
+      {
+        name: "Settings",
+        icon: <Settings size={22} />,
+        navigate: "/admin/settings",
+      },
+    ],
+  },
+];
 
 export default Sidebar;

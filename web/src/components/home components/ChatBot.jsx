@@ -1,38 +1,35 @@
 import React, { useState, useRef, useEffect } from "react";
-import { 
-  ScanBarcode, 
-  Ticket, 
-  Trophy, 
-  ShieldCheck, 
-  ShoppingBag, 
-  ArrowRightLeft, 
-  FileText, 
-  Shield, 
-  Link, 
-  HelpCircle,
-  MessageSquare,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Bot
-} from "lucide-react";
-import "../../styles/css/chatBot.css";
+import { MessageSquare, X, Send, ChevronRight, HelpCircle, ArrowLeft, Info } from "lucide-react";
+import "../../styles/css/Chatbot.css";
 
-const ChatBot = () => {
+const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState([
-    { 
+    {
       id: 1,
-      type: "bot", 
+      type: "bot",
       text: "Welcome to ConsoliScan Support! 👋",
-      subtext: "How can I help you today?"
-    }
+      subtext: "How can I help you today?",
+      timestamp: new Date(),
+    },
   ]);
+
+  const toggleChat = () => {
+    setIsOpen(!isOpen);
+    setIsMinimized(false);
+  };
+
+  const minimizeChat = (e) => {
+    e.stopPropagation();
+    setIsMinimized(!isMinimized);
+  };
+
   const [currentQuestions, setCurrentQuestions] = useState([]);
-  const [showTooltip, setShowTooltip] = useState(true);
+  const [sessionHistory, setSessionHistory] = useState([]);
   const messagesEndRef = useRef(null);
 
-  // FAQ Database organized by categories (Ported from Mobile)
+  // FAQ Database organized by categories (Mirrors mobile app)
   const faqDatabase = {
     main: {
       title: "Main Menu",
@@ -51,8 +48,6 @@ const ChatBot = () => {
     },
     scanning: {
       title: "Barcode Scanning",
-      icon: <ScanBarcode size={18} />,
-      color: "#3B82F6",
       questions: [
         {
           id: "scan-1",
@@ -78,8 +73,6 @@ const ChatBot = () => {
     },
     promo: {
       title: "Promo Codes",
-      icon: <Ticket size={18} />,
-      color: "#FF9800",
       questions: [
         {
           id: "promo-1",
@@ -110,8 +103,6 @@ const ChatBot = () => {
     },
     loyalty: {
       title: "Loyalty Points",
-      icon: <Trophy size={18} />,
-      color: "#B45309",
       questions: [
         {
           id: "loyalty-1",
@@ -142,8 +133,6 @@ const ChatBot = () => {
     },
     eligibility: {
       title: "BNPC Eligibility",
-      icon: <ShieldCheck size={18} />,
-      color: "#00A86B",
       questions: [
         {
           id: "elig-1",
@@ -179,8 +168,6 @@ const ChatBot = () => {
     },
     orders: {
       title: "Orders & Payments",
-      icon: <ShoppingBag size={18} />,
-      color: "#2196F3",
       questions: [
         {
           id: "order-1",
@@ -211,8 +198,6 @@ const ChatBot = () => {
     },
     exchange: {
       title: "Exchange Program",
-      icon: <ArrowRightLeft size={18} />,
-      color: "#9C27B0",
       questions: [
         {
           id: "exc-1",
@@ -238,8 +223,6 @@ const ChatBot = () => {
     },
     receipt: {
       title: "Digital Receipts",
-      icon: <FileText size={18} />,
-      color: "#4CAF50",
       questions: [
         {
           id: "rec-1",
@@ -265,8 +248,6 @@ const ChatBot = () => {
     },
     account: {
       title: "Account & Security",
-      icon: <Shield size={18} />,
-      color: "#F44336",
       questions: [
         {
           id: "acc-1",
@@ -302,8 +283,6 @@ const ChatBot = () => {
     },
     blockchain: {
       title: "Blockchain Technology",
-      icon: <Link size={18} />,
-      color: "#FF6B35",
       questions: [
         {
           id: "block-1",
@@ -329,8 +308,6 @@ const ChatBot = () => {
     },
     other: {
       title: "Other Questions",
-      icon: <HelpCircle size={18} />,
-      color: "#607D8B",
       questions: [
         {
           id: "other-1",
@@ -356,38 +333,31 @@ const ChatBot = () => {
     },
   };
 
-  // Initialize main menu questions
   useEffect(() => {
     setCurrentQuestions(faqDatabase.main.questions);
   }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, currentQuestions]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, isOpen, currentQuestions]);
-
-  const toggleChat = () => {
-    setIsOpen(!isOpen);
-    if (showTooltip) setShowTooltip(false);
-  };
-
   const handleQuestionSelect = (question) => {
-    // Add user message
     const newMessage = {
       id: messages.length + 1,
       type: "user",
       text: question.text,
       timestamp: new Date(),
     };
-    setMessages((prev) => [...prev, newMessage]);
 
-    // Simulate bot thinking time
+    setMessages([...messages, newMessage]);
+    setSessionHistory([...sessionHistory, question.id]);
+
     setTimeout(() => {
       if (question.answer) {
-        // Answer question - show back button
         const botReply = {
           id: messages.length + 2,
           type: "bot",
@@ -396,9 +366,8 @@ const ChatBot = () => {
           showBackButton: true,
         };
         setMessages((prev) => [...prev, botReply]);
-        setCurrentQuestions([]); // Clear questions to focus on answer
+        setCurrentQuestions([]);
       } else if (question.category) {
-        // Go to subcategory
         const category = faqDatabase[question.category];
         const botReply = {
           id: messages.length + 2,
@@ -411,7 +380,7 @@ const ChatBot = () => {
         setMessages((prev) => [...prev, botReply]);
         setCurrentQuestions(category.questions);
       }
-    }, 600);
+    }, 500);
   };
 
   const handleBackToMenu = () => {
@@ -428,99 +397,90 @@ const ChatBot = () => {
 
   return (
     <div className="chatbot-container">
-      {/* Tooltip "Can I help?" */}
-      {showTooltip && !isOpen && (
-        <div className="chatbot-tooltip">
-          <div className="tooltip-content">
-            <span className="tooltip-text">Can I help?</span>
-            <button 
-              className="tooltip-close" 
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowTooltip(false);
-              }}
-            >
-              &times;
-            </button>
-          </div>
-        </div>
+      {/* Floating Button */}
+      {!isOpen && (
+        <button className="floating-chat-btn" onClick={toggleChat}>
+          <MessageSquare size={24} />
+          <span className="chat-badge">1</span>
+        </button>
       )}
-
-      {/* Floating Action Button */}
-      <button className={`chatbot-toggle ${isOpen ? "open" : ""}`} onClick={toggleChat} aria-label="Toggle Chat">
-        {isOpen ? (
-          <X size={28} />
-        ) : (
-          <MessageSquare size={28} />
-        )}
-        {!isOpen && <span className="notification-badge">1</span>}
-      </button>
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="chatbot-window">
-          <div className="chatbot-header">
+        <div className={`chat-window ${isMinimized ? 'minimized' : ''}`}>
+          {/* Header */}
+          <div className="chat-header" onClick={minimizeChat}>
             <div className="header-info">
-              <div className="bot-avatar">
-                <Bot size={24} color="white" />
-              </div>
-              <div>
-                <h3>ConsoliScan Bot</h3>
-                <span className="status-indicator">Online</span>
+              <h3>Support Assistant</h3>
+              <div className="status-indicator">
+                <span className="status-dot"></span>
+                <span>Online</span>
               </div>
             </div>
-            <button className="header-close" onClick={toggleChat}>&times;</button>
+            <div className="header-actions">
+              <button className="minimize-btn" onClick={minimizeChat}>
+                <ChevronRight size={20} style={{ transform: 'rotate(90deg)' }} />
+              </button>
+              <button className="close-btn" onClick={() => setIsOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
           </div>
 
-          <div className="chatbot-messages">
-            {messages.map((msg, index) => (
-              <div key={index} className={`message ${msg.type}`}>
-                <div className="message-bubble">
-                  <div className="message-text">{msg.text}</div>
-                  {msg.subtext && <div className="message-subtext">{msg.subtext}</div>}
-                </div>
-                {msg.showBackButton && (
-                  <button className="back-to-menu-btn" onClick={handleBackToMenu}>
-                    <ChevronLeft size={14} /> Back to Menu
-                  </button>
+          {/* Messages Area - Only show when not minimized */}
+          {!isMinimized && (
+            <>
+              <div className="chat-messages">
+                {messages.map((msg) => (
+                  <div key={msg.id} className={`message ${msg.type}`}>
+                    {msg.type === "bot" && (
+                      <div className="bot-avatar">
+                        <MessageSquare size={16} />
+                      </div>
+                    )}
+                    <div className="message-content">
+                      <div className="bubble">
+                        <p style={{ whiteSpace: "pre-wrap" }}>{msg.text}</p>
+                        {msg.subtext && <span className="subtext">{msg.subtext}</span>}
+                      </div>
+                      {msg.showBackButton && (
+                        <button className="back-menu-btn" onClick={handleBackToMenu}>
+                          <ArrowLeft size={14} /> Back to Menu
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Questions List */}
+                {currentQuestions.length > 0 && (
+                  <div className="questions-list">
+                    {currentQuestions.map((q) => (
+                      <button
+                        key={q.id}
+                        className="question-btn"
+                        onClick={() => handleQuestionSelect(q)}
+                      >
+                        <span>{q.text}</span>
+                        <ChevronRight size={16} />
+                      </button>
+                    ))}
+                  </div>
                 )}
+                <div ref={messagesEndRef} />
               </div>
-            ))}
-            <div ref={messagesEndRef} />
-          </div>
 
-          <div className="chatbot-options">
-            {currentQuestions.length > 0 && (
-              <>
-                <p className="options-title">
-                  {currentQuestions === faqDatabase.main.questions ? "Main Menu" : "Suggested Questions:"}
-                </p>
-                <div className="options-list">
-                  {currentQuestions.map((q) => (
-                    <button 
-                      key={q.id} 
-                      className="option-btn" 
-                      onClick={() => handleQuestionSelect(q)}
-                    >
-                      <span>{q.text}</span>
-                      <ChevronRight size={16} className="option-arrow" />
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-            
-            {/* Show "Back to Main Menu" if in a subcategory or empty state */}
-            {currentQuestions.length > 0 && currentQuestions !== faqDatabase.main.questions && (
-               <button className="main-menu-btn" onClick={handleBackToMenu}>
-                 <ChevronLeft size={16} /> Main Menu
-               </button>
-            )}
-          </div>
+              {/* Footer */}
+              <div className="chat-footer">
+                <Info size={14} />
+                <span>Automated Support • Contact us for complex issues</span>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
   );
 };
 
-export default ChatBot;
+export default Chatbot;

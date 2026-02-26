@@ -18,8 +18,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { scanProduct } from "../../api/product.api";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { clearCart } from "../../features/slices/cart/cartSlice";
+import { checkNetworkStatus } from "../../utils/netUtil";
 
 const { width, height } = Dimensions.get("window");
 
@@ -35,15 +36,37 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
   const [toastMessage, setToastMessage] = useState(null);
   const [showToast, setShowToast] = useState(false);
   const [lastAddedItem, setLastAddedItem] = useState(null);
+  const [scanStatus, setScanStatus] = useState("Ready to scan");
+  const [scanProgress, setScanProgress] = useState(0);
   const isProcessingRef = useRef(false);
+  const processingTimeoutRef = useRef(null);
   const cameraRef = useRef(null);
   const toastPosition = useRef(new Animated.Value(-100)).current;
 
+  // Scan consistency verification
+  const scanBufferRef = useRef([]);
+  const CONSISTENCY_THRESHOLD = 10; // Number of identical scans needed
+  const SCAN_TIMEOUT_MS = 1000; // Clear scans older than this
+  const resetTimeoutRef = useRef(null);
+
   const dispatch = useDispatch();
+  const catalogProducts = useSelector((state) => state.product?.products || []);
 
   // Get user eligibility from route params if coming from TransactionScreen
   const userEligibility = route.params?.userEligibility || {};
   const { isSenior = false, isPWD = false } = userEligibility;
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (processingTimeoutRef.current) {
+        clearTimeout(processingTimeoutRef.current);
+      }
+      if (resetTimeoutRef.current) {
+        clearTimeout(resetTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Calculate total price when scanned items change
   useEffect(() => {
@@ -94,17 +117,90 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
   };
 
   const handleScan = async ({ data, type }) => {
-    if (isProcessingRef.current) return;
+    if (isProcessingRef.current) {
+      return;
+    }
+
+    const now = Date.now();
+
+    // Add current scan to buffer
+    scanBufferRef.current.push({
+      barcode: data,
+      type: type,
+      timestamp: now,
+    });
+
+    // Remove old scans outside the time window
+    scanBufferRef.current = scanBufferRef.current.filter(
+      (scan) => now - scan.timestamp < SCAN_TIMEOUT_MS,
+    );
+
+    // Get the last N scans
+    const recentScans = scanBufferRef.current.slice(-CONSISTENCY_THRESHOLD);
+
+    // Calculate progress percentage
+    const progress = (recentScans.length / CONSISTENCY_THRESHOLD) * 100;
+    setScanProgress(progress);
+
+    // Auto-reset: Clear progress if no new scans for 1.5 seconds
+    if (resetTimeoutRef.current) {
+      clearTimeout(resetTimeoutRef.current);
+    }
+    resetTimeoutRef.current = setTimeout(() => {
+      if (!isProcessingRef.current) {
+        setScanProgress(0);
+        scanBufferRef.current = [];
+        setScanStatus("Ready to scan");
+      }
+    }, 1500);
+
+    // Update status
+    const uniqueBarcodes = new Set(scanBufferRef.current.map((s) => s.barcode));
+    if (recentScans.length < CONSISTENCY_THRESHOLD) {
+      setScanStatus(
+        `Verifying... ${recentScans.length}/${CONSISTENCY_THRESHOLD}`,
+      );
+      return;
+    }
+
+    // Check if all recent scans are identical
+    const allSame = recentScans.every(
+      (scan) => scan.barcode === recentScans[0].barcode,
+    );
+
+    if (!allSame) {
+      setScanStatus(`Scanning... (${uniqueBarcodes.size} detected)`);
+      return;
+    }
+
+    // Consistency verified! Process the scan
+    const verifiedBarcode = recentScans[0].barcode;
+    console.log(
+      `✓ Scan verified: ${verifiedBarcode} (${CONSISTENCY_THRESHOLD}x consistent)`,
+    );
+
+    // Clear auto-reset timeout since we're processing
+    if (resetTimeoutRef.current) {
+      clearTimeout(resetTimeoutRef.current);
+    }
+
+    // Lock scanning and clear buffer
     isProcessingRef.current = true;
+    scanBufferRef.current = [];
     setIsScanning(false);
     setLoading(true);
+    setScanStatus("Processing...");
+
+    // Keep progress at 100% briefly to show completion animation
+    // Then reset after animation completes (500ms for bounce effect)
+    setTimeout(() => {
+      setScanProgress(0);
+    }, 500);
 
     try {
-      console.log(`Scanning barcode: ${data} (${type})`);
-
       // Check if item already exists in scanned items
       const existingItemIndex = scannedItems.findIndex(
-        (item) => item.barcode === data,
+        (item) => item.barcode === verifiedBarcode,
       );
 
       if (existingItemIndex > -1) {
@@ -124,8 +220,26 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
           `Qty: ${updatedItems[existingItemIndex].quantity} - ${updatedItems[existingItemIndex].name}`,
         );
       } else {
-        // New item, fetch from API
-        const response = await scanProduct(data, type);
+        // New item, look for it in local catalog first
+        let response = catalogProducts.find(
+          (product) => String(product.barcode) === String(verifiedBarcode),
+        );
+
+        // If not found locally, check internet before API call
+        if (!response) {
+          const networkStatus = await checkNetworkStatus();
+
+          if (!networkStatus.isConnected) {
+            Alert.alert(
+              "Product Not Found",
+              `Product not found in local catalog and you are offline: ${verifiedBarcode}`,
+              [{ text: "OK", onPress: () => setIsScanning(true) }],
+            );
+            return;
+          }
+
+          response = await scanProduct(verifiedBarcode, type);
+        }
 
         if (response && response._id) {
           // Extract BNPC eligibility from category
@@ -157,7 +271,7 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
         } else {
           Alert.alert(
             "Product Not Found",
-            `No product found for barcode: ${data}`,
+            `No product found for barcode: ${verifiedBarcode}`,
             [{ text: "OK", onPress: () => setIsScanning(true) }],
           );
         }
@@ -168,11 +282,20 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
         { text: "OK", onPress: () => setIsScanning(true) },
       ]);
     } finally {
-      setTimeout(() => {
+      // Clear any existing timeout before setting new one
+      if (processingTimeoutRef.current) {
+        clearTimeout(processingTimeoutRef.current);
+      }
+
+      // Minimum 1 second delay to ensure data is fully fetched/processed
+      // before allowing next scan
+      processingTimeoutRef.current = setTimeout(() => {
         isProcessingRef.current = false;
         setLoading(false);
         setIsScanning(true);
-      }, 1000);
+        setScanProgress(0); // Final reset to ensure clean state
+        setScanStatus("Ready to scan");
+      }, 1200);
     }
   };
 
@@ -185,7 +308,27 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
     setIsSearching(true);
     try {
       console.log(`Searching for barcode: ${manualBarcode}`);
-      const response = await scanProduct(manualBarcode.trim(), "ean13");
+
+      // Look for product in local catalog first
+      let response = catalogProducts.find(
+        (product) => String(product.barcode) === String(manualBarcode.trim()),
+      );
+
+      // If not found locally, check internet before API call
+      if (!response) {
+        const networkStatus = await checkNetworkStatus();
+
+        if (!networkStatus.isConnected) {
+          Alert.alert(
+            "Product Not Found",
+            "Product not found in local catalog and you are offline",
+          );
+          setIsSearching(false);
+          return;
+        }
+
+        response = await scanProduct(manualBarcode.trim(), "ean13");
+      }
 
       if (response && response._id) {
         // Check if item already exists
@@ -415,7 +558,7 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
         barcodeScannerSettings={{
           barcodeTypes: ["ean8", "ean13", "upc_a", "upc_e", "code128"],
         }}
-        onBarcodeScanned={isScanning ? handleScan : undefined}
+        onBarcodeScanned={handleScan}
       />
 
       {/* Scanner Overlay */}
@@ -426,14 +569,33 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
           <View style={[styles.corner, styles.cornerBL]} />
           <View style={[styles.corner, styles.cornerBR]} />
 
-          <View style={styles.scanLine} />
+          {/* Circular Progress Indicator */}
+          {scanProgress > 0 && (
+            <View style={styles.progressContainer}>
+              <View style={styles.progressCircle}>
+                <View style={styles.progressBackground} />
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      transform: [
+                        { rotate: "-90deg" },
+                        {
+                          rotate: `${(scanProgress / 100) * 360}deg`,
+                        },
+                      ],
+                    },
+                  ]}
+                />
+                <View style={styles.progressInner} />
+              </View>
+            </View>
+          )}
         </View>
 
         <View style={styles.instructionBox}>
           <MaterialIcons name="qr-code-scanner" size={20} color="#FFFFFF" />
-          <Text style={styles.instructionText}>
-            Position barcode within frame
-          </Text>
+          <Text style={styles.instructionText}>{scanStatus}</Text>
         </View>
       </View>
 
@@ -955,14 +1117,42 @@ const styles = StyleSheet.create({
     borderBottomWidth: 3,
     borderBottomRightRadius: 8,
   },
-  scanLine: {
+  progressContainer: {
     position: "absolute",
     top: "50%",
-    left: 10,
-    right: 10,
-    height: 2,
-    backgroundColor: "#00A86B",
-    borderRadius: 1,
+    left: "50%",
+    transform: [{ translateX: -25 }, { translateY: -25 }],
+  },
+  progressCircle: {
+    width: 50,
+    height: 50,
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  progressBackground: {
+    position: "absolute",
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 3,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+  },
+  progressFill: {
+    position: "absolute",
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 3,
+    borderColor: "#00A86B",
+    borderRightColor: "transparent",
+    borderBottomColor: "transparent",
+  },
+  progressInner: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
   },
   instructionBox: {
     backgroundColor: "rgba(0, 0, 0, 0.7)",

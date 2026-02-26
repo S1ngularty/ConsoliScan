@@ -29,6 +29,7 @@ const orderSchema = new mongoose.Schema(
       type: String,
       required: true,
       index: true,
+      unique: true,
     },
 
     customerType: {
@@ -283,12 +284,12 @@ const orderSchema = new mongoose.Schema(
     cashTransaction: {
       cashReceived: {
         type: Number,
-        required: true,
+        // required: true,
         min: 0,
       },
       changeDue: {
         type: Number,
-        required: true,
+        // required: true,
         min: 0,
       },
     },

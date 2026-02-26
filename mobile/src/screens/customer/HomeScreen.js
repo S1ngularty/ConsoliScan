@@ -18,6 +18,7 @@ import { useSelector, useDispatch } from "react-redux";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getCartFromServer } from "../../features/slices/cart/cartThunks";
 import { fetchHomeData } from "../../api/user.api";
+import OfflineIndicator from "../../components/Common/OfflineIndicator";
 
 // ─── Reusable animated counter hook ─────────────────────────────────────────
 // Returns a display string that counts from 0 → target over `duration` ms
@@ -557,7 +558,18 @@ const HomeScreen = ({ navigation }) => {
   });
 
   const userState = useSelector((state) => state.auth);
+  const networkState = useSelector((state) => state.network);
   const dispatch = useDispatch();
+
+  // Local state to trigger re-renders when network state changes
+  const [isOffline, setIsOffline] = useState(false);
+  const [isServerDown, setIsServerDown] = useState(false);
+
+  // Sync with Redux network state
+  useEffect(() => {
+    setIsOffline(networkState.isOffline);
+    setIsServerDown(networkState.isServerDown);
+  }, [networkState.isOffline, networkState.isServerDown]);
 
   const loadHomeData = useCallback(async () => {
     setLoading(true);
@@ -587,14 +599,30 @@ const HomeScreen = ({ navigation }) => {
     setRefreshing(false);
   };
 
+  // Show offline indicator during initial load
+  console.log("Render HomeScreen - loading:", loading, "isOffline:", isOffline, "isServerDown:", isServerDown);
   if (loading && !refreshing) {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00A86B" />
-          <Text style={styles.loadingText}>Loading your dashboard…</Text>
-        </View>
+        {isOffline || isServerDown ? (
+          <OfflineIndicator message="Cannot load dashboard" />
+        ) : (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#00A86B" />
+            <Text style={styles.loadingText}>Loading your dashboard…</Text>
+          </View>
+        )}
+      </SafeAreaView>
+    );
+  }
+
+  // Show offline indicator if server is down (even after loading failed)
+  if ((isOffline || isServerDown) && !refreshing) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
+        <OfflineIndicator message="Cannot load dashboard" />
       </SafeAreaView>
     );
   }
