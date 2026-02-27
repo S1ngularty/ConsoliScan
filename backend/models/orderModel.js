@@ -255,12 +255,12 @@ const orderSchema = new mongoose.Schema(
       total: { type: Number, default: 0 },
     },
 
-    // // Final amount after all discounts
-    // finalAmountPaid: {
-    //   type: Number,
-    //   required: true,
-    //   min: 0,
-    // },
+    // Final amount after all discounts
+    finalAmountPaid: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
 
     // Loyalty points earned (legacy)
     pointsEarned: {

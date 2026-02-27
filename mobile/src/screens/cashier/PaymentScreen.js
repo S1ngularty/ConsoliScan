@@ -471,6 +471,7 @@ const PaymentScreen = ({ route, navigation }) => {
             loyaltyDiscountAmount +
             voucher,
           finalTotal,
+          finalAmountPaid: finalTotal,
         },
 
         // Weekly caps and usage

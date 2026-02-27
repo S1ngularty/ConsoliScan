@@ -33,7 +33,7 @@ async function getDashboardStats(request) {
   // Calculate statistics
   const salesToday = todayOrders.length;
   const revenue = todayOrders.reduce(
-    (sum, order) => sum + (order.finalAmountPaid || 0),
+    (sum, order) => sum + Number(order.finalAmountPaid || 0),
     0,
   );
   const transactions = todayOrders.length;
@@ -69,7 +69,7 @@ async function getDashboardStats(request) {
   }).lean();
 
   const weekRevenue = weekOrders.reduce(
-    (sum, order) => sum + (order.finalAmountPaid || 0),
+    (sum, order) => sum + Number(order.finalAmountPaid || 0),
     0,
   );
 
@@ -110,11 +110,11 @@ async function getRecentTransactions(request) {
     .sort({ confirmedAt: -1 })
     .limit(parseInt(limit))
     .lean();
-
+    // console.log("Recent Orders:", recentOrders);
   const transactions = recentOrders.map((order) => ({
     _id: order._id,
     transactionId: order.checkoutCode,
-    amount: Number(order.finalAmountPaid).toFixed(2),
+    amount: parseFloat(Number(order.finalAmountPaid || 0).toFixed(2)),
     paymentMethod: (order.paymentMethod || "cash").toUpperCase(),
     timestamp: order.confirmedAt,
     itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0),
@@ -424,12 +424,12 @@ async function getSalesReports(request) {
       end: dateQuery.confirmedAt?.$lte || dateQuery.confirmedAt?.$lt || null,
     },
     summary: {
-      totalRevenue: parseFloat(totalRevenue.toFixed(2)),
+      totalRevenue: parseFloat(totalRevenue).toFixed(2),
       totalTransactions,
       totalItems,
-      averageTransactionValue: parseFloat(
-        (totalRevenue / Math.max(totalTransactions, 1)).toFixed(2),
-      ),
+      averageTransactionValue: Number(
+        totalRevenue / Math.max(totalTransactions, 1),
+      ).toFixed(2),
       specialCustomers,
     },
     paymentMethods,
@@ -482,12 +482,11 @@ async function getTransactionHistory(request) {
       .lean(),
     Order.countDocuments(query),
   ]);
-
   return {
     transactions: orders.map((order) => ({
       _id: order._id,
       transactionId: order.checkoutCode,
-      amount: parseFloat(order.finalAmountPaid.toFixed(2)),
+      amount: parseFloat(Number(order.finalAmountPaid || 0).toFixed(2)),
       paymentMethod: (order.paymentMethod || "cash").toUpperCase(),
       timestamp: order.confirmedAt,
       itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0),

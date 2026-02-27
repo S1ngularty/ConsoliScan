@@ -86,6 +86,19 @@ const ReportsScreen = ({ navigation }) => {
     </View>
   );
 
+  const summary = reportData?.summary || {};
+  const totalRevenue = Number(summary.totalRevenue || 0);
+  const totalTransactions = Number(summary.totalTransactions || 0);
+  const totalItems = Number(summary.totalItems || 0);
+  const specialCustomers = Number(summary.specialCustomers || 0);
+  const paymentMethods =
+    reportData?.paymentMethods && typeof reportData.paymentMethods === "object"
+      ? reportData.paymentMethods
+      : {};
+  const topItems = Array.isArray(reportData?.topItems)
+    ? reportData.topItems
+    : [];
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -128,25 +141,25 @@ const ReportsScreen = ({ navigation }) => {
                 <StatCard
                   icon="currency-php"
                   label="Total Revenue"
-                  value={`₱${reportData.summary.totalRevenue.toLocaleString()}`}
+                  value={`₱${totalRevenue.toLocaleString()}`}
                   color="#00A86B"
                 />
                 <StatCard
                   icon="receipt"
                   label="Transactions"
-                  value={reportData.summary.totalTransactions}
+                  value={totalTransactions}
                   color="#3B82F6"
                 />
                 <StatCard
                   icon="package-variant"
                   label="Items Sold"
-                  value={reportData.summary.totalItems}
+                  value={totalItems}
                   color="#8B5CF6"
                 />
                 <StatCard
                   icon="account-group"
                   label="PWD/Senior"
-                  value={reportData.summary.specialCustomers}
+                  value={specialCustomers}
                   color="#FF9800"
                 />
               </View>
@@ -154,24 +167,22 @@ const ReportsScreen = ({ navigation }) => {
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Payment Methods</Text>
                 <View style={styles.paymentMethodsCard}>
-                  {Object.entries(reportData.paymentMethods).map(
-                    ([method, count]) => (
-                      <View key={method} style={styles.paymentRow}>
-                        <Text style={styles.paymentMethod}>{method}</Text>
-                        <Text style={styles.paymentCount}>
-                          {count} transactions
-                        </Text>
-                      </View>
-                    ),
-                  )}
+                  {Object.entries(paymentMethods).map(([method, count]) => (
+                    <View key={method} style={styles.paymentRow}>
+                      <Text style={styles.paymentMethod}>{method}</Text>
+                      <Text style={styles.paymentCount}>
+                        {count} transactions
+                      </Text>
+                    </View>
+                  ))}
                 </View>
               </View>
 
-              {reportData.topItems && reportData.topItems.length > 0 && (
+              {topItems.length > 0 && (
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>Top Selling Items</Text>
                   <View style={styles.topItemsCard}>
-                    {reportData.topItems.slice(0, 5).map((item, index) => (
+                    {topItems.slice(0, 5).map((item, index) => (
                       <View key={index} style={styles.topItemRow}>
                         <View style={styles.topItemRank}>
                           <Text style={styles.rankText}>{index + 1}</Text>
@@ -179,7 +190,8 @@ const ReportsScreen = ({ navigation }) => {
                         <View style={styles.topItemInfo}>
                           <Text style={styles.topItemName}>{item.name}</Text>
                           <Text style={styles.topItemStats}>
-                            {item.quantity} units • ₱{item.revenue.toFixed(2)}
+                            {Number(item.quantity || 0)} units • ₱
+                            {Number(item.revenue || 0).toFixed(2)}
                           </Text>
                         </View>
                       </View>

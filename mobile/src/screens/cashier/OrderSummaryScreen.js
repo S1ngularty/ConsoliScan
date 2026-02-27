@@ -156,10 +156,10 @@ const OrderSummaryScreen = ({ route, navigation }) => {
           total: transactionData.amounts?.totalDiscount || 0,
         },
 
-        finalAmountPaid: transactionData.amounts?.finalTotal || 0,
+        finalAmountPaid: transactionData.amounts?.finalAmountPaid || transactionData.amounts?.finalTotal || 0,
         pointsEarned:
           transactionData.loyalty?.pointsEarned ||
-          Math.floor((transactionData.amounts?.finalTotal || 0) / 10),
+          Math.floor((transactionData.amounts?.finalAmountPaid || transactionData.amounts?.finalTotal || 0) / 10),
 
         // Cash transaction
         cashTransaction: {
@@ -492,12 +492,11 @@ const OrderSummaryScreen = ({ route, navigation }) => {
                 </Text>
               </View>
             )}
-
             {/* Final Total */}
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Total Amount</Text>
               <Text style={styles.totalValue}>
-                ₱{(transactionData.amounts?.finalTotal || 0).toFixed(2)}
+                ₱{(transactionData.amounts?.finalAmountPaid || transactionData.amounts?.finalTotal || 0).toFixed(2)}
               </Text>
             </View>
 
@@ -607,7 +606,7 @@ const OrderSummaryScreen = ({ route, navigation }) => {
               <Text style={styles.pointValue}>
                 +
                 {transactionData.loyalty?.pointsEarned ||
-                  Math.floor(transactionData.amounts.finalTotal / 10)}
+                  Math.floor((transactionData.amounts?.finalAmountPaid || transactionData.amounts?.finalTotal || 0) / 10)}
               </Text>
             </View>
           </View>
