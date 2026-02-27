@@ -114,7 +114,7 @@ async function getRecentTransactions(request) {
   const transactions = recentOrders.map((order) => ({
     _id: order._id,
     transactionId: order.checkoutCode,
-    amount: 100,
+    amount: parseFloat(order.finalAmountPaid.toFixed(2)),
     paymentMethod: (order.paymentMethod || "cash").toUpperCase(),
     timestamp: order.confirmedAt,
     itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0),

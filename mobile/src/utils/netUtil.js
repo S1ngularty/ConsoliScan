@@ -6,10 +6,11 @@ export const checkNetworkStatus = async () => {
     return {
       isConnected: state.isConnected,
       isInternetReachable: state.isInternetReachable,
+      isOnline: state.isConnected && state.isInternetReachable,
       type: state.type,
     };
   } catch (error) {
     console.error("Network check error:", error);
-    return { isConnected: false, isInternetReachable: false };
+    return { isConnected: false, isInternetReachable: false, isOnline: false };
   }
 };

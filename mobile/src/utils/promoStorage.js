@@ -12,6 +12,7 @@ const safeParse = (value, fallback) => {
 
 export const readPromos = async () => {
   const promoRaw = await AsyncStorage.getItem(PROMO_KEY);
+  // console.log("📦 [PROMO STORAGE] readPromos:", promoRaw);
   return safeParse(promoRaw, []);
 };
 

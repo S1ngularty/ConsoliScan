@@ -255,12 +255,12 @@ const orderSchema = new mongoose.Schema(
       total: { type: Number, default: 0 },
     },
 
-    // Final amount after all discounts
-    finalAmountPaid: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
+    // // Final amount after all discounts
+    // finalAmountPaid: {
+    //   type: Number,
+    //   required: true,
+    //   min: 0,
+    // },
 
     // Loyalty points earned (legacy)
     pointsEarned: {
@@ -276,22 +276,6 @@ const orderSchema = new mongoose.Schema(
       discountSnapshot: mongoose.Schema.Types.Mixed,
       weeklyUsageSnapshot: mongoose.Schema.Types.Mixed,
       totals: mongoose.Schema.Types.Mixed,
-    },
-
-    /* ======================
-       CASH TRANSACTION
-    ======================= */
-    cashTransaction: {
-      cashReceived: {
-        type: Number,
-        // required: true,
-        min: 0,
-      },
-      changeDue: {
-        type: Number,
-        // required: true,
-        min: 0,
-      },
     },
 
     /* ======================

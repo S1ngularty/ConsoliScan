@@ -342,6 +342,7 @@ export const syncOfflineTransactions = createAsyncThunk(
     console.log("🔄 [OFFLINE TXN SYNC] Checking for offline transactions");
 
     const syncLock = await AsyncStorage.getItem("offline_txn_sync_lock");
+    console.log("🔄 [OFFLINE TXN SYNC] Sync lock status:", syncLock);
     if (syncLock === "true") {
       console.log("⏳ [OFFLINE TXN SYNC] Sync already in progress, skipping");
       return { synced: 0, failed: 0, skipped: true };
@@ -363,6 +364,7 @@ export const syncOfflineTransactions = createAsyncThunk(
       const transactionsJson = await AsyncStorage.getItem(
         "offline_transactions",
       );
+      console.log("transactionsJson", transactionsJson);
       console.log(
         "📦 [OFFLINE TXN SYNC] Storage payload:",
         transactionsJson ? "found" : "empty",
