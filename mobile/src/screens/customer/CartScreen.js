@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSelector, useDispatch } from "react-redux";
 import { useFocusEffect } from "@react-navigation/native";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   adjustQuantity,
@@ -77,6 +78,7 @@ const CartScreen = ({ navigation, route }) => {
   const [suggestedPromos, setSuggestedPromos] = useState([]);
 
   const dispatch = useDispatch();
+  const tabBarHeight = useBottomTabBarHeight();
   const { cart, itemCount, promo, sessionActive } = useSelector(
     (state) => state.cart,
   );
@@ -377,14 +379,14 @@ const CartScreen = ({ navigation, route }) => {
       pointsToCurrencyRate: loyaltyConfig.pointsToCurrencyRate,
     });
 
-    if (points > maxPointsAllowed) {
-      Alert.alert(
-        "Max Points Exceeded",
-        `You can only use up to ${maxPointsAllowed} points (${loyaltyConfig.maxRedeemPercent}% of order total)`,
-      );
-      setLoyaltyPoints(maxPointsAllowed.toString());
-      return false;
-    }
+    // if (points > maxPointsAllowed) {
+    //   Alert.alert(
+    //     "Max Points Exceeded",
+    //     `You can only use up to ${maxPointsAllowed} points (${loyaltyConfig.maxRedeemPercent}% of order total)`,
+    //   );
+    //   setLoyaltyPoints(maxPointsAllowed.toString());
+    //   return false;
+    // }
     setAppliedPoints(points);
     setPointsDiscount(points * loyaltyConfig.pointsToCurrencyRate);
     console.log("✅ [LOYALTY] Points applied:", {
@@ -1077,7 +1079,10 @@ const CartScreen = ({ navigation, route }) => {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: tabBarHeight + 140 },
+        ]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -1249,7 +1254,8 @@ const CartScreen = ({ navigation, route }) => {
         {cart.length > 0 &&
           loyaltyConfig.enabled &&
           userState.role === "user" &&
-          !isOffline && isServerDown === false && (
+          !isOffline &&
+          isServerDown === false && (
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <View
@@ -1546,7 +1552,7 @@ const CartScreen = ({ navigation, route }) => {
 
       {/* ── Checkout Bar ── */}
       {cart.length > 0 && (
-        <View style={styles.checkoutBar}>
+        <View style={[styles.checkoutBar, { bottom: tabBarHeight + 8 }]}>
           <View>
             <Text style={styles.checkoutLabel}>Total</Text>
             <Text style={styles.checkoutTotal}>
@@ -2042,7 +2048,7 @@ const styles = StyleSheet.create({
     borderTopColor: "#F1F5F9",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    paddingBottom: 24,
+    paddingBottom: 16,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",

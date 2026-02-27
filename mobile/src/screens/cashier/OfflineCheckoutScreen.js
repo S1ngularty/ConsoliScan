@@ -35,6 +35,7 @@ const { width } = Dimensions.get("window");
 export default function OfflineCheckoutScreen({ route, navigation }) {
   const [stage, setStage] = useState("qr"); // qr | scan | discount
   const [customerCart, setCustomerCart] = useState(null);
+  const [originalCartItems, setOriginalCartItems] = useState([]); // Track original items from QR
   const [scannedItems, setScannedItems] = useState([]);
   const [scanProgress, setScanProgress] = useState(0);
   const [itemScanProgress, setItemScanProgress] = useState(0);
@@ -46,6 +47,9 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
   const [qrError, setQrError] = useState("");
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [pendingProduct, setPendingProduct] = useState(null);
+  const [adjustModalVisible, setAdjustModalVisible] = useState(false);
+  const [adjustingItem, setAdjustingItem] = useState(null);
+  const [adjustQuantity, setAdjustQuantity] = useState("");
 
   // Scan consistency verification
   const scanBufferRef = useRef([]);
@@ -314,17 +318,18 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
       }
 
       // Set customer cart and move to scan stage
+      const originalItems = cartSnapshot.items || [];
       setCustomerCart({
         checkoutCode: checkoutCode || `CHK-${Date.now()}`,
-        items: cartSnapshot.items,
+        items: originalItems,
         user,
         totals: totals || { subtotal: 0, finalTotal: 0 },
       });
+      setOriginalCartItems(originalItems); // Save original items separately
 
       setQrError("");
       setStage("scan");
     } catch (error) {
-      console.error("❌ [OFFLINE CHECKOUT] QR parse error:", error);
       setQrError("Failed to parse QR data");
       Alert.alert("Invalid QR", "Unable to read this QR code");
     }
@@ -334,7 +339,6 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
   const handleItemBarcodeScanned = useCallback(
     (_, barcode) => {
       if (!customerCart) {
-        console.log("Customer cart not loaded");
         return;
       }
 
@@ -462,7 +466,8 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
 
   const checkAllMatched = (currentScanned, cartItems = customerCart?.items) => {
     if (!cartItems) return;
-    const allMatched = cartItems.every((cartItem) => {
+    // Only check original cart items, not manually added ones
+    const allMatched = originalCartItems.every((cartItem) => {
       const scanned = currentScanned.find(
         (s) => s.productId === cartItem.productId,
       );
@@ -509,6 +514,85 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
   const handleSkipMissingItem = () => {
     setPendingProduct(null);
     setShowAddItemModal(false);
+  };
+
+  // Manual quantity adjustment
+  const handleOpenAdjustModal = (cartItem) => {
+    const existingScanned = scannedItems.find(
+      (s) => s.productId === cartItem.productId,
+    );
+    setAdjustingItem(cartItem);
+    setAdjustQuantity(String(existingScanned ? existingScanned.scannedQty : 0));
+    setAdjustModalVisible(true);
+  };
+
+  const handleConfirmAdjustment = () => {
+    if (!adjustingItem) return;
+
+    const qty = parseInt(adjustQuantity, 10);
+    if (isNaN(qty) || qty < 0) {
+      Alert.alert("Invalid Quantity", "Please enter a valid number");
+      return;
+    }
+
+    // Check if item is in original cart (not manually added)
+    const isOriginalCartItem = originalCartItems.some(
+      (item) => item.productId === adjustingItem.productId,
+    );
+    // Only validate max quantity for items originally in the cart
+    if (isOriginalCartItem && qty > adjustingItem.quantity) {
+      Alert.alert(
+        "Invalid Quantity",
+        `Maximum quantity for this item is ${adjustingItem.quantity}`,
+      );
+      return;
+    }
+
+    // For manually added items, set a reasonable upper limit
+    if (!isOriginalCartItem && qty > 999) {
+      Alert.alert("Invalid Quantity", "Maximum quantity is 999");
+      return;
+    }
+
+    // Update scanned items
+    let updatedScanned;
+    const existingIdx = scannedItems.findIndex(
+      (s) => s.productId === adjustingItem.productId,
+    );
+
+    if (qty === 0) {
+      // Remove from scanned if set to 0
+      if (existingIdx !== -1) {
+        updatedScanned = scannedItems.filter((_, i) => i !== existingIdx);
+      } else {
+        updatedScanned = scannedItems;
+      }
+    } else if (existingIdx !== -1) {
+      // Update existing
+      updatedScanned = [...scannedItems];
+      updatedScanned[existingIdx] = {
+        ...updatedScanned[existingIdx],
+        scannedQty: qty,
+      };
+    } else {
+      // Add new
+      updatedScanned = [
+        ...scannedItems,
+        {
+          productId: adjustingItem.productId,
+          quantity: adjustingItem.quantity,
+          scannedQty: qty,
+        },
+      ];
+    }
+
+    setScannedItems(updatedScanned);
+    updateProgress(updatedScanned);
+    checkAllMatched(updatedScanned);
+
+    setAdjustModalVisible(false);
+    setAdjustingItem(null);
+    setAdjustQuantity("");
   };
 
   const applyPromoSelection = useCallback(
@@ -749,7 +833,7 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
         JSON.stringify(transactions),
       );
 
-      console.log(
+      Alert.alert(
         "Success",
         "Transaction saved locally. Will sync when online.",
         [
@@ -762,7 +846,6 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
         ],
       );
     } catch (error) {
-      console.error("❌ [OFFLINE CHECKOUT] Error saving transaction:", error);
       Alert.alert("Error", "Failed to save transaction");
     }
   };
@@ -858,8 +941,12 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
             const scanned = scannedItems.find(
               (s) => s.productId === cartItem.productId,
             );
-            const isComplete =
-              scanned && scanned.scannedQty === cartItem.quantity;
+            const isOriginal = originalCartItems.some(
+              (item) => item.productId === cartItem.productId,
+            );
+            const isComplete = isOriginal
+              ? scanned && scanned.scannedQty === cartItem.quantity
+              : true; // Manually added items are always "complete"
 
             return (
               <View key={cartItem.productId} style={styles.itemRow}>
@@ -876,16 +963,22 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
                       cartItem.productId.slice(-6)}
                   </Text>
                   <Text style={styles.itemQtyLabel}>
-                    {scanned?.scannedQty || 0} / {cartItem.quantity}
+                    {isOriginal
+                      ? `${scanned?.scannedQty || 0} / ${cartItem.quantity}`
+                      : `${scanned?.scannedQty || 0} scanned (extra)`}
                   </Text>
                 </View>
-                {isComplete && (
+                <TouchableOpacity
+                  style={styles.adjustBtn}
+                  onPress={() => handleOpenAdjustModal(cartItem)}
+                  activeOpacity={0.7}
+                >
                   <MaterialCommunityIcons
-                    name="check"
+                    name="pencil"
                     size={18}
                     color="#00A86B"
                   />
-                )}
+                </TouchableOpacity>
               </View>
             );
           })}
@@ -1236,6 +1329,124 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
                 <Text style={styles.modalPrimaryText}>Add Item</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Quantity Adjustment Modal */}
+      <Modal
+        visible={adjustModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setAdjustModalVisible(false)}
+      >
+        <View style={styles.qtyModalOverlay}>
+          <View style={styles.qtyModalContent}>
+            <View style={styles.qtyModalHeader}>
+              <MaterialCommunityIcons name="ballot" size={24} color="#00A86B" />
+              <Text style={styles.qtyModalTitle}>Adjust Quantity</Text>
+            </View>
+
+            {adjustingItem && (
+              <>
+                <View style={styles.qtyModalItemInfo}>
+                  <Text style={styles.qtyModalItemName} numberOfLines={2}>
+                    {getProductById(adjustingItem.productId)?.name ||
+                      adjustingItem.productId}
+                  </Text>
+                  {originalCartItems.some(
+                    (item) => item.productId === adjustingItem.productId,
+                  ) ? (
+                    <Text style={styles.qtyModalItemSub}>
+                      Required: {adjustingItem.quantity}
+                    </Text>
+                  ) : (
+                    <Text style={styles.qtyModalItemSub}>
+                      Manually added item (Max: 999)
+                    </Text>
+                  )}
+                </View>
+
+                <View style={styles.qtyModalInputSection}>
+                  <Text style={styles.qtyModalInputLabel}>
+                    Scanned Quantity
+                  </Text>
+                  <View style={styles.qtyModalInputRow}>
+                    <TouchableOpacity
+                      style={styles.qtyModalQtyBtn}
+                      onPress={() => {
+                        const current = parseInt(adjustQuantity, 10) || 0;
+                        if (current > 0) {
+                          setAdjustQuantity(String(current - 1));
+                        }
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name="minus"
+                        size={20}
+                        color="#64748b"
+                      />
+                    </TouchableOpacity>
+
+                    <TextInput
+                      style={styles.qtyModalInput}
+                      value={adjustQuantity}
+                      onChangeText={setAdjustQuantity}
+                      keyboardType="number-pad"
+                      placeholder="0"
+                      placeholderTextColor="#94a3b8"
+                    />
+
+                    <TouchableOpacity
+                      style={styles.qtyModalQtyBtn}
+                      onPress={() => {
+                        const current = parseInt(adjustQuantity, 10) || 0;
+                        const isOriginalItem = originalCartItems.some(
+                          (item) => item.productId === adjustingItem.productId,
+                        );
+                        const maxQty = isOriginalItem
+                          ? adjustingItem.quantity
+                          : 999;
+                        if (current < maxQty) {
+                          setAdjustQuantity(String(current + 1));
+                        }
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name="plus"
+                        size={20}
+                        color="#64748b"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={styles.qtyModalActions}>
+                  <TouchableOpacity
+                    style={styles.qtyModalCancelBtn}
+                    onPress={() => {
+                      setAdjustModalVisible(false);
+                      setAdjustingItem(null);
+                      setAdjustQuantity("");
+                    }}
+                  >
+                    <Text style={styles.qtyModalCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.qtyModalConfirmBtn}
+                    onPress={handleConfirmAdjustment}
+                  >
+                    <MaterialCommunityIcons
+                      name="check"
+                      size={18}
+                      color="#fff"
+                    />
+                    <Text style={styles.qtyModalConfirmText}>Confirm</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -1737,5 +1948,133 @@ const styles = StyleSheet.create({
     color: "#1E293B",
     fontWeight: "600",
     fontSize: 13,
+  },
+  // Adjust button
+  adjustBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "#f0fdf4",
+    borderWidth: 1,
+    borderColor: "#bbf7d0",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 8,
+  },
+  // Quantity Adjustment Modal
+  qtyModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15,23,42,0.75)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  qtyModalContent: {
+    width: "100%",
+    maxWidth: 380,
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 24,
+  },
+  qtyModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 20,
+  },
+  qtyModalTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#0f172a",
+  },
+  qtyModalItemInfo: {
+    backgroundColor: "#f8fafc",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
+  },
+  qtyModalItemName: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#0f172a",
+    marginBottom: 6,
+    lineHeight: 20,
+  },
+  qtyModalItemSub: {
+    fontSize: 12,
+    color: "#64748b",
+    marginTop: 2,
+  },
+  qtyModalInputSection: {
+    marginBottom: 24,
+  },
+  qtyModalInputLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0f172a",
+    marginBottom: 10,
+  },
+  qtyModalInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  qtyModalQtyBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  qtyModalInput: {
+    flex: 1,
+    height: 44,
+    backgroundColor: "#f8fafc",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    paddingHorizontal: 16,
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#0f172a",
+    textAlign: "center",
+  },
+  qtyModalActions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  qtyModalCancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    alignItems: "center",
+  },
+  qtyModalCancelText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#64748b",
+  },
+  qtyModalConfirmBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: "#00A86B",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  qtyModalConfirmText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#fff",
   },
 });

@@ -66,7 +66,7 @@ const HomeScreen = ({ navigation }) => {
 
       // Fetch dashboard stats
       const dashboardData = await getDashboardStats();
-      console.log("Dashboard data:", dashboardData);
+      // console.log("Dashboard data:", dashboardData);
       if (dashboardData) {
         setStats({
           salesToday: dashboardData.today?.salesToday || 0,

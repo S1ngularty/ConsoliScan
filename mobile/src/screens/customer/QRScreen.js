@@ -104,7 +104,6 @@ export default function CheckoutQRScreen({ route, navigation }) {
   useEffect(() => {
     // Skip socket connection for offline mode
     if (offlineMode) {
-      console.log("🔌 [QR SCREEN] Offline mode - skipping socket connection");
       return;
     }
 
@@ -120,20 +119,17 @@ export default function CheckoutQRScreen({ route, navigation }) {
     });
 
     socket.on("checkout:state", (data) => {
-      // console.log("checkout:state", data);
       setStatus(data.status || "PROCESSING");
       setTotals(data.totals);
     });
 
     socket.on("checkout:scanned", ({ cashier, status, totals }) => {
-      // console.log("checkout:scanned", cashier, status, totals);
       setStatus("SCANNED");
       setCashier(cashier);
       if (totals) setTotals(totals);
     });
 
     socket.on("checkout:locked", ({ checkoutData }) => {
-      // console.log("checkout:locked", checkoutData);
       setStatus("LOCKED");
       if (checkoutData?.totals) setTotals(checkoutData.totals);
     });
@@ -151,9 +147,6 @@ export default function CheckoutQRScreen({ route, navigation }) {
         dispatch(clearCart());
         dispatch(endSession());
         await AsyncStorage.removeItem("session_snapshot");
-        console.log(
-          "🎬 [QR SCREEN] Session ended after successful transaction",
-        );
 
         navigation.navigate("Shared", {
           screen: "Reciept",

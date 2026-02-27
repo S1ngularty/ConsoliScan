@@ -1,7 +1,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useRef, useState } from "react";
-import { View, AppState, Alert, BackHandler } from "react-native";
+import { View, AppState, BackHandler, Alert } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -20,10 +20,7 @@ import { setNetworkDispatch } from "../utils/apiErrorHandler";
 import {
   syncPendingCheckouts,
   syncOfflineTransactions,
-  clearCartToServer,
-  loadLocalCart,
 } from "../features/slices/cart/cartThunks";
-import { endSession } from "../features/slices/cart/cartSlice";
 import { getPromos } from "../api/promo.api";
 import { writePromos } from "../utils/promoStorage";
 
@@ -41,7 +38,6 @@ export default function RootNavigator() {
   const dispatch = useDispatch();
 
   const [appIsReady, setAppIsReady] = useState(false);
-  const wasOnlineRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
   const cartState = useSelector((state) => state.cart);
 
@@ -94,33 +90,8 @@ export default function RootNavigator() {
   }, []);
 
   const handleAppStateChange = async (nextAppState) => {
-    // App going to background
-    if (
-      appStateRef.current === "active" &&
-      nextAppState.match(/inactive|background/)
-    ) {
-      // Save current session to AsyncStorage so we can recover it if app is force quit
-      if (role === ROLES.Customer && cartState.sessionActive) {
-        const sessionSnapshot = {
-          sessionId: cartState.sessionId,
-          sessionStartTime: cartState.sessionStartTime,
-          savedAt: new Date().toISOString(),
-        };
-        await AsyncStorage.setItem(
-          "session_snapshot",
-          JSON.stringify(sessionSnapshot),
-        );
-      }
-    }
-
-    // App coming back to foreground (from pause, not from force quit)
-    // Force quit detection happens in the initialization effect
-    if (
-      appStateRef.current.match(/inactive|background/) &&
-      nextAppState === "active"
-    ) {
-      // No action needed here - initialization effect handles recovery on app start
-    }
+    // App state change detected
+    // Session persists only while app is alive
     appStateRef.current = nextAppState;
   };
 
@@ -130,52 +101,11 @@ export default function RootNavigator() {
 
     const initializeApp = async () => {
       if (role === ROLES.Customer) {
-        // Check if there's a stale session from a force quit
-        try {
-          const sessionSnapshot =
-            await AsyncStorage.getItem("session_snapshot");
-          if (sessionSnapshot) {
-            // Show alert to ask if user wants to resume or start fresh
-            return new Promise((resolve) => {
-              Alert.alert(
-                "Previous Session Detected",
-                "Your previous session was interrupted. Your session will be discarded.",
-                [
-                  {
-                    text: "Cancel",
-                    onPress: async () => {
-                      // Load the previous session
-                      try {
-                        await dispatch(loadLocalCart());
-                      } catch (error) {}
-                      resolve();
-                    },
-                    style: "cancel",
-                  },
-                  {
-                    text: "Continue",
-                    onPress: async () => {
-                      // Clear the stale session - don't load it
-                      try {
-                        await AsyncStorage.removeItem("session_snapshot");
-                        await AsyncStorage.removeItem("cart");
-                      } catch (error) {}
-                      resolve();
-                    },
-                  },
-                ],
-              );
-            });
-          } else {
-            // No stale session, just load normally (will be false if no previous cart)
-            try {
-              await dispatch(loadLocalCart());
-            } catch (error) {}
-          }
-        } catch (error) {}
+        // Session is cleared if app was killed - no recovery needed
+        // Just ensure catalog is loaded
       }
 
-      // After session recovery check, load catalog and promos for all users
+      // Load catalog and promos
       try {
         await dispatch(productThunks.fetchCatalogFromServer());
       } catch (error) {}
@@ -214,12 +144,12 @@ export default function RootNavigator() {
 
   useEffect(() => {
     const isOnline = !network.isOffline && !network.isServerDown;
-    if (isOnline && !wasOnlineRef.current) {
+    //  console.log("Network state changed:", isOnline);
+
+    if (isOnline) {
       checkPendingCartSync();
     }
-    wasOnlineRef.current = isOnline;
   }, [network.isOffline, network.isServerDown, isLoggedIn, role]);
-
   // Check and trigger pending sync for checkouts and offline transactions
   const checkPendingCartSync = async () => {
     try {
