@@ -76,7 +76,8 @@ form.sign-in-form {
   font-size: 1.1rem;
 }
 
-.input-field input, .input-field select {
+.input-field input,
+.input-field select {
   background: none;
   outline: none;
   border: none;
@@ -89,6 +90,45 @@ form.sign-in-form {
 .input-field input::placeholder {
   color: #aaa;
   font-weight: 500;
+}
+
+.auth-options {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  margin: 10px 0;
+}
+
+.remember-me {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.remember-me input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.remember-me label {
+  cursor: pointer;
+  user-select: none;
+}
+
+.forgot-password {
+  color: #4481eb;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.forgot-password:hover {
+  color: #04befe;
+  text-decoration: underline;
 }
 
 .social-text {
@@ -290,11 +330,11 @@ form.sign-in-form {
 
 /* Colors override for ConsoliScan Brand */
 .auth-container:before {
-  background-image: linear-gradient(-45deg, #5C6F2B 0%, #88a342 100%);
+  background-image: linear-gradient(-45deg, #5c6f2b 0%, #88a342 100%);
 }
 
 .btn {
-  background-color: #5C6F2B;
+  background-color: #5c6f2b;
 }
 
 .btn:hover {
@@ -302,8 +342,8 @@ form.sign-in-form {
 }
 
 .social-icon:hover {
-  color: #5C6F2B;
-  border-color: #5C6F2B;
+  color: #5c6f2b;
+  border-color: #5c6f2b;
 }
 
 @media (max-width: 870px) {

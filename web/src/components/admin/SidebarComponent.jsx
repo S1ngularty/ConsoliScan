@@ -29,7 +29,7 @@ import {
   ClipboardList,
   Truck,
   Heart,
-  LineChart
+  LineChart,
 } from "lucide-react";
 import "../../styles/css/SidebarStyle.css";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -124,7 +124,7 @@ const Sidebar = ({ breadcrumb }) => {
             return {
               ...item,
               dropdown: item.dropdown.filter(
-                (d) => d.name !== "Roles & Permissions"
+                (d) => d.name !== "Roles & Permissions",
               ),
             };
           }
@@ -133,8 +133,7 @@ const Sidebar = ({ breadcrumb }) => {
       }));
     }
 
-    if (!userRole) return [];
-
+    // Return managementItems by default (while loading or for other roles)
     return managementItems;
   }, [userRole]);
 
@@ -148,8 +147,7 @@ const Sidebar = ({ breadcrumb }) => {
       }));
     }
 
-    if (!userRole) return [];
-
+    // Return otherItems by default (while loading or for other roles)
     return otherItems;
   }, [userRole]);
 
@@ -301,6 +299,7 @@ const menuItems = [
         name: "Dashboard",
         icon: <LayoutDashboard size={22} />,
         navigate: "/admin/dashboard",
+        location: "Admin / Dashboard",
       },
     ],
   },
@@ -416,11 +415,13 @@ const otherItems = [
         name: "Business Reports",
         icon: <LineChart size={22} />,
         navigate: "/admin/reports",
+        location: "Admin / Reports",
       },
       {
         name: "Settings",
         icon: <Settings size={22} />,
         navigate: "/admin/settings",
+        location: "Admin / Settings",
       },
     ],
   },

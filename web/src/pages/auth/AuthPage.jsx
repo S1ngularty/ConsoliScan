@@ -1,6 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "../../styles/css/AuthStyle.css"; // We'll create this next
-import { register, googleSignIn, signIn } from "../../services/loginService.js";
+import {
+  register,
+  googleSignIn,
+  signIn,
+  autoLogin,
+} from "../../services/loginService.js";
 import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 
@@ -9,6 +14,11 @@ const AuthPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+
+  // Auto-login on mount if user has valid session
+  useEffect(() => {
+    autoLogin(navigate);
+  }, [navigate]);
 
   // Login State
   const [loginData, setLoginData] = useState({
@@ -53,7 +63,12 @@ const AuthPage = () => {
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-    if (!registerData.name || !registerData.email || !registerData.password || !registerData.age) {
+    if (
+      !registerData.name ||
+      !registerData.email ||
+      !registerData.password ||
+      !registerData.age
+    ) {
       setError("Please fill in all required fields");
       return;
     }
@@ -83,12 +98,13 @@ const AuthPage = () => {
     <div className={`auth-container ${isRegistering ? "sign-up-mode" : ""}`}>
       <div className="forms-container">
         <div className="signin-signup">
-          
           {/* LOGIN FORM */}
           <form className="sign-in-form" onSubmit={handleLoginSubmit}>
             <h2 className="title">Sign in</h2>
-            {error && !isRegistering && <div className="error-message">{error}</div>}
-            
+            {error && !isRegistering && (
+              <div className="error-message">{error}</div>
+            )}
+
             <div className="input-field">
               <i className="fas fa-user"></i>
               <input
@@ -109,13 +125,32 @@ const AuthPage = () => {
                 onChange={handleLoginChange}
               />
             </div>
+            <div className="auth-options">
+              <div className="remember-me">
+                <input type="checkbox" id="remember" />
+                <label htmlFor="remember">Remember me</label>
+              </div>
+              <span className="forgot-password">Forgot password?</span>
+            </div>
             <button type="submit" className="btn solid" disabled={loading}>
-              {loading ? <Loader2 className="animate-spin" size={20} /> : "Login"}
+              {loading ? (
+                <Loader2 className="animate-spin" size={20} />
+              ) : (
+                "Login"
+              )}
             </button>
             <p className="social-text">Or Sign in with social platforms</p>
             <div className="social-media">
-              <button type="button" className="social-icon" onClick={() => googleSignIn(navigate)}>
-                <img src="https://img.icons8.com/fluency/48/google-logo.png" alt="Google" width="24" />
+              <button
+                type="button"
+                className="social-icon"
+                onClick={() => googleSignIn(navigate)}
+              >
+                <img
+                  src="https://img.icons8.com/fluency/48/google-logo.png"
+                  alt="Google"
+                  width="24"
+                />
               </button>
             </div>
           </form>
@@ -123,8 +158,10 @@ const AuthPage = () => {
           {/* REGISTER FORM */}
           <form className="sign-up-form" onSubmit={handleRegisterSubmit}>
             <h2 className="title">Sign up</h2>
-            {error && isRegistering && <div className="error-message">{error}</div>}
-            
+            {error && isRegistering && (
+              <div className="error-message">{error}</div>
+            )}
+
             <div className="input-field">
               <i className="fas fa-user"></i>
               <input
@@ -156,7 +193,11 @@ const AuthPage = () => {
                 />
               </div>
               <div className="input-field half">
-                <select name="sex" value={registerData.sex} onChange={handleRegisterChange}>
+                <select
+                  name="sex"
+                  value={registerData.sex}
+                  onChange={handleRegisterChange}
+                >
                   <option value="male">Male</option>
                   <option value="female">Female</option>
                 </select>
@@ -183,12 +224,24 @@ const AuthPage = () => {
               />
             </div>
             <button type="submit" className="btn solid" disabled={loading}>
-              {loading ? <Loader2 className="animate-spin" size={20} /> : "Sign Up"}
+              {loading ? (
+                <Loader2 className="animate-spin" size={20} />
+              ) : (
+                "Sign Up"
+              )}
             </button>
             <p className="social-text">Or Sign up with social platforms</p>
             <div className="social-media">
-              <button type="button" className="social-icon" onClick={() => googleSignIn(navigate)}>
-                <img src="https://img.icons8.com/fluency/48/google-logo.png" alt="Google" width="24" />
+              <button
+                type="button"
+                className="social-icon"
+                onClick={() => googleSignIn(navigate)}
+              >
+                <img
+                  src="https://img.icons8.com/fluency/48/google-logo.png"
+                  alt="Google"
+                  width="24"
+                />
               </button>
             </div>
           </form>
@@ -200,25 +253,47 @@ const AuthPage = () => {
           <div className="content">
             <h3>New here?</h3>
             <p>
-              Join ConsoliScan today and experience the future of smart shopping consolidation.
+              Join ConsoliScan today and experience the future of smart shopping
+              consolidation.
             </p>
-            <button className="btn transparent" onClick={() => { setIsRegistering(true); setError(""); }}>
+            <button
+              className="btn transparent"
+              onClick={() => {
+                setIsRegistering(true);
+                setError("");
+              }}
+            >
               Sign up
             </button>
           </div>
-          <img src="https://cdni.iconscout.com/illustration/premium/thumb/online-registration-4489363-3723270.png" className="image" alt="" />
+          <img
+            src="https://cdni.iconscout.com/illustration/premium/thumb/online-registration-4489363-3723270.png"
+            className="image"
+            alt=""
+          />
         </div>
         <div className="panel right-panel">
           <div className="content">
             <h3>One of us?</h3>
             <p>
-              Welcome back. Sign in to access your dashboard and manage your shopping.
+              Welcome back. Sign in to access your dashboard and manage your
+              shopping.
             </p>
-            <button className="btn transparent" onClick={() => { setIsRegistering(false); setError(""); }}>
+            <button
+              className="btn transparent"
+              onClick={() => {
+                setIsRegistering(false);
+                setError("");
+              }}
+            >
               Sign in
             </button>
           </div>
-          <img src="https://cdni.iconscout.com/illustration/premium/thumb/login-3305943-2757111.png" className="image" alt="" />
+          <img
+            src="https://cdni.iconscout.com/illustration/premium/thumb/login-3305943-2757111.png"
+            className="image"
+            alt=""
+          />
         </div>
       </div>
     </div>

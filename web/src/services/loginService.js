@@ -19,7 +19,7 @@ export async function signIn(email, password, navigate) {
 
     const data = response.data;
     sessionStorage.setItem("isLogin", "true");
-
+    console.log(data)
     // Redirect based on role
     const role = data.user?.role || data.role;
     if (role === "admin") {
@@ -55,10 +55,11 @@ export async function googleSignIn(navigate) {
     if (!authenticate)
       throw new Error("failed to authecticate, please try again");
     const data = authenticate.data;
+    console.log(data)
     sessionStorage.setItem("isLogin","true")
     
     // Redirect based on role
-    if (data.user?.role === 'admin' || data.role === 'admin') {
+    if (data.result?.role === 'admin' || data.role === 'admin') {
       navigate("/admin/dashboard");
     } else {
       navigate("/user/dashboard");
