@@ -275,14 +275,16 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
           const unlimitedPromos = normalizedPromos.filter(
             (promo) => promo.isUnlimited === true,
           );
-          
-          console.log(`Offline mode: ${unlimitedPromos.length} unlimited promos found out of ${normalizedPromos.length} total`);
-          
+
+          console.log(
+            `Offline mode: ${unlimitedPromos.length} unlimited promos found out of ${normalizedPromos.length} total`,
+          );
+
           // If no unlimited promos found, show warning and display all cached promos
           if (unlimitedPromos.length === 0 && normalizedPromos.length > 0) {
             console.warn(
               "⚠️ No unlimited promos in cache. Backend should set 'isUnlimited: true' for offline usage.",
-              "Showing all cached promos as fallback."
+              "Showing all cached promos as fallback.",
             );
             setPromoCatalog(normalizedPromos); // Show all as fallback
           } else {
@@ -795,30 +797,27 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
     // Generate checkout code for idempotency
     const checkoutCode = `CHK-${Date.now().toString().slice(-8)}`;
 
-    // Create order data object matching backend schema
+    // Create transaction payload matching offline cashier structure
     const orderData = {
-      checkoutCode: checkoutCode, // Required at root level for idempotency
-      transaction: {
-        items: orderItems,
-        baseAmount: totalPrice,
-        bnpcEligibleSubtotal: bnpcSubtotal,
-        bnpcDiscount: {
-          autoCalculated: bnpcDiscount,
-          total: bnpcDiscount,
-        },
-        promoDiscount: appliedPromoData
-          ? {
-              code: appliedPromoData.code,
-              amount: appliedPromoData.discount,
-              serverValidated: false,
-            }
-          : { code: null, amount: 0, serverValidated: false },
-        customerType: customerType === "regular" ? "regular" : customerType,
-        bookletUpdated: bookletConfirmed,
-        checkoutCode: checkoutCode,
-        status: "CONFIRMED",
-        appUser: false,
+      items: orderItems,
+      baseAmount: totalPrice,
+      bnpcEligibleSubtotal: bnpcSubtotal,
+      bnpcDiscount: {
+        autoCalculated: bnpcDiscount,
+        total: bnpcDiscount,
       },
+      promoDiscount: appliedPromoData
+        ? {
+            code: appliedPromoData.code,
+            amount: appliedPromoData.discount,
+            serverValidated: false,
+          }
+        : { code: null, amount: 0, serverValidated: false },
+      customerType: customerType === "regular" ? "regular" : customerType,
+      bookletUpdated: bookletConfirmed,
+      checkoutCode: checkoutCode,
+      status: "CONFIRMED",
+      appUser: false,
     };
 
     setPaymentLoading(true);
@@ -840,7 +839,7 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
                   dispatch(clearCart());
                   navigation.navigate("OrderSummary", {
                     transactionData: result,
-                    checkoutCode: orderData.transaction.checkoutCode,
+                    checkoutCode: orderData.checkoutCode,
                   });
                 },
               },
@@ -856,7 +855,7 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
               {
                 text: "Store Offline",
                 onPress: async () => {
-                  await storeOfflineOrder(orderData.transaction);
+                  await storeOfflineOrder(orderData);
                 },
               },
             ],
@@ -864,7 +863,7 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
         }
       } else {
         // Offline: Store to AsyncStorage
-        await storeOfflineOrder(orderData.transaction);
+        await storeOfflineOrder(orderData);
       }
     } catch (error) {
       console.error("Payment error:", error);
@@ -879,18 +878,22 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
 
   const storeOfflineOrder = async (orderData) => {
     try {
-      const existingOrders = await AsyncStorage.getItem("pendingOrders");
+      const existingOrders = await AsyncStorage.getItem("offline_transactions");
       const orders = existingOrders ? JSON.parse(existingOrders) : [];
 
       const pendingOrder = {
         ...orderData,
         id: `${orderData.checkoutCode}_${Date.now()}`,
         submittedAt: new Date().toISOString(),
-        status: "pending_offline",
+        status: "CONFIRMED",
+        localStatus: "pending_sync",
       };
 
       orders.push(pendingOrder);
-      await AsyncStorage.setItem("pendingOrders", JSON.stringify(orders));
+      await AsyncStorage.setItem(
+        "offline_transactions",
+        JSON.stringify(orders),
+      );
 
       Alert.alert(
         "Order Saved Offline",
