@@ -78,9 +78,8 @@ export async function autoLogin(navigate) {
     { headers: {}, withCredentials: true }
   );
   if (!authenticate) throw new Error("failed to authenticate using token");
-  const data = authenticate.data;
+  const data = authenticate.data.result;
   sessionStorage.setItem("isLogin","true")
-  
   if (data.user?.role === 'admin' || data.role === 'admin') {
     navigate("/admin/dashboard");
   } else {
