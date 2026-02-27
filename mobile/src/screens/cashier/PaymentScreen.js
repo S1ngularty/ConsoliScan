@@ -435,7 +435,7 @@ const PaymentScreen = ({ route, navigation }) => {
         : systemVerified
           ? systemVerificationSource
           : appUser
-            ? "app_auto"
+            ? "system"
             : "manual";
 
       // Calculate updated weekly usage (for booklet)

@@ -2,6 +2,7 @@
 import axios from "axios";
 import { API_URL } from "../constants/config";
 import { getToken } from "../utils/authUtil";
+import { handleApiError, markServerUp } from "../utils/apiErrorHandler";
 
 // Exact same axiosInstance pattern as order.api.js
 const axiosInstance = axios.create({
@@ -16,6 +17,14 @@ axiosInstance.interceptors.request.use(async (config) => {
   config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
+
+axiosInstance.interceptors.response.use(
+  (response) => {
+    markServerUp();
+    return response;
+  },
+  (error) => Promise.reject(handleApiError(error)),
+);
 
 /**
  * Customer: Initiate an exchange for an order item.

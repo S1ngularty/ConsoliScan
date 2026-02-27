@@ -7,13 +7,34 @@ import { SOCKET_API } from "../../constants/config";
 import { useSelector } from "react-redux";
 
 export default function CheckoutQRScreen({ route, navigation }) {
-  const { checkoutCode, token, appUser = false } = route.params;
+  const {
+    checkoutCode,
+    token,
+    appUser = false,
+    offlineMode = false,
+    checkoutData = null,
+  } = route.params;
   const [status, setStatus] = useState("PROCESSING");
   const [totals, setTotals] = useState(null);
   const [orderId, setOrderId] = useState(null);
   const [orderData, setOrderData] = useState({});
   const [cashier, setCashier] = useState("");
   const userState = useSelector((state) => state.auth);
+  const offlineQrValue = offlineMode
+    ? JSON.stringify({
+        checkoutCode,
+        user: {
+          userId: checkoutData?.user || userState.user?.userId || null,
+          userName: checkoutData?.userName || userState.user?.name || null,
+          userEmail: checkoutData?.userEmail || userState.user?.email || null,
+        },
+        cartSnapshot: {
+          items: checkoutData?.cartSnapshot?.items || [],
+        },
+        totals: checkoutData?.totals || null,
+      })
+    : null;
+  const qrValue = offlineMode && offlineQrValue ? offlineQrValue : checkoutCode;
 
   // Animation for smooth progress bar
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -77,6 +98,12 @@ export default function CheckoutQRScreen({ route, navigation }) {
   const completedSteps = getCompletedSteps();
 
   useEffect(() => {
+    // Skip socket connection for offline mode
+    if (offlineMode) {
+      console.log("🔌 [QR SCREEN] Offline mode - skipping socket connection");
+      return;
+    }
+
     const socket = io(SOCKET_API, {
       auth: {
         token,
@@ -134,7 +161,7 @@ export default function CheckoutQRScreen({ route, navigation }) {
     return () => {
       socket.disconnect();
     };
-  }, [token, checkoutCode]);
+  }, [token, checkoutCode, offlineMode]);
 
   const renderStatusMessage = () => {
     switch (status) {
@@ -190,7 +217,7 @@ export default function CheckoutQRScreen({ route, navigation }) {
         <View style={styles.qrSection}>
           <View style={styles.qrWrapper}>
             <QRCode
-              value={checkoutCode}
+              value={qrValue}
               size={220}
               backgroundColor="white"
               color="#000000"
@@ -205,41 +232,60 @@ export default function CheckoutQRScreen({ route, navigation }) {
         {/* Spacer */}
         <View style={{ flex: 1 }} />
 
-        {/* Progress Bar */}
-        <View style={styles.progressContainer}>
-          {/* Smooth Animated Progress Bar */}
-          <View style={styles.progressBarBackground}>
-            <Animated.View
-              style={[styles.progressBarFill, { width: progressWidth }]}
+        {/* Offline Mode Note */}
+        {offlineMode && (
+          <View style={styles.offlineNoteContainer}>
+            <MaterialCommunityIcons
+              name="wifi-off"
+              size={20}
+              color="#F59E0B"
+              style={{ marginBottom: 8 }}
             />
+            <Text style={styles.offlineNoteTitle}>Offline Checkout</Text>
+            <Text style={styles.offlineNoteText}>
+              Show this QR code to the cashier. They will verify items and
+              process payment.
+            </Text>
           </View>
+        )}
 
-          {/* Step Indicators */}
-          <View style={styles.stepsContainer}>
-            {steps.map((step, index) => (
-              <View key={step.key} style={styles.stepIndicator}>
-                <View
-                  style={[
-                    styles.stepDot,
-                    index < completedSteps
-                      ? styles.stepDotCompleted
-                      : styles.stepDotPending,
-                  ]}
-                />
-                <Text
-                  style={[
-                    styles.stepLabel,
-                    index < completedSteps
-                      ? styles.stepLabelCompleted
-                      : styles.stepLabelPending,
-                  ]}
-                >
-                  {step.label}
-                </Text>
-              </View>
-            ))}
+        {/* Progress Bar - Only show when online */}
+        {!offlineMode && (
+          <View style={styles.progressContainer}>
+            {/* Smooth Animated Progress Bar */}
+            <View style={styles.progressBarBackground}>
+              <Animated.View
+                style={[styles.progressBarFill, { width: progressWidth }]}
+              />
+            </View>
+
+            {/* Step Indicators */}
+            <View style={styles.stepsContainer}>
+              {steps.map((step, index) => (
+                <View key={step.key} style={styles.stepIndicator}>
+                  <View
+                    style={[
+                      styles.stepDot,
+                      index < completedSteps
+                        ? styles.stepDotCompleted
+                        : styles.stepDotPending,
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      styles.stepLabel,
+                      index < completedSteps
+                        ? styles.stepLabelCompleted
+                        : styles.stepLabelPending,
+                    ]}
+                  >
+                    {step.label}
+                  </Text>
+                </View>
+              ))}
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Success Message */}
         {status === "COMPLETE" && (
@@ -251,6 +297,8 @@ export default function CheckoutQRScreen({ route, navigation }) {
     </SafeAreaView>
   );
 }
+
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const styles = StyleSheet.create({
   container: {
@@ -319,6 +367,28 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "800",
     color: "#00A86B",
+  },
+  offlineNoteContainer: {
+    backgroundColor: "#FEF3C7",
+    borderRadius: 12,
+    padding: 16,
+    width: "100%",
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#FCD34D",
+    alignItems: "center",
+  },
+  offlineNoteTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#92400E",
+    marginBottom: 4,
+  },
+  offlineNoteText: {
+    fontSize: 12,
+    color: "#B45309",
+    textAlign: "center",
+    lineHeight: 18,
   },
   // Progress Container
   progressContainer: {

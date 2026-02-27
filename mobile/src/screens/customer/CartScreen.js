@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   StyleSheet,
   View,
@@ -14,6 +14,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSelector, useDispatch } from "react-redux";
+import { useFocusEffect } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   adjustQuantity,
   removeFromCart,
@@ -67,6 +69,7 @@ const CartScreen = ({ navigation, route }) => {
 
   const dispatch = useDispatch();
   const { cart, itemCount, promo } = useSelector((state) => state.cart);
+  const { isOffline, isServerDown } = useSelector((state) => state.network);
   const isEligibleUser = eligibilityStatus?.isVerified;
 
   useEffect(() => {
@@ -86,6 +89,16 @@ const CartScreen = ({ navigation, route }) => {
   useEffect(() => {
     if (appliedPoints > 0) validateAndSetPoints(appliedPoints);
   }, [cart]);
+
+  // Force cart refresh whenever screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log("🔄 [CART SCREEN] Screen focused - refreshing cart");
+      if (userState.role === "user") {
+        dispatch(getCartFromServer());
+      }
+    }, [userState.role, dispatch]),
+  );
 
   async function fetchLoyaltyPointsData() {
     try {
@@ -613,23 +626,24 @@ const CartScreen = ({ navigation, route }) => {
       purchaseCap: BNPC_PURCHASE_CAP,
       discountCap: BNPC_DISCOUNT_CAP,
     };
-    const promoData = selectedPromo
-      ? {
-          promoId: selectedPromo._id,
-          code: selectedPromo.code,
-          name: selectedPromo.promoName?.promo || selectedPromo.name,
-          type: selectedPromo.promoType || selectedPromo.type,
-          value: selectedPromo.value,
-          scope: selectedPromo.scope,
-          targetIds: selectedPromo.targetIds,
-          minPurchase: selectedPromo.minPurchase || 0,
-          discountAmount: totals.promoDiscount || 0,
-          serverValidated: true,
-          appliedPromoData,
-        }
-      : null;
+    const promoData =
+      !isOffline && !isServerDown && selectedPromo
+        ? {
+            promoId: selectedPromo._id,
+            code: selectedPromo.code,
+            name: selectedPromo.promoName?.promo || selectedPromo.name,
+            type: selectedPromo.promoType || selectedPromo.type,
+            value: selectedPromo.value,
+            scope: selectedPromo.scope,
+            targetIds: selectedPromo.targetIds,
+            minPurchase: selectedPromo.minPurchase || 0,
+            discountAmount: totals.promoDiscount || 0,
+            serverValidated: true,
+            appliedPromoData,
+          }
+        : null;
     const loyaltyPointsData =
-      totals.loyaltyDiscount > 0
+      !isOffline && !isServerDown && totals.loyaltyDiscount > 0
         ? {
             pointsUsed: totals.loyaltyPointsUsed,
             pointsValue: loyaltyConfig.pointsToCurrencyRate,
@@ -658,61 +672,145 @@ const CartScreen = ({ navigation, route }) => {
       userName: userState.user?.name || null,
       items,
       totalItems: itemCount,
-      bnpcProducts,
-      hasBNPCItems: bnpcProducts.length > 0,
+      bnpcProducts: !isOffline && !isServerDown ? bnpcProducts : [],
+      hasBNPCItems:
+        !isOffline && !isServerDown ? bnpcProducts.length > 0 : false,
       totals: checkoutTotals,
-      discountBreakdown: {
-        bnpcDiscount: totals.bnpcDiscount,
-        promoDiscount: totals.promoDiscount,
-        loyaltyDiscount: totals.loyaltyDiscount,
-        totalDiscount: checkoutTotals.discountTotal,
-      },
-      discountSnapshot,
-      weeklyUsageSnapshot,
-      userEligibility: {
-        isPWD: userEligibility.isPWD,
-        isSenior: userEligibility.isSenior,
-        verified: isEligibleUser,
-        verificationIdType: eligibilityStatus?.idType || null,
-        discountScope: scope,
-        weeklyCaps: {
-          purchaseCap: BNPC_PURCHASE_CAP,
-          discountCap: BNPC_DISCOUNT_CAP,
-        },
-        currentUsage: {
-          purchasedUsed: weeklyUsage.bnpcAmountUsed,
-          discountUsed: weeklyUsage.discountUsed,
-          weekStart: weeklyUsage.weekStart,
-          weekEnd: weeklyUsage.weekEnd,
-        },
-      },
-      customerVerification: isEligibleUser
-        ? {
-            type: userEligibility.isPWD
-              ? "pwd"
-              : userEligibility.isSenior
-                ? "senior"
-                : null,
-            verified: isEligibleUser,
-            verificationSource: "system",
-            verificationDate: new Date().toISOString(),
-          }
-        : null,
+      discountBreakdown:
+        !isOffline && !isServerDown
+          ? {
+              bnpcDiscount: totals.bnpcDiscount,
+              promoDiscount: totals.promoDiscount,
+              loyaltyDiscount: totals.loyaltyDiscount,
+              totalDiscount: checkoutTotals.discountTotal,
+            }
+          : {
+              bnpcDiscount: 0,
+              promoDiscount: 0,
+              loyaltyDiscount: 0,
+              totalDiscount: 0,
+            },
+      discountSnapshot: !isOffline && !isServerDown ? discountSnapshot : null,
+      weeklyUsageSnapshot:
+        !isOffline && !isServerDown ? weeklyUsageSnapshot : null,
+      userEligibility:
+        !isOffline && !isServerDown
+          ? {
+              isPWD: userEligibility.isPWD,
+              isSenior: userEligibility.isSenior,
+              verified: isEligibleUser,
+              verificationIdType: eligibilityStatus?.idType || null,
+              discountScope: scope,
+              weeklyCaps: {
+                purchaseCap: BNPC_PURCHASE_CAP,
+                discountCap: BNPC_DISCOUNT_CAP,
+              },
+              currentUsage: {
+                purchasedUsed: weeklyUsage.bnpcAmountUsed,
+                discountUsed: weeklyUsage.discountUsed,
+                weekStart: weeklyUsage.weekStart,
+                weekEnd: weeklyUsage.weekEnd,
+              },
+            }
+          : null,
+      customerVerification:
+        !isOffline && !isServerDown && isEligibleUser
+          ? {
+              type: userEligibility.isPWD
+                ? "pwd"
+                : userEligibility.isSenior
+                  ? "senior"
+                  : null,
+              verified: isEligibleUser,
+              verificationSource: "system",
+              verificationDate: new Date().toISOString(),
+            }
+          : null,
       promo: promoData,
       loyaltyPoints: loyaltyPointsData,
-      pointsEarned: calculatePointsEarned(totals.finalTotal),
+      pointsEarned:
+        !isOffline && !isServerDown
+          ? calculatePointsEarned(totals.finalTotal)
+          : 0,
+      offlineMode: isOffline || isServerDown,
+      offlineNote:
+        isOffline || isServerDown
+          ? "Offline checkout: Promo and loyalty points will be applied by cashier during payment"
+          : null,
       cartSnapshot: {
         itemCount: cart.length,
         totalValue: totals.subtotal,
-        items: cart.map((i) => ({
-          productId: i.product?._id || i._id,
-          name: i.product?.name || i.name,
-          quantity: i.selectedQuantity || i.qty,
-        })),
+        // When offline or server down, use lightweight format (IDs + qty only)
+        // When online, include full product details
+        items:
+          isOffline || isServerDown
+            ? cart.map((i) => ({
+                productId: i.product?._id || i._id,
+                quantity: i.selectedQuantity || i.qty,
+              }))
+            : cart.map((i) => ({
+                productId: i.product?._id || i._id,
+                name: i.product?.name || i.name,
+                quantity: i.selectedQuantity || i.qty,
+              })),
+        offlineMode: isOffline || isServerDown,
       },
     };
 
+    console.log("📦 [CART SCREEN] Checkout data prepared");
+    console.log("📦 [CART SCREEN] Offline mode:", isOffline || isServerDown);
+    console.log(
+      "📦 [CART SCREEN] Cart snapshot:",
+      isOffline || isServerDown ? "Lightweight (IDs only)" : "Full details",
+    );
+
     try {
+      // If offline or server down, queue checkout locally
+      if (isOffline || isServerDown) {
+        console.log(
+          "🔌 [CHECKOUT] Offline mode detected - queueing checkout locally",
+        );
+
+        // Create checkout queue entry
+        const checkoutQueue = {
+          id: `checkout-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          data: checkoutData,
+          status: "pending",
+          synced: false,
+        };
+
+        // Get existing queue or create new
+        const existingQueue = await AsyncStorage.getItem("checkout_queue");
+        const queue = existingQueue ? JSON.parse(existingQueue) : [];
+        queue.push(checkoutQueue);
+
+        // Save to AsyncStorage
+        await AsyncStorage.setItem("checkout_queue", JSON.stringify(queue));
+        console.log("📝 [CHECKOUT] Queued checkout locally:", checkoutQueue.id);
+
+        // Clear cart and show success message
+        dispatch(clearCart());
+        // Alert.alert(
+        //   "Checkout Queued",
+        //   "Your checkout is queued and will be processed when your connection is restored.",
+        //   [{ text: "OK" }],
+        // );
+
+        // Navigate to QR screen with pending status
+        navigation.navigate("Shared", {
+          screen: "QR",
+          params: {
+            id: checkoutQueue.id,
+            status: "pending",
+            offlineMode: true,
+            checkoutData,
+          },
+        });
+        return;
+      }
+
+      // Online checkout - proceed normally
       const token = userState.role === "user" ? await getToken() : null;
       const queue = await checkout(checkoutData);
       navigation.navigate("Shared", {
@@ -940,7 +1038,7 @@ const CartScreen = ({ navigation, route }) => {
                 <Text style={styles.cardSubtitle}>
                   {isEligibleUser
                     ? `${userEligibility.isPWD ? "PWD" : "Senior Citizen"} · 5% off eligible BNPC items`
-                    : "Sign up for PWD/Senior benefits to unlock discounts"}
+                    : "Apply for PWD/Senior benefits to unlock discounts"}
                 </Text>
               </View>
             </View>
@@ -965,7 +1063,11 @@ const CartScreen = ({ navigation, route }) => {
         ) : (
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconContainer}>
-              <MaterialCommunityIcons name="cart-off" size={48} color="#CBD5E1" />
+              <MaterialCommunityIcons
+                name="cart-off"
+                size={48}
+                color="#CBD5E1"
+              />
             </View>
             <Text style={styles.emptyTitle}>Your cart is empty</Text>
             <Text style={styles.emptyText}>
@@ -986,7 +1088,7 @@ const CartScreen = ({ navigation, route }) => {
         )}
 
         {/* ── Promo Card ── */}
-        {cart.length > 0 && (
+        {cart.length > 0 && !isOffline && !isServerDown && (
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <View
@@ -1067,7 +1169,7 @@ const CartScreen = ({ navigation, route }) => {
         {/* ── Loyalty Points Card ── */}
         {cart.length > 0 &&
           loyaltyConfig.enabled &&
-          userState.role === "user" && (
+          userState.role === "user" && !isOffline && !isServerDown && (
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <View
@@ -1189,13 +1291,19 @@ const CartScreen = ({ navigation, route }) => {
               <>
                 <View style={styles.divider} />
                 <View style={styles.discountHeader}>
-                  <MaterialCommunityIcons name="shield-check" size={16} color="#00A86B" />
+                  <MaterialCommunityIcons
+                    name="shield-check"
+                    size={16}
+                    color="#00A86B"
+                  />
                   <Text style={styles.discountTitle}>BNPC Discount (5%)</Text>
                 </View>
 
                 {discountDetails.discountApplied > 0 && (
                   <View style={styles.summaryRow}>
-                    <Text style={styles.discountLabel}>Savings on BNPC items</Text>
+                    <Text style={styles.discountLabel}>
+                      Savings on BNPC items
+                    </Text>
                     <Text style={[styles.discountValue, { color: "#00A86B" }]}>
                       -₱{discountDetails.discountApplied.toFixed(2)}
                     </Text>
@@ -1209,7 +1317,11 @@ const CartScreen = ({ navigation, route }) => {
               <>
                 <View style={styles.divider} />
                 <View style={styles.discountHeader}>
-                  <MaterialCommunityIcons name="tag" size={16} color="#FF9800" />
+                  <MaterialCommunityIcons
+                    name="tag"
+                    size={16}
+                    color="#FF9800"
+                  />
                   <Text style={styles.discountTitle}>Promo Discount</Text>
                 </View>
                 <View style={styles.summaryRow}>
@@ -1226,7 +1338,11 @@ const CartScreen = ({ navigation, route }) => {
               <>
                 <View style={styles.divider} />
                 <View style={styles.discountHeader}>
-                  <MaterialCommunityIcons name="trophy" size={16} color="#B45309" />
+                  <MaterialCommunityIcons
+                    name="trophy"
+                    size={16}
+                    color="#B45309"
+                  />
                   <Text style={styles.discountTitle}>Loyalty Discount</Text>
                 </View>
                 <View style={styles.summaryRow}>
@@ -1293,11 +1409,17 @@ const CartScreen = ({ navigation, route }) => {
       >
         <View style={styles.confirmOverlay}>
           <View style={styles.confirmCard}>
-            <MaterialCommunityIcons name="cart-check" size={48} color="#00A86B" style={styles.confirmIcon} />
+            <MaterialCommunityIcons
+              name="cart-check"
+              size={48}
+              color="#00A86B"
+              style={styles.confirmIcon}
+            />
             <Text style={styles.confirmTitle}>Confirm Your Cart</Text>
             <Text style={styles.confirmText}>
-              You have {displayItemCount} item{displayItemCount !== 1 ? "s" : ""} in your cart. 
-              Please verify before proceeding to checkout.
+              You have {displayItemCount} item
+              {displayItemCount !== 1 ? "s" : ""} in your cart. Please verify
+              before proceeding to checkout.
             </Text>
 
             <TouchableOpacity
@@ -1306,7 +1428,9 @@ const CartScreen = ({ navigation, route }) => {
               activeOpacity={0.8}
             >
               <MaterialCommunityIcons
-                name={confirmChecked ? "checkbox-marked" : "checkbox-blank-outline"}
+                name={
+                  confirmChecked ? "checkbox-marked" : "checkbox-blank-outline"
+                }
                 size={24}
                 color={confirmChecked ? "#00A86B" : "#94A3B8"}
               />

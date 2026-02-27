@@ -2,6 +2,11 @@
 import axios from "axios";
 import { API_URL } from "../constants/config";
 import { getToken } from "../utils/authUtil";
+import {
+  apiFetch,
+  handleApiError,
+  markServerUp,
+} from "../utils/apiErrorHandler";
 
 // Create axios instance with base configuration
 const axiosInstance = axios.create({
@@ -9,6 +14,7 @@ const axiosInstance = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  timeout: 10000, // 10 second timeout for all requests
 });
 
 // Add auth token to all requests
@@ -23,13 +29,14 @@ axiosInstance.interceptors.request.use(async (config) => {
 axiosInstance.interceptors.response.use(
   (response) => {
     console.log("Axios response:", response.status, response.config.url);
+    markServerUp();
     return response;
   },
   (error) => {
     console.error("Axios error:", error.message);
     console.error("Error config:", error.config?.url);
     console.error("Error response:", error.response?.data);
-    return Promise.reject(error);
+    return Promise.reject(handleApiError(error));
   },
 );
 
@@ -193,17 +200,13 @@ export const updateProfile = async (data) => {
     }
   }
 
-  const response = await fetch(`${API_URL}api/v1/cashier/profile`, {
+  const response = await apiFetch(`${API_URL}api/v1/cashier/profile`, {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${token}`,
     },
     body: formData,
   });
-
-  if (!response.ok) {
-    throw new Error("Failed to update profile");
-  }
 
   const result = await response.json();
   return result.result;
