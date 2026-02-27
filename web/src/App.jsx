@@ -1,6 +1,6 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import LoginPage from "./pages/auth/LoginPage";
+import AuthPage from "./pages/auth/AuthPage";
 import Home from "./pages/Home";
 import AboutUs from "./pages/AboutUs";
 import adminRoute from "./routes/adminRoute.jsx";
@@ -19,7 +19,8 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/about-us" element={<AboutUs />} />
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/login" element={<AuthPage />} />
+        <Route path="/register" element={<AuthPage />} />
         
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminLayout />}>

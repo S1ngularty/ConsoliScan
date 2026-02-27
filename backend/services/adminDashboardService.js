@@ -10,15 +10,18 @@ const CheckoutQueue = require("../models/checkoutQueueModel");
 // ==================== DASHBOARD SUMMARY ====================
 const getDashboardSummary = async () => {
   try {
-    const totalUsers = await User.countDocuments({ role: "user" });
-    const totalProducts = await Product.countDocuments();
+    const totalUsers = await User.countDocuments({
+      role: "user",
+      status: "active",
+    });
+    const totalProducts = await Product.countDocuments({ deletedAt: null });
     const totalOrders = await Order.countDocuments();
     const totalCategories = await Category.countDocuments();
 
-    // Revenue calculation - Use finalAmountPaid and CONFIRMED status
+    // Revenue calculation - Use finalAmountPaid and include both CONFIRMED and COMPLETED orders
     const revenueData = await Order.aggregate([
       {
-        $match: { status: "CONFIRMED" },
+        $match: { status: { $in: ["CONFIRMED", "COMPLETED"] } },
       },
       {
         $group: {
@@ -225,6 +228,11 @@ const getProductAnalytics = async (params = {}) => {
       },
       { $unwind: "$product" },
       {
+        $match: {
+          "product.deletedAt": null,
+        },
+      },
+      {
         $project: {
           _id: 1,
           productName: "$product.name",
@@ -365,11 +373,17 @@ const getUserAnalytics = async (params = {}) => {
       if (endDate) dateFilter.createdAt.$lte = new Date(endDate);
     }
 
-    const totalUsers = await User.countDocuments({ role: "user" });
-    const newUsers = await User.countDocuments(dateFilter);
+    const totalUsers = await User.countDocuments({
+      role: "user",
+      status: "active",
+    });
+    const newUsers = await User.countDocuments({ ...dateFilter, role: "user" });
     const activeUsers = await ActivityLog.distinct("user");
 
     const usersByRole = await User.aggregate([
+      {
+        $match: { status: "active" },
+      },
       {
         $group: {
           _id: "$role",
@@ -379,7 +393,12 @@ const getUserAnalytics = async (params = {}) => {
     ]);
 
     const topSpenders = await Order.aggregate([
-      { $match: { status: "CONFIRMED", user: { $ne: null } } },
+      {
+        $match: {
+          status: { $in: ["CONFIRMED", "COMPLETED"] },
+          user: { $ne: null },
+        },
+      },
       {
         $group: {
           _id: "$user",
@@ -460,17 +479,24 @@ const getOrderAnalytics = async (params = {}) => {
       },
     ]);
 
-    // Get payment method breakdown from cashTransaction
+    // Get payment method breakdown - dynamically determine payment method
     const orderPaymentMethods = await Order.aggregate([
       {
         $addFields: {
           dateField: { $ifNull: ["$confirmedAt", "$createdAt"] },
+          paymentMethod: {
+            $cond: {
+              if: { $gt: ["$cashTransaction.cashReceived", 0] },
+              then: "cash",
+              else: "other",
+            },
+          },
         },
       },
       { $match: dateFilter },
       {
         $group: {
-          _id: "cash", // Cash is the primary method in your system
+          _id: "$paymentMethod",
           count: { $sum: 1 },
           totalAmount: { $sum: "$finalAmountPaid" },
         },
@@ -511,6 +537,9 @@ const getInventoryAnalytics = async () => {
   try {
     const totalStock = await Product.aggregate([
       {
+        $match: { deletedAt: null },
+      },
+      {
         $group: {
           _id: null,
           totalUnits: { $sum: "$stockQuantity" },
@@ -521,16 +550,25 @@ const getInventoryAnalytics = async () => {
       },
     ]);
 
-    const lowStockProducts = await Product.find({ stockQuantity: { $lt: 10 } })
+    const lowStockProducts = await Product.find({
+      stockQuantity: { $lt: 10 },
+      deletedAt: null,
+    })
       .select("name sku stockQuantity price")
       .sort({ stockQuantity: 1 })
       .limit(10);
 
-    const outOfStockProducts = await Product.find({ stockQuantity: 0 })
+    const outOfStockProducts = await Product.find({
+      stockQuantity: 0,
+      deletedAt: null,
+    })
       .select("name sku price")
       .limit(10);
 
     const stockByCategory = await Product.aggregate([
+      {
+        $match: { deletedAt: null },
+      },
       {
         $group: {
           _id: "$category",

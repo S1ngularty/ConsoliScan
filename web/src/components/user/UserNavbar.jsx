@@ -1,19 +1,36 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../../styles/css/NavBar.css";
+import axios from "axios"
 
 const UserNavbar = () => {
   const navigate = useNavigate();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     sessionStorage.removeItem("isLogin");
-    navigate("/login");
+    try {
+      console.log("reached")
+      const isLogout = await axios.post(
+        `${import.meta.env.VITE_APP_API}api/v1/logout`,
+        {},
+        { withCredentials: true },
+      );
+      if (isLogout.data.success) navigate("/");
+    } catch (error) {
+      console.log(error);
+    } finally {
+      navigate("/login");
+    }
   };
 
   return (
     <header className="navbar user-navbar">
       <div className="navbar__container">
-        <Link to="/user/dashboard" className="navbar__brand" style={{ textDecoration: 'none' }}>
+        <Link
+          to="/user/dashboard"
+          className="navbar__brand"
+          style={{ textDecoration: "none" }}
+        >
           <span className="brand__name">Consoliscan</span>
           <span className="brand__dotset" aria-hidden="true">
             <span className="dot dot--1"></span>
@@ -23,20 +40,32 @@ const UserNavbar = () => {
         </Link>
 
         <nav className="navbar__links" aria-label="User Navigation">
-          <Link to="/user/dashboard" className="nav__link">Dashboard</Link>
-          <Link to="/user/orders" className="nav__link">Orders</Link>
-          <Link to="/user/saved" className="nav__link">Saved</Link>
-          <Link to="/user/loyalty" className="nav__link">Loyalty</Link>
-          <Link to="/user/help" className="nav__link">Help</Link>
-          <Link to="/user/profile" className="nav__link">Profile</Link>
+          <Link to="/user/dashboard" className="nav__link">
+            Dashboard
+          </Link>
+          <Link to="/user/orders" className="nav__link">
+            Orders
+          </Link>
+          <Link to="/user/saved" className="nav__link">
+            Saved
+          </Link>
+          <Link to="/user/loyalty" className="nav__link">
+            Loyalty
+          </Link>
+          <Link to="/user/help" className="nav__link">
+            Help
+          </Link>
+          <Link to="/user/profile" className="nav__link">
+            Profile
+          </Link>
         </nav>
 
         <div className="navbar__actions">
-          <button 
-            className="btn btn--login" 
-            type="button" 
+          <button
+            className="btn btn--login"
+            type="button"
             onClick={handleLogout}
-            style={{ backgroundColor: '#DC2626' }} // Red for logout
+            style={{ backgroundColor: "#DC2626" }} // Red for logout
           >
             Log Out
           </button>

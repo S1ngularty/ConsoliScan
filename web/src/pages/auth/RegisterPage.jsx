@@ -1,35 +1,53 @@
 import React, { useState } from "react";
-import axios from "axios";
-import "../../styles/css/LoginStyle.css";
-import { googleSignIn, autoLogin, signIn } from "../../services/loginService.js";
+import "../../styles/css/LoginStyle.css"; // Reuse login styles
+import { register, googleSignIn } from "../../services/loginService.js";
 import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 
-function LoginPage() {
-  const [credentials, setCredentials] = React.useState({
+function RegisterPage() {
+  const [formData, setFormData] = useState({
+    name: "",
     email: "",
     password: "",
+    confirmPassword: "",
+    age: "",
+    sex: "male" // default
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  React.useEffect(() => {
-    autoLogin(navigate);
-  }, []);
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
-  const submitCredentials = async () => {
-    if (!credentials.email || !credentials.password) {
-      setError("Please fill in all fields");
+  const submitRegistration = async () => {
+    if (!formData.name || !formData.email || !formData.password || !formData.age) {
+      setError("Please fill in all required fields");
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match");
       return;
     }
 
     try {
       setLoading(true);
       setError("");
-      await signIn(credentials.email, credentials.password, navigate);
+      
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        age: parseInt(formData.age),
+        sex: formData.sex
+      };
+
+      await register(payload, navigate);
     } catch (err) {
-      setError(err.message || "Login failed. Please try again.");
+      setError(err.message || "Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -58,47 +76,88 @@ function LoginPage() {
             </h1>
           </div>
 
-          <h2>Welcome back</h2>
-          <p className="subtitle">Please enter your details.</p>
+          <h2>Create Account</h2>
+          <p className="subtitle">Join us for smarter shopping.</p>
 
           {error && <div className="error-message" style={{ color: 'red', marginBottom: '10px' }}>{error}</div>}
+
+          <div className="input-group">
+            <label>Full Name</label>
+            <input
+              type="text"
+              name="name"
+              placeholder="John Doe"
+              onChange={handleChange}
+              value={formData.name}
+              className="animated-input"
+            />
+          </div>
 
           <div className="input-group">
             <label>Email</label>
             <input
               type="email"
+              name="email"
               placeholder="name@company.com"
-              onChange={(e) =>
-                setCredentials((p) => ({ ...p, email: e.target.value }))
-              }
-              value={credentials.email}
+              onChange={handleChange}
+              value={formData.email}
               className="animated-input"
             />
+          </div>
+
+          <div className="input-row" style={{ display: 'flex', gap: '10px' }}>
+            <div className="input-group" style={{ flex: 1 }}>
+              <label>Age</label>
+              <input
+                type="number"
+                name="age"
+                placeholder="25"
+                onChange={handleChange}
+                value={formData.age}
+                className="animated-input"
+              />
+            </div>
+            <div className="input-group" style={{ flex: 1 }}>
+              <label>Gender</label>
+              <select
+                name="sex"
+                onChange={handleChange}
+                value={formData.sex}
+                className="animated-input"
+                style={{ height: '48px', background: 'transparent' }}
+              >
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+              </select>
+            </div>
           </div>
 
           <div className="input-group">
             <label>Password</label>
             <input
               type="password"
+              name="password"
               placeholder="••••••••"
-              onChange={(e) =>
-                setCredentials((p) => ({ ...p, password: e.target.value }))
-              }
-              value={credentials.password}
+              onChange={handleChange}
+              value={formData.password}
               className="animated-input"
             />
           </div>
 
-          <div className="actions">
-            <div className="remember-me">
-              <input type="checkbox" id="remember" />
-              <label htmlFor="remember">Remember me</label>
-            </div>
-            <span className="forgot-password">Forgot password?</span>
+          <div className="input-group">
+            <label>Confirm Password</label>
+            <input
+              type="password"
+              name="confirmPassword"
+              placeholder="••••••••"
+              onChange={handleChange}
+              value={formData.confirmPassword}
+              className="animated-input"
+            />
           </div>
 
-          <button className="login-button" onClick={submitCredentials} disabled={loading}>
-            {loading ? <Loader2 className="animate-spin" size={18} /> : "Sign In"}
+          <button className="login-button" onClick={submitRegistration} disabled={loading}>
+            {loading ? <Loader2 className="animate-spin" size={18} /> : "Sign Up"}
           </button>
 
           <div className="divider">
@@ -116,14 +175,13 @@ function LoginPage() {
           </button>
 
           <p className="footer-text">
-            Don't have an account? <span className="link" onClick={() => navigate('/register')} style={{ cursor: 'pointer' }}>Sign up for free</span>
+            Already have an account? <span className="link" onClick={() => navigate('/login')} style={{ cursor: 'pointer' }}>Sign in</span>
           </p>
         </div>
       </div>
 
       {/* RIGHT SIDE: Branding (2/3 width) */}
       <div className="hero-section">
-        {/* Decorative Floating Icons */}
         <div className="floating-icon icon-1">
           <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
         </div>
@@ -153,7 +211,7 @@ function LoginPage() {
             <span style={{ fontSize: "48px", fontWeight: "800", letterSpacing: "-1px" }}>ConsoliScan</span>
           </div>
           <p className="sub-header">
-            The future of smart shopping consolidation.
+            Join the future of smart shopping consolidation.
           </p>
         </div>
       </div>
@@ -161,4 +219,4 @@ function LoginPage() {
   );
 }
 
-export default LoginPage;
+export default RegisterPage;

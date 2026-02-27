@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, TrendingUp, TrendingDown, History, Gift, ChevronRight, Trophy, Heart } from 'lucide-react';
+import { Star, TrendingUp, TrendingDown, History, Gift, ChevronRight, Trophy, Heart, X, CheckCircle } from 'lucide-react';
 import "../../styles/css/LoyaltyPoints.css";
 import { fetchHomeData, fetchOrders } from "../../services/customerService";
 import { useNavigate } from "react-router-dom";
@@ -8,6 +8,7 @@ const LoyaltyPoints = () => {
   const [loading, setLoading] = useState(true);
   const [points, setPoints] = useState(0);
   const [history, setHistory] = useState([]);
+  const [showRedeemModal, setShowRedeemModal] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -94,7 +95,7 @@ const LoyaltyPoints = () => {
             ></div>
           </div>
         </div>
-        <button className="pill-btn" onClick={() => navigate('/user/rewards')}>
+        <button className="pill-btn" onClick={() => setShowRedeemModal(true)}>
           <Gift size={16} />
           <span>Redeem Rewards</span>
           <ChevronRight size={16} />
@@ -142,7 +143,7 @@ const LoyaltyPoints = () => {
           </div>
           <span className="action-title">Order History</span>
         </div>
-        <div className="action-card" onClick={() => navigate('/user/rewards')}>
+        <div className="action-card" onClick={() => setShowRedeemModal(true)}>
           <div className="action-icon">
             <Gift size={24} />
           </div>
@@ -155,6 +156,70 @@ const LoyaltyPoints = () => {
           <span className="action-title">Saved Items</span>
         </div>
       </div>
+
+      {/* Redeem Rewards Modal */}
+      {showRedeemModal && (
+        <div className="modal-overlay">
+          <div className="modal-container">
+            <div className="modal-header">
+              <h2>How to Redeem Rewards</h2>
+              <button className="close-btn" onClick={() => setShowRedeemModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              <div className="redeem-steps">
+                <div className="step-item">
+                  <div className="step-icon">
+                    <Star size={24} />
+                  </div>
+                  <div className="step-content">
+                    <h4>Earn Points</h4>
+                    <p>Earn 1 point for every ₱1 spent on eligible items.</p>
+                  </div>
+                </div>
+                
+                <div className="step-item">
+                  <div className="step-icon">
+                    <Trophy size={24} />
+                  </div>
+                  <div className="step-content">
+                    <h4>Reach Tiers</h4>
+                    <p>Accumulate points to unlock higher tiers for better conversion rates.</p>
+                  </div>
+                </div>
+
+                <div className="step-item">
+                  <div className="step-icon">
+                    <CheckCircle size={24} />
+                  </div>
+                  <div className="step-content">
+                    <h4>Checkout Redemption</h4>
+                    <p>On the checkout page, look for the "Use Points" option. You can apply your points to get a direct discount on your total bill.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="conversion-info">
+                <h4>Current Conversion Rate</h4>
+                <div className="rate-card">
+                  <span className="rate-points">100 Points</span>
+                  <span className="rate-equals">=</span>
+                  <span className="rate-currency">₱1.00 Discount</span>
+                </div>
+                <p className="note">*Maximum redemption of 30% of total order value.</p>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="submit-btn" onClick={() => setShowRedeemModal(false)}>
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

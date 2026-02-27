@@ -6,7 +6,6 @@ import {
   Package,
   TrendingUp,
   RefreshCw,
-  DollarSign
 } from "lucide-react";
 import {
   BarChart,
@@ -1321,12 +1320,6 @@ const ReportPage = () => {
           onClick={() => setActiveTab("sales")}
         >
           <TrendingUp size={16} /> Sales &amp; Revenue
-        </button>
-        <button 
-          className={`tab-btn ${activeTab === "profit" ? "active" : ""}`}
-          onClick={() => setActiveTab("profit")}
-        >
-          <DollarSign size={18} /> Profit & Markup
         </button>
         <button
           className={`tab-btn${activeTab === "users" ? " active" : ""}`}

@@ -176,16 +176,16 @@ export async function applyEligibility(id, data) {
     }
 
     // Pass the ID as a URL parameter, NOT in the body
-    const response = await axios.post(`api/v1/eligible/${id}`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    const response = await axios.post(`api/v1/eligible/${id}`, formData);
 
     if (!response) throw new Error("Failed to send request");
     return response.data;
   } catch (error) {
     console.error("Apply eligibility error:", error);
+    if (error.response) {
+      console.error("Server response:", error.response.data);
+      console.error("Status code:", error.response.status);
+    }
     throw error;
   }
 }

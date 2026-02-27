@@ -4,32 +4,47 @@ const { uploadImage, deleteAssets } = require("../utils/cloundinaryUtil");
 const { createLog } = require("./activityLogsService");
 
 exports.create = async (request) => {
-  const { userId } = request.params;
-  console.log(userId)
-  if (!request.body) throw new Error("empty request body");
-  // console.log(request.body);
-  // console.log(request.files);
-  const { idFront, idBack, userPhoto } = request.files;
-  if (!idFront) throw new Error("front id image is required");
-  if (!idBack) throw new Error("back id image is required");
-  if (!userPhoto) throw new Error("user photo id image is required");
+  try {
+    const { userId } = request.params;
+    console.log("Processing eligibility for userId:", userId);
 
-  let path = `EligibleIds/${userId}`;
-  let uploadedIdFront = await uploadImage(idFront, path);
-  let uploadedIdBack = await uploadImage(idBack, path);
-  let uploadedUserPhoto = await uploadImage(userPhoto, path);
+    if (!request.body) throw new Error("Empty request body");
+    if (!request.files) throw new Error("No files uploaded");
 
-  // console.log(uploadedIdFront, uploadedIdBack, uploadedUserPhoto);
-  request.body.user = userId
-  request.body.idImage = {
-    front: uploadedIdFront,
-    back: uploadedIdBack,
-  };
-  request.body.userPhoto = uploadedUserPhoto;
+    const { idFront, idBack, userPhoto } = request.files;
+    
+    // Validate files existence
+    if (!idFront || idFront.length === 0) throw new Error("Front ID image is required");
+    if (!idBack || idBack.length === 0) throw new Error("Back ID image is required");
+    if (!userPhoto || userPhoto.length === 0) throw new Error("User photo is required");
 
-  const created = await Eligible.create(request.body);
+    let path = `EligibleIds/${userId}`;
+    
+    // Upload images
+    const [uploadedIdFront, uploadedIdBack, uploadedUserPhoto] = await Promise.all([
+      uploadImage(idFront, path),
+      uploadImage(idBack, path),
+      uploadImage(userPhoto, path)
+    ]);
 
-  return request.body;
+    // Construct the payload
+    const eligibilityData = {
+      ...request.body,
+      user: userId,
+      idImage: {
+        front: uploadedIdFront,
+        back: uploadedIdBack,
+      },
+      userPhoto: uploadedUserPhoto,
+    };
+
+    // Create record
+    const created = await Eligible.create(eligibilityData);
+    return created;
+  } catch (error) {
+    console.error("Eligibility Creation Error:", error);
+    throw error;
+  }
 };
 
 exports.getAll = async (request) => {
