@@ -85,9 +85,10 @@ const AboutUs = () => {
             </div>
             <h3>Our Mission</h3>
             <p>
-              To provide a smart, accessible tool that simplifies the grocery shopping experience. 
-              We aim to help users track their purchases, reduce food waste, and make smarter, 
-              budget-friendly decisions through innovative technology.
+              To provide grocery shoppers with a smart and user-friendly platform that simplifies 
+              purchasing decisions, helps them track spending, manage shopping lists, and make budget-conscious choices. 
+              We aim to enhance convenience, reduce unnecessary purchases,
+              and support more mindful consumption through accessible technology.
             </p>
           </div>
           <div className="mv-card">
@@ -96,9 +97,9 @@ const AboutUs = () => {
             </div>
             <h3>Our Vision</h3>
             <p>
-              We envision a world where technology bridges the gap between consumption and sustainability. 
-              By empowering individuals with data-driven insights, we hope to foster a community 
-              conscious of their shopping habits and environmental impact.
+              We envision a future where grocery shopping is seamless, informed, and empowering. 
+              By giving users meaningful insights into their buying habits and expenses, 
+              we strive to promote smarter spending, reduced waste, and a more responsible approach to everyday consumption.
             </p>
           </div>
         </div>

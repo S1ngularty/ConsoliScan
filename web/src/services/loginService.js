@@ -2,6 +2,39 @@ import { app } from "../configs/firebase.js";
 import { signInWithPopup, getAuth, GoogleAuthProvider } from "firebase/auth";
 import axios from "axios";
 
+export async function signIn(email, password, navigate) {
+  try {
+    const response = await axios.post(
+      `${import.meta.env.VITE_APP_API}api/v1/login`,
+      { email, password },
+      {
+        headers: { "Content-Type": "application/json" },
+        withCredentials: true,
+      }
+    );
+
+    if (!response.data.success) {
+      throw new Error(response.data.message || "Login failed");
+    }
+
+    const data = response.data;
+    sessionStorage.setItem("isLogin", "true");
+
+    // Redirect based on role
+    const role = data.user?.role || data.role;
+    if (role === "admin") {
+      navigate("/admin/dashboard");
+    } else {
+      navigate("/user/dashboard");
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Login Error:", error.response?.data?.message || error.message);
+    throw new Error(error.response?.data?.message || "Invalid email or password");
+  }
+}
+
 export async function googleSignIn(navigate) {
   try {
     const auth = getAuth(app);
@@ -23,7 +56,14 @@ export async function googleSignIn(navigate) {
       throw new Error("failed to authecticate, please try again");
     const data = authenticate.data;
     sessionStorage.setItem("isLogin","true")
-    navigate("/admin/dashboard");
+    
+    // Redirect based on role
+    if (data.user?.role === 'admin' || data.role === 'admin') {
+      navigate("/admin/dashboard");
+    } else {
+      navigate("/user/dashboard");
+    }
+    
     return true;
   } catch (error) {
     return console.log(error);
@@ -39,5 +79,38 @@ export async function autoLogin(navigate) {
   if (!authenticate) throw new Error("failed to authenticate using token");
   const data = authenticate.data;
   sessionStorage.setItem("isLogin","true")
-  navigate("/admin/dashboard");
+  
+  if (data.user?.role === 'admin' || data.role === 'admin') {
+    navigate("/admin/dashboard");
+  } else {
+    navigate("/user/dashboard");
+  }
+}
+
+export async function register(userData, navigate) {
+  try {
+    const response = await axios.post(
+      `${import.meta.env.VITE_APP_API}api/v1/register`,
+      userData,
+      {
+        headers: { "Content-Type": "application/json" },
+        withCredentials: true,
+      }
+    );
+
+    if (!response.data.success) {
+      throw new Error(response.data.message || "Registration failed");
+    }
+
+    const data = response.data;
+    sessionStorage.setItem("isLogin", "true");
+
+    // Redirect to user dashboard
+    navigate("/user/dashboard");
+
+    return true;
+  } catch (error) {
+    console.error("Registration Error:", error.response?.data?.message || error.message);
+    throw new Error(error.response?.data?.message || "Registration failed");
+  }
 }

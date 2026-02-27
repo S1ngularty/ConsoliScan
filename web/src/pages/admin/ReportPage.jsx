@@ -69,6 +69,9 @@ const PIE_COLORS = [
   "#D8A33B",
   C.red,
   C.blue,
+  "#8884d8",
+  "#82ca9d",
+  "#ffc658",
 ];
 const STATUS_COLOR = {
   CONFIRMED: "#10b981",
@@ -725,6 +728,78 @@ const ReportPage = () => {
   );
 
   // ════════════════════════════════════════════════════════════════════════════
+  // TAB: PROFIT & MARKUP
+  // ════════════════════════════════════════════════════════════════════════════
+  const renderProfit = () => {
+    // Calculate simulated profit based on 20% markup
+    const profitData = (data.salesData || []).map(item => ({
+      name: shortDate(item._id?.date || item.date),
+      revenue: item.totalSales || 0,
+      profit: (item.totalSales || 0) * 0.2
+    }));
+
+    return (
+      <>
+        <SectionLabel text="Profit Analysis" />
+        <div className="rp-kpi-row">
+          <KpiCard
+            label="Estimated Gross Profit"
+            value={currency.format(totalRevenue * 0.2)}
+            sub="based on 20% margin"
+            accent={C.green}
+          />
+          <KpiCard
+            label="Net Margin"
+            value="20.0%"
+            sub="estimated average"
+            accent={C.teal}
+          />
+        </div>
+
+        <Panel
+          title="Gross Profit Trends"
+          sub="Estimated 20% Markup Analysis"
+          accent={C.green}
+          wide
+        >
+          {loading ? (
+            <Skeleton h={280} />
+          ) : (
+            <div className="rp-chart" style={{ height: 280 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={profitData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis dataKey="name" {...axisProps} dy={6} />
+                  <YAxis {...axisProps} width={60} tickFormatter={yFmt} />
+                  <Tooltip content={<ChartTooltip prefix="₱" />} />
+                  <Bar dataKey="profit" fill={C.green} radius={[4, 4, 0, 0]} name="Profit" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </Panel>
+
+        <Panel
+          title="Profit & Discount Log"
+          sub="Detailed breakdown"
+          accent={C.green}
+          wide
+        >
+          <DataTable
+            headers={["Date", "Total Revenue", "Est. Profit (20%)", "PWD/Senior Disc. (Est. 5%)"]}
+            rows={profitData.map(item => [
+              item.name,
+              currency.format(item.revenue),
+              <span style={{ color: C.green, fontWeight: 600 }}>{currency.format(item.profit)}</span>,
+              <span style={{ color: C.red }}>{currency.format(item.revenue * 0.05)}</span>
+            ])}
+          />
+        </Panel>
+      </>
+    );
+  };
+
+  // ════════════════════════════════════════════════════════════════════════════
   // TAB: USER INSIGHTS
   // Contains: Customer Insights from AnalyticsPage
   // ════════════════════════════════════════════════════════════════════════════
@@ -957,6 +1032,7 @@ const ReportPage = () => {
               rows={(data.products || []).map((item) => [
                 item.productName || "Unnamed",
                 (item.totalSold || 0).toLocaleString(),
+                currency.format(item.totalRevenue || 0),
                 currency.format(item.totalRevenue || 0),
               ])}
               emptyMsg="No product data."
@@ -1268,6 +1344,7 @@ const ReportPage = () => {
       {/* ── Tab body ────────────────────────────────────────────────────────── */}
       <div className="rp-tab-body">
         {activeTab === "sales" && renderSales()}
+        {activeTab === "profit" && renderProfit()}
         {activeTab === "users" && renderUsers()}
         {activeTab === "products" && renderProducts()}
         {activeTab === "inventory" && renderInventory()}

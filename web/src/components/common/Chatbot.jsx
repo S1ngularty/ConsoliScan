@@ -391,7 +391,7 @@ const Chatbot = () => {
       subtext: "What else can I help you with?",
       timestamp: new Date(),
     };
-    setMessages((prev) => [...prev, botReply]);
+    setMessages([...messages, botReply]);
     setCurrentQuestions(faqDatabase.main.questions);
   };
 
