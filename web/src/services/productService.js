@@ -11,17 +11,15 @@ export const fetchProducts = async () => {
   });
   if (!result) throw new Error("failed to fetch the products");
   const data = result.data.result;
-  
+
   return data;
 };
 
 export const handleProductRequest = async (data, files, requestMethod) => {
   if (!data) throw new Error("data is undefined");
-  // console.log(data)
   const formData = new FormData();
   for (let pair of Object.entries(data)) {
     if (pair[0] === "images") continue;
-    // console.log(pair)
     formData.append(pair[0], pair[1]);
   }
   if (files) {
@@ -66,10 +64,12 @@ export const temporaryDelete = async (productId) => {
   return true;
 };
 
-export const updateStock = async(stockQuantity,productId)=>{
-  const result = await axios.put(`api/v1/product/stocks/${productId}`,{stockQuantity})
-  return result.data.result
-}
+export const updateStock = async (stockQuantity, productId) => {
+  const result = await axios.put(`api/v1/product/stocks/${productId}`, {
+    stockQuantity,
+  });
+  return result.data.result;
+};
 
 export const getCategories = async () => {
   const result = await axios.get("/api/v1/category");

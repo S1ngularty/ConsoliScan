@@ -1,7 +1,7 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../../styles/css/NavBar.css";
-import axios from "axios"
+import axios from "axios";
 
 const UserNavbar = () => {
   const navigate = useNavigate();
@@ -9,7 +9,7 @@ const UserNavbar = () => {
   const handleLogout = async () => {
     sessionStorage.removeItem("isLogin");
     try {
-      console.log("reached")
+      // Component loaded
       const isLogout = await axios.post(
         `${import.meta.env.VITE_APP_API}api/v1/logout`,
         {},
@@ -17,7 +17,7 @@ const UserNavbar = () => {
       );
       if (isLogout.data.success) navigate("/");
     } catch (error) {
-      console.log(error);
+      console.error(error);
     } finally {
       navigate("/login");
     }

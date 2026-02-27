@@ -40,10 +40,6 @@ export default function RootNavigator() {
   const network = useSelector((state) => state.network);
   const dispatch = useDispatch();
 
-  //  useEffect(() => {
-  //   console.log(loading, isLoggedIn, role);
-  // }, [loading, isLoggedIn, role]);
-
   const [appIsReady, setAppIsReady] = useState(false);
   const wasOnlineRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
@@ -74,7 +70,6 @@ export default function RootNavigator() {
               text: "Cancel",
               onPress: () => {
                 // Do nothing - stay in app
-                console.log("🔙 [BACK HANDLER] User cancelled exit");
               },
               style: "cancel",
             },
@@ -82,7 +77,6 @@ export default function RootNavigator() {
               text: "Exit",
               onPress: () => {
                 // Allow app to exit
-                console.log("🚪 [BACK HANDLER] User confirmed exit");
                 BackHandler.exitApp();
               },
               style: "destructive",
@@ -105,7 +99,6 @@ export default function RootNavigator() {
       appStateRef.current === "active" &&
       nextAppState.match(/inactive|background/)
     ) {
-      console.log("📱 [APP STATE] App going to background");
       // Save current session to AsyncStorage so we can recover it if app is force quit
       if (role === ROLES.Customer && cartState.sessionActive) {
         const sessionSnapshot = {
@@ -117,9 +110,6 @@ export default function RootNavigator() {
           "session_snapshot",
           JSON.stringify(sessionSnapshot),
         );
-        console.log(
-          "💾 [APP STATE] Session snapshot saved for potential recovery",
-        );
       }
     }
 
@@ -129,7 +119,6 @@ export default function RootNavigator() {
       appStateRef.current.match(/inactive|background/) &&
       nextAppState === "active"
     ) {
-      console.log("📱 [APP STATE] App resumed from background");
       // No action needed here - initialization effect handles recovery on app start
     }
     appStateRef.current = nextAppState;
@@ -146,8 +135,6 @@ export default function RootNavigator() {
           const sessionSnapshot =
             await AsyncStorage.getItem("session_snapshot");
           if (sessionSnapshot) {
-            console.log("🛑 [ROOT NAV] Detected stale session from force quit");
-
             // Show alert to ask if user wants to resume or start fresh
             return new Promise((resolve) => {
               Alert.alert(
@@ -157,17 +144,10 @@ export default function RootNavigator() {
                   {
                     text: "Cancel",
                     onPress: async () => {
-                      console.log("🔄 [ROOT NAV] User chose to resume session");
                       // Load the previous session
                       try {
                         await dispatch(loadLocalCart());
-                        console.log("✅ [ROOT NAV] Session restored");
-                      } catch (error) {
-                        console.error(
-                          "❌ [ROOT NAV] Failed to load session:",
-                          error,
-                        );
-                      }
+                      } catch (error) {}
                       resolve();
                     },
                     style: "cancel",
@@ -175,18 +155,11 @@ export default function RootNavigator() {
                   {
                     text: "Continue",
                     onPress: async () => {
-                      console.log("🗑️ [ROOT NAV] User chose to start fresh");
                       // Clear the stale session - don't load it
                       try {
                         await AsyncStorage.removeItem("session_snapshot");
                         await AsyncStorage.removeItem("cart");
-                        console.log("✅ [ROOT NAV] Stale session cleared");
-                      } catch (error) {
-                        console.error(
-                          "❌ [ROOT NAV] Failed to clear session:",
-                          error,
-                        );
-                      }
+                      } catch (error) {}
                       resolve();
                     },
                   },
@@ -197,23 +170,15 @@ export default function RootNavigator() {
             // No stale session, just load normally (will be false if no previous cart)
             try {
               await dispatch(loadLocalCart());
-              console.log("✅ [ROOT NAV] Cart loaded from storage");
-            } catch (error) {
-              console.error("❌ [ROOT NAV] Failed to load cart:", error);
-            }
+            } catch (error) {}
           }
-        } catch (error) {
-          console.error("❌ [ROOT NAV] Error during initialization:", error);
-        }
+        } catch (error) {}
       }
 
       // After session recovery check, load catalog and promos for all users
       try {
         await dispatch(productThunks.fetchCatalogFromServer());
-        console.log("✅ [ROOT NAV] Catalog fetched");
-      } catch (error) {
-        console.error("❌ [ROOT NAV] Failed to fetch catalog:", error);
-      }
+      } catch (error) {}
 
       // Sync promos for customer
       if (role === ROLES.Customer) {
@@ -224,13 +189,7 @@ export default function RootNavigator() {
             return limit <= 0 && promo.active !== false;
           });
           await writePromos(unlimitedPromos);
-          console.log(
-            "🔖 [ROOT NAV] Promo catalog synced:",
-            unlimitedPromos.length,
-          );
-        } catch (error) {
-          console.log("⚠️ [ROOT NAV] Failed to sync promos:", error);
-        }
+        } catch (error) {}
       }
     };
 
@@ -246,7 +205,6 @@ export default function RootNavigator() {
       dispatch(setOffline(offline));
       if (!offline) {
         dispatch(setServerDown(false));
-        console.log("📶 [ROOT NAV] Network restored - checking pending sync");
         // Check for pending cart sync when coming back online
         checkPendingCartSync();
       }
@@ -257,7 +215,6 @@ export default function RootNavigator() {
   useEffect(() => {
     const isOnline = !network.isOffline && !network.isServerDown;
     if (isOnline && !wasOnlineRef.current) {
-      console.log("📶 [ROOT NAV] Network state online - triggering sync");
       checkPendingCartSync();
     }
     wasOnlineRef.current = isOnline;
@@ -266,19 +223,12 @@ export default function RootNavigator() {
   // Check and trigger pending sync for checkouts and offline transactions
   const checkPendingCartSync = async () => {
     try {
-      console.log("🔎 [ROOT NAV] Checking pending sync items");
-
       // Sync pending checkouts (customer)
       const checkoutQueueJson = await AsyncStorage.getItem("checkout_queue");
       if (checkoutQueueJson && isLoggedIn && role === ROLES.Customer) {
         const queue = JSON.parse(checkoutQueueJson);
         const pending = queue.filter((item) => !item.synced);
         if (pending.length > 0) {
-          console.log(
-            "🔄 [ROOT NAV] Network restored, syncing",
-            pending.length,
-            "pending checkouts",
-          );
           dispatch(syncPendingCheckouts());
         }
       }
@@ -290,17 +240,10 @@ export default function RootNavigator() {
       if (offlineTransactionsJson && isLoggedIn && role === ROLES.Cashier) {
         const transactions = JSON.parse(offlineTransactionsJson);
         if (Array.isArray(transactions) && transactions.length > 0) {
-          console.log(
-            "🔄 [ROOT NAV] Network restored, syncing",
-            transactions.length,
-            "offline transactions",
-          );
           dispatch(syncOfflineTransactions());
         }
       }
-    } catch (error) {
-      console.error("❌ [ROOT NAV] Error checking pending sync:", error);
-    }
+    } catch (error) {}
   };
 
   useEffect(() => {

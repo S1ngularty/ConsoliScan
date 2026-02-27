@@ -15,7 +15,7 @@ export default function NotificationManager() {
     if (status !== "granted") return;
 
     const token = (await Notifications.getExpoPushTokenAsync()).data;
-    console.log("Push token:", token);
+    // Push token received
 
     if (Platform.OS === "android") {
       await Notifications.setNotificationChannelAsync("default", {

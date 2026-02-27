@@ -10,7 +10,7 @@ export async function signIn(email, password, navigate) {
       {
         headers: { "Content-Type": "application/json" },
         withCredentials: true,
-      }
+      },
     );
 
     if (!response.data.success) {
@@ -19,7 +19,6 @@ export async function signIn(email, password, navigate) {
 
     const data = response.data;
     sessionStorage.setItem("isLogin", "true");
-    console.log(data)
     // Redirect based on role
     const role = data.user?.role || data.role;
     if (role === "admin") {
@@ -30,8 +29,13 @@ export async function signIn(email, password, navigate) {
 
     return true;
   } catch (error) {
-    console.error("Login Error:", error.response?.data?.message || error.message);
-    throw new Error(error.response?.data?.message || "Invalid email or password");
+    console.error(
+      "Login Error:",
+      error.response?.data?.message || error.message,
+    );
+    throw new Error(
+      error.response?.data?.message || "Invalid email or password",
+    );
   }
 }
 
@@ -49,25 +53,24 @@ export async function googleSignIn(navigate) {
           "Content-Type": "application/json",
         },
         withCredentials: true,
-      }
+      },
     );
 
     if (!authenticate)
       throw new Error("failed to authecticate, please try again");
     const data = authenticate.data;
-    console.log(data)
-    sessionStorage.setItem("isLogin","true")
-    
+    sessionStorage.setItem("isLogin", "true");
+
     // Redirect based on role
-    if (data.result?.role === 'admin' || data.role === 'admin') {
+    if (data.result?.role === "admin" || data.role === "admin") {
       navigate("/admin/dashboard");
     } else {
       navigate("/user/dashboard");
     }
-    
+
     return true;
   } catch (error) {
-    return console.log(error);
+    throw new Error(error);
   }
 }
 
@@ -75,12 +78,12 @@ export async function autoLogin(navigate) {
   const authenticate = await axios.post(
     `${import.meta.env.VITE_APP_API}api/v1/me`,
     {},
-    { headers: {}, withCredentials: true }
+    { headers: {}, withCredentials: true },
   );
   if (!authenticate) throw new Error("failed to authenticate using token");
   const data = authenticate.data.result;
-  sessionStorage.setItem("isLogin","true")
-  if (data.user?.role === 'admin' || data.role === 'admin') {
+  sessionStorage.setItem("isLogin", "true");
+  if (data.user?.role === "admin" || data.role === "admin") {
     navigate("/admin/dashboard");
   } else {
     navigate("/user/dashboard");
@@ -95,7 +98,7 @@ export async function register(userData, navigate) {
       {
         headers: { "Content-Type": "application/json" },
         withCredentials: true,
-      }
+      },
     );
 
     if (!response.data.success) {
@@ -110,7 +113,10 @@ export async function register(userData, navigate) {
 
     return true;
   } catch (error) {
-    console.error("Registration Error:", error.response?.data?.message || error.message);
+    console.error(
+      "Registration Error:",
+      error.response?.data?.message || error.message,
+    );
     throw new Error(error.response?.data?.message || "Registration failed");
   }
 }

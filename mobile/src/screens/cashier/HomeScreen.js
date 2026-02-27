@@ -66,10 +66,11 @@ const HomeScreen = ({ navigation }) => {
 
       // Fetch dashboard stats
       const dashboardData = await getDashboardStats();
+      console.log("Dashboard data:", dashboardData);
       if (dashboardData) {
         setStats({
           salesToday: dashboardData.today?.salesToday || 0,
-          revenue: dashboardData.today?.revenue || 0,
+          revenue: dashboardData.week?.revenue || 0,
           transactions: dashboardData.today?.transactions || 0,
           specialCustomers: dashboardData.today?.specialCustomers || 0,
         });
@@ -81,7 +82,7 @@ const HomeScreen = ({ navigation }) => {
         setRecentTransactions(transactionsData.transactions);
       }
     } catch (error) {
-      console.error("Error fetching dashboard data:", error);
+      // Error loading dashboard data
     } finally {
       setLoading(false);
     }
@@ -307,7 +308,7 @@ const HomeScreen = ({ navigation }) => {
                   icon="account-group"
                   title="Customers"
                   subtitle="PWD/Senior lookup"
-                  onPress={() => console.log("Customer Lookup")}
+                  onPress={() => {}}
                   color="#EF4444"
                   disabled={isOffline || isServerDown}
                 />
@@ -368,7 +369,7 @@ const HomeScreen = ({ navigation }) => {
                       </View>
                       <View style={styles.recentItemRight}>
                         <Text style={styles.transactionAmount}>
-                          ₱{transaction.amount.toFixed(2)}
+                          ₱{Number(transaction.amount).toFixed(2)}
                         </Text>
                         <View style={styles.paymentBadge}>
                           <Text style={styles.paymentText}>

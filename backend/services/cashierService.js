@@ -76,7 +76,7 @@ async function getDashboardStats(request) {
   return {
     today: {
       salesToday,
-      revenue: parseFloat(revenue.toFixed(2)),
+      revenue: parseFloat(Number().toFixed(2)),
       transactions,
       specialCustomers,
       hourlyStats,
@@ -84,7 +84,7 @@ async function getDashboardStats(request) {
     },
     week: {
       transactions: weekOrders.length,
-      revenue: parseFloat(weekRevenue.toFixed(2)),
+      revenue: parseFloat(Number(weekRevenue).toFixed(2)),
     },
     cashierId: userId,
     timestamp: new Date(),
@@ -114,7 +114,7 @@ async function getRecentTransactions(request) {
   const transactions = recentOrders.map((order) => ({
     _id: order._id,
     transactionId: order.checkoutCode,
-    amount: parseFloat(order.finalAmountPaid.toFixed(2)),
+    amount: Number(order.finalAmountPaid).toFixed(2),
     paymentMethod: (order.paymentMethod || "cash").toUpperCase(),
     timestamp: order.confirmedAt,
     itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0),
@@ -204,16 +204,8 @@ async function getRecentExchanges(request) {
  * GET /api/v1/cashier/inventory
  */
 async function getInventory(request) {
-  console.log("=== getInventory called ===");
-  console.log("request:", typeof request);
-  console.log("request.query:", request.query);
-  console.log("request.params:", request.params);
-  console.log("request.user:", request.user);
-
   const query = request.query || {};
   const { search, category, lowStock, page = 1, limit = 20 } = query;
-
-  console.log("Extracted values:", { search, category, lowStock, page, limit });
 
   const Product = require("../models/productModel");
 
@@ -548,10 +540,6 @@ async function getProfile(request) {
   const User = require("../models/userModel");
   const mongoose = require("mongoose");
 
-  console.log("=== getProfile called ===");
-  console.log("userId:", userId);
-  console.log("userId type:", typeof userId);
-
   const user = await User.findById(userId).select(
     "name email contactNumber avatar role address street city state country zipCode createdAt",
   );
@@ -567,7 +555,6 @@ async function getProfile(request) {
 
   // Convert userId to ObjectId for aggregation
   const cashierObjectId = new mongoose.Types.ObjectId(userId);
-  console.log("cashierObjectId:", cashierObjectId);
 
   const [totalTransactions, totalSales, todayTransactions] = await Promise.all([
     Order.countDocuments({ cashier: cashierObjectId, status: "CONFIRMED" }),

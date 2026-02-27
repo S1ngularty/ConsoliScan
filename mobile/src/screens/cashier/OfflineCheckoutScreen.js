@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
   View,
   Text,
@@ -59,7 +65,6 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
   // Monitor network state
   useEffect(() => {
     if (isOnline && !localIsOnline) {
-      console.log("⚠️ [OFFLINE CHECKOUT] Network restored during transaction");
       Alert.alert(
         "Connection Restored",
         "Network is back. Continue completing transaction locally and it will sync when done.",
@@ -83,7 +88,6 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
-      console.log("🔌 [OFFLINE CHECKOUT] Screen opened - waiting for QR scan");
       if (!catalogProducts.length) {
         dispatch(loadCatalogFromStorage());
       }
@@ -110,9 +114,7 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
             }
             await writePromos(unlimitedPromos);
           }
-        } catch (error) {
-          console.log("⚠️ [OFFLINE CHECKOUT] Failed to sync promos:", error);
-        }
+        } catch (error) {}
       };
 
       syncPromos();
@@ -289,7 +291,6 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
     }
 
     // Process the QR code
-    console.log("📱 [OFFLINE CHECKOUT] QR scanned, parsing data...");
     try {
       // Parse QR data - expecting JSON with cart info
       let parsedData;
@@ -301,7 +302,6 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
       }
 
       const { cartSnapshot, user, checkoutCode, totals } = parsedData;
-      console.log(parsedData);
 
       if (
         !cartSnapshot ||
@@ -312,12 +312,6 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
         Alert.alert("Invalid QR Code", "Cart data not found in QR code");
         return;
       }
-
-      console.log(
-        "✅ [OFFLINE CHECKOUT] QR parsed successfully:",
-        cartSnapshot.items.length,
-        "items",
-      );
 
       // Set customer cart and move to scan stage
       setCustomerCart({
@@ -340,13 +334,12 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
   const handleItemBarcodeScanned = useCallback(
     (_, barcode) => {
       if (!customerCart) {
-        console.log("⚠️ [OFFLINE CHECKOUT] No customer cart loaded");
+        console.log("Customer cart not loaded");
         return;
       }
 
       const now = Date.now();
 
-      // Add current scan to buffer
       itemScanBufferRef.current.push({
         barcode: barcode,
         timestamp: now,
@@ -358,7 +351,9 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
       );
 
       // Get the last N scans
-      const recentScans = itemScanBufferRef.current.slice(-CONSISTENCY_THRESHOLD);
+      const recentScans = itemScanBufferRef.current.slice(
+        -CONSISTENCY_THRESHOLD,
+      );
 
       // Calculate progress percentage
       const progress = (recentScans.length / CONSISTENCY_THRESHOLD) * 100;
@@ -389,8 +384,6 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
       if (itemResetTimeoutRef.current) {
         clearTimeout(itemResetTimeoutRef.current);
       }
-
-      console.log("¤ [OFFLINE CHECKOUT] Item barcode scanned (verified):", barcode);
 
       const matchedProduct = getProductByBarcode(barcode);
       if (!matchedProduct) {
@@ -426,11 +419,6 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
               ? { ...item, scannedQty: item.scannedQty + 1 }
               : item,
           );
-          console.log(
-            "✅ [OFFLINE CHECKOUT] Item qty incremented:",
-            barcode,
-            existingScanned.scannedQty + 1,
-          );
         } else {
           Alert.alert(
             "Enough Scanned",
@@ -448,7 +436,6 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
             scannedQty: 1,
           },
         ];
-        console.log("✅ [OFFLINE CHECKOUT] New item scanned:", barcode);
       }
 
       setScannedItems(updatedScanned);
@@ -558,7 +545,6 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
       });
       setPromoCode(fallbackCode || result.promo?.code || "");
 
-      console.log("✅ [OFFLINE CHECKOUT] Promo applied:", result.promo?.code);
       Alert.alert(
         "Success",
         `Promo ${result.promo?.code} applied! You'll save ₱${result.discount.toFixed(2)}`,
@@ -764,11 +750,6 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
       );
 
       console.log(
-        "💾 [OFFLINE CHECKOUT] Transaction saved:",
-        transaction.checkoutCode,
-      );
-
-      Alert.alert(
         "Success",
         "Transaction saved locally. Will sync when online.",
         [
@@ -797,9 +778,9 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
       </View>
 
       <View style={styles.scannerContainer}>
-        <BarcodeScanner 
-          onDetect={handleQRScanned} 
-          barcodeTypes={["qrcode"]} 
+        <BarcodeScanner
+          onDetect={handleQRScanned}
+          barcodeTypes={["qrcode"]}
           scanProgress={scanProgress}
         />
       </View>
@@ -835,8 +816,8 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
       </View>
 
       <View style={styles.scannerContainer}>
-        <BarcodeScanner 
-          onDetect={handleItemBarcodeScanned} 
+        <BarcodeScanner
+          onDetect={handleItemBarcodeScanned}
           scanProgress={itemScanProgress}
         />
       </View>

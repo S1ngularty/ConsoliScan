@@ -93,7 +93,7 @@ const Sidebar = ({ breadcrumb }) => {
       );
       if (isLogout.data.success) navigate("/");
     } catch (error) {
-      console.log(error);
+      console.error(error);
     }
   }
 

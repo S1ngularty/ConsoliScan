@@ -18,8 +18,7 @@ export const createCategory = async (categories) => {
   return result.data.result;
 };
 
-export const updateCategory = async (categoryId,categoryData ) => {
-      console.log(categoryId, categoryData)
+export const updateCategory = async (categoryId, categoryData) => {
   if (!categoryId && !categoryData)
     throw new Error("missing identifier or a field");
   const isSave = await axios.put(`api/v1/category/${categoryId}`, {

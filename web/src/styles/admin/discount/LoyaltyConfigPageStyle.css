@@ -14,7 +14,7 @@
   padding: 40px;
   margin-bottom: 32px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(0,0,0,0.03);
+  border: 1px solid rgba(0, 0, 0, 0.03);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -29,7 +29,7 @@
 .header-icon {
   width: 72px;
   height: 72px;
-  background: linear-gradient(135deg, #00A86B 0%, #059669 100%);
+  background: linear-gradient(135deg, #00a86b 0%, #059669 100%);
   border-radius: 20px;
   display: flex;
   align-items: center;
@@ -82,7 +82,7 @@
   border-radius: 30px;
   overflow: hidden;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(0,0,0,0.03);
+  border: 1px solid rgba(0, 0, 0, 0.03);
   margin-bottom: 32px;
 }
 
@@ -106,7 +106,7 @@
 }
 
 .card-title svg {
-  color: #00A86B;
+  color: #00a86b;
 }
 
 .danger-card .card-title svg {
@@ -149,7 +149,7 @@
 }
 
 .form-group label svg {
-  color: #00A86B;
+  color: #00a86b;
 }
 
 .input-with-suffix {
@@ -177,7 +177,7 @@
 
 .input-with-suffix input:focus {
   outline: none;
-  border-color: #00A86B;
+  border-color: #00a86b;
   background: white;
   box-shadow: 0 0 0 4px rgba(0, 168, 107, 0.1);
 }
@@ -259,7 +259,7 @@
 }
 
 .toggle-slider::before {
-  content: '';
+  content: "";
   position: absolute;
   width: 24px;
   height: 24px;
@@ -272,7 +272,7 @@
 }
 
 .toggle-input:checked + .toggle-label .toggle-slider {
-  background: #00A86B;
+  background: #00a86b;
 }
 
 .toggle-input:checked + .toggle-label .toggle-slider::before {
@@ -347,7 +347,7 @@
   border-radius: 30px;
   overflow: hidden;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(0,0,0,0.03);
+  border: 1px solid rgba(0, 0, 0, 0.03);
 }
 
 .preview-grid {
@@ -391,7 +391,7 @@
 
 .program-status.active {
   background: rgba(0, 168, 107, 0.1);
-  color: #00A86B;
+  color: #00a86b;
 }
 
 .program-status.inactive {
@@ -480,7 +480,7 @@
 }
 
 .notes-list li svg {
-  color: #00A86B;
+  color: #00a86b;
   flex-shrink: 0;
   margin-top: 3px;
 }
@@ -495,7 +495,7 @@
 .summary-header h3 {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #00A86B;
+  color: #00a86b;
   margin: 0;
 }
 
@@ -521,7 +521,7 @@
   border-radius: 30px;
   padding: 24px 32px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(0,0,0,0.03);
+  border: 1px solid rgba(0, 0, 0, 0.03);
 }
 
 .footer-actions {
@@ -563,7 +563,7 @@
 }
 
 .btn-primary {
-  background: #00A86B;
+  background: #00a86b;
   color: white;
   border: none;
   padding: 16px 36px;
@@ -621,8 +621,14 @@
 }
 
 @keyframes overlayFadeIn {
-  from { opacity: 0; backdrop-filter: blur(0px); }
-  to { opacity: 1; backdrop-filter: blur(4px); }
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(4px);
+  }
 }
 
 .confirmation-modal {
@@ -636,8 +642,14 @@
 }
 
 @keyframes modalSlideUp {
-  0% { opacity: 0; transform: translateY(40px) scale(0.95); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
+  0% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .modal-header {
@@ -728,7 +740,7 @@
 }
 
 .warning-list li::before {
-  content: "⚠️";
+  content: "";
   flex-shrink: 0;
 }
 
@@ -751,7 +763,7 @@
   font-size: 1rem;
   transition: all 0.3s ease;
   text-transform: uppercase;
-  font-family: 'SF Mono', Monaco, monospace;
+  font-family: "SF Mono", Monaco, monospace;
   letter-spacing: 0.1em;
   color: #1a1a1a;
 }
@@ -880,5 +892,5 @@
 .conversion-value {
   font-size: 0.95rem;
   font-weight: 700;
-  color: #00A86B;
+  color: #00a86b;
 }
