@@ -8,7 +8,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  ChevronDown
+  ChevronDown,
 } from "lucide-react";
 import "../../styles/css/SidebarStyle.css";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -36,22 +36,22 @@ const UserSidebar = ({ breadcrumb }) => {
       const isLogout = await axios.post(
         `${import.meta.env.VITE_APP_API}api/v1/logout`,
         {},
-        { withCredentials: true }
+        { withCredentials: true },
       );
       if (isLogout.data.success) {
         sessionStorage.removeItem("isLogin");
         navigate("/login"); // Redirect to login page
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
     }
   }
 
   const handleNavigation = (item) => {
     setActiveItem(item.name);
     if (item.navigate) {
-        if(breadcrumb) breadcrumb(item.name); // Simplified breadcrumb for user
-        navigate(item.navigate);
+      if (breadcrumb) breadcrumb(item.name); // Simplified breadcrumb for user
+      navigate(item.navigate);
     }
   };
 
@@ -151,9 +151,7 @@ const UserSidebar = ({ breadcrumb }) => {
         </button>
       </div>
 
-      <nav className="sidebar-nav">
-        {menuItems.map(renderSection)}
-      </nav>
+      <nav className="sidebar-nav">{menuItems.map(renderSection)}</nav>
 
       <div className="sidebar-footer">
         <div

@@ -4,7 +4,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import QRCode from "react-native-qrcode-svg";
 import { io } from "socket.io-client";
 import { SOCKET_API } from "../../constants/config";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { clearCart, endSession } from "../../features/slices/cart/cartSlice";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 export default function CheckoutQRScreen({ route, navigation }) {
   const {
@@ -20,6 +23,7 @@ export default function CheckoutQRScreen({ route, navigation }) {
   const [orderData, setOrderData] = useState({});
   const [cashier, setCashier] = useState("");
   const userState = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
   const offlineQrValue = offlineMode
     ? JSON.stringify({
         checkoutCode,
@@ -100,7 +104,6 @@ export default function CheckoutQRScreen({ route, navigation }) {
   useEffect(() => {
     // Skip socket connection for offline mode
     if (offlineMode) {
-      console.log("🔌 [QR SCREEN] Offline mode - skipping socket connection");
       return;
     }
 
@@ -116,20 +119,17 @@ export default function CheckoutQRScreen({ route, navigation }) {
     });
 
     socket.on("checkout:state", (data) => {
-      // console.log("checkout:state", data);
       setStatus(data.status || "PROCESSING");
       setTotals(data.totals);
     });
 
     socket.on("checkout:scanned", ({ cashier, status, totals }) => {
-      // console.log("checkout:scanned", cashier, status, totals);
       setStatus("SCANNED");
       setCashier(cashier);
       if (totals) setTotals(totals);
     });
 
     socket.on("checkout:locked", ({ checkoutData }) => {
-      // console.log("checkout:locked", checkoutData);
       setStatus("LOCKED");
       if (checkoutData?.totals) setTotals(checkoutData.totals);
     });
@@ -142,7 +142,12 @@ export default function CheckoutQRScreen({ route, navigation }) {
       setOrderId(orderId);
       setStatus("COMPLETE");
 
-      setTimeout(() => {
+      setTimeout(async () => {
+        // Clear session and cart after transaction completes
+        dispatch(clearCart());
+        dispatch(endSession());
+        await AsyncStorage.removeItem("session_snapshot");
+
         navigation.navigate("Shared", {
           screen: "Reciept",
           params: { orderId, checkoutCode, orderData, cashier },
@@ -297,8 +302,6 @@ export default function CheckoutQRScreen({ route, navigation }) {
     </SafeAreaView>
   );
 }
-
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const styles = StyleSheet.create({
   container: {

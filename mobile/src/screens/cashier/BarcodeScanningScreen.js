@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -13,6 +13,7 @@ import {
   TextInput,
   Animated,
   ToastAndroid,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -20,7 +21,9 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { scanProduct } from "../../api/product.api";
 import { useDispatch, useSelector } from "react-redux";
 import { clearCart } from "../../features/slices/cart/cartSlice";
-import { checkNetworkStatus } from "../../utils/netUtil";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { confirmOrder } from "../../api/order.api";
+import { readPromos, writePromos } from "../../utils/promoStorage";
 
 const { width, height } = Dimensions.get("window");
 
@@ -38,6 +41,19 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
   const [lastAddedItem, setLastAddedItem] = useState(null);
   const [scanStatus, setScanStatus] = useState("Ready to scan");
   const [scanProgress, setScanProgress] = useState(0);
+
+  // Payment states
+  const [stage, setStage] = useState("scan"); // scan | payment
+  const [customerType, setCustomerType] = useState("regular"); // regular | senior | pwd
+  const [promoCode, setPromoCode] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState(null);
+  const [promoCatalog, setPromoCatalog] = useState([]);
+  const [loadingPromos, setLoadingPromos] = useState(false);
+  const [bookletConfirmed, setBookletConfirmed] = useState(false);
+  const [discountData, setDiscountData] = useState(null);
+  const [loadingDiscounts, setLoadingDiscounts] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+
   const isProcessingRef = useRef(false);
   const processingTimeoutRef = useRef(null);
   const cameraRef = useRef(null);
@@ -51,6 +67,10 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
 
   const dispatch = useDispatch();
   const catalogProducts = useSelector((state) => state.product?.products || []);
+  const { isOffline, isServerDown } = useSelector((state) => state.network);
+
+  // Derived network status: online when NOT offline AND server is reachable
+  const isOnline = !isOffline && !isServerDown;
 
   // Get user eligibility from route params if coming from TransactionScreen
   const userEligibility = route.params?.userEligibility || {};
@@ -71,10 +91,286 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
   // Calculate total price when scanned items change
   useEffect(() => {
     const total = scannedItems.reduce((sum, item) => {
-      return sum + item.price * item.quantity;
+      const itemPrice = item.price || 0;
+      const itemQty = item.quantity || 1;
+      return sum + itemPrice * itemQty;
     }, 0);
-    setTotalPrice(total);
+    setTotalPrice(Math.max(0, total || 0));
   }, [scannedItems]);
+
+  // Load discounts when entering payment stage
+  useEffect(() => {
+    if (stage === "payment") {
+      loadDiscountData();
+      loadPromoData();
+    }
+  }, [stage]);
+
+  const loadDiscountData = async () => {
+    setLoadingDiscounts(true);
+    try {
+      if (isOnline) {
+        // Fetch from backend
+        try {
+          const response = await fetch(
+            "http://your-backend/api/v1/discounts/current",
+            {
+              method: "GET",
+              headers: { "Content-Type": "application/json" },
+            },
+          );
+          const data = await response.json();
+          setDiscountData(data);
+          // Cache it locally
+          await AsyncStorage.setItem(
+            "cachedDiscountData",
+            JSON.stringify(data),
+          );
+        } catch (error) {
+          console.warn("Failed to fetch discounts, using cache:", error);
+          // Fall back to cached data
+          const cached = await AsyncStorage.getItem("cachedDiscountData");
+          if (cached) {
+            setDiscountData(JSON.parse(cached));
+          }
+        }
+      } else {
+        // Load from localStorage
+        const cached = await AsyncStorage.getItem("cachedDiscountData");
+        if (cached) {
+          setDiscountData(JSON.parse(cached));
+        } else {
+          // Use default discounts
+          setDiscountData({
+            seniorPwdDiscount: 0.05,
+            weeklyCap: 125,
+            weeklyPurchaseCap: 2500,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error loading discounts:", error);
+      // Use default
+      setDiscountData({
+        seniorPwdDiscount: 0.05,
+        weeklyCap: 125,
+        weeklyPurchaseCap: 2500,
+      });
+    } finally {
+      setLoadingDiscounts(false);
+    }
+  };
+
+  const loadPromoData = async () => {
+    setLoadingPromos(true);
+    try {
+      if (isOnline) {
+        // Online: Fetch all promos from backend
+        try {
+          const response = await fetch(
+            "http://your-backend/api/v1/promos/active",
+            {
+              method: "GET",
+              headers: { "Content-Type": "application/json" },
+            },
+          );
+          const data = await response.json();
+          // Validate and normalize promo data to handle backend structure
+          const promos = (data || []).map((promo) => {
+            // Extract name from promoName.promo or fallback to name field
+            const promoNameValue =
+              typeof promo.promoName === "object"
+                ? promo.promoName?.promo || promo.name || "Unnamed Promo"
+                : promo.promoName || promo.name || "Unnamed Promo";
+
+            // Get discount amount from value or discountAmount field
+            const discountValue =
+              promo.value !== undefined
+                ? promo.value
+                : promo.discountAmount || 0;
+
+            // Get promo type from promoType or discountType field
+            const promoTypeValue =
+              promo.promoType || promo.discountType || "fixed";
+
+            return {
+              ...promo,
+              code: promo.code || "UNKNOWN",
+              name: promoNameValue,
+              discountAmount:
+                typeof discountValue === "number" ? discountValue : 0,
+              discountType: promoTypeValue,
+              isUnlimited: promo.isUnlimited === true,
+            };
+          });
+          setPromoCatalog(promos);
+          // Cache all promos
+          await writePromos(promos);
+        } catch (fetchError) {
+          console.warn("Failed to fetch promos from backend:", fetchError);
+          // Fall back to cached data - show all cached promos when online fetch fails
+          const cachedPromos = await readPromos();
+          console.log("Raw cached promos:", cachedPromos);
+
+          // Normalize cached promos (they might have old backend structure)
+          const normalizedCached = cachedPromos.map((promo) => {
+            const promoNameValue =
+              typeof promo.promoName === "object"
+                ? promo.promoName?.promo || promo.name || "Unnamed Promo"
+                : promo.promoName || promo.name || "Unnamed Promo";
+
+            const discountValue =
+              promo.value !== undefined
+                ? promo.value
+                : promo.discountAmount || 0;
+            const promoTypeValue =
+              promo.promoType || promo.discountType || "fixed";
+
+            return {
+              ...promo,
+              code: promo.code || "UNKNOWN",
+              name: promoNameValue,
+              discountAmount:
+                typeof discountValue === "number" ? discountValue : 0,
+              discountType: promoTypeValue,
+              isUnlimited: promo.isUnlimited === true,
+            };
+          });
+
+          console.log("Normalized cached promos:", normalizedCached);
+          setPromoCatalog(normalizedCached);
+        }
+      } else {
+        // Offline: Load cached promos and filter to unlimited only
+        try {
+          const allPromos = await readPromos();
+          console.log("All cached promos (offline mode):", allPromos);
+
+          // Normalize cached promos first
+          const normalizedPromos = allPromos.map((promo) => {
+            const promoNameValue =
+              typeof promo.promoName === "object"
+                ? promo.promoName?.promo || promo.name || "Unnamed Promo"
+                : promo.promoName || promo.name || "Unnamed Promo";
+
+            const discountValue =
+              promo.value !== undefined
+                ? promo.value
+                : promo.discountAmount || 0;
+            const promoTypeValue =
+              promo.promoType || promo.discountType || "fixed";
+
+            return {
+              ...promo,
+              code: promo.code || "UNKNOWN",
+              name: promoNameValue,
+              discountAmount:
+                typeof discountValue === "number" ? discountValue : 0,
+              discountType: promoTypeValue,
+              isUnlimited: promo.isUnlimited === true,
+            };
+          });
+
+          // Filter only unlimited promos for offline use
+          const unlimitedPromos = normalizedPromos.filter(
+            (promo) => promo.isUnlimited === true,
+          );
+
+          console.log(
+            `Offline mode: ${unlimitedPromos.length} unlimited promos found out of ${normalizedPromos.length} total`,
+          );
+
+          // If no unlimited promos found, show warning and display all cached promos
+          if (unlimitedPromos.length === 0 && normalizedPromos.length > 0) {
+            console.warn(
+              "⚠️ No unlimited promos in cache. Backend should set 'isUnlimited: true' for offline usage.",
+              "Showing all cached promos as fallback.",
+            );
+            setPromoCatalog(normalizedPromos); // Show all as fallback
+          } else {
+            setPromoCatalog(unlimitedPromos);
+          }
+        } catch (storageError) {
+          console.warn("Failed to load cached promos:", storageError);
+          setPromoCatalog([]);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading promos:", error);
+      setPromoCatalog([]);
+    } finally {
+      setLoadingPromos(false);
+    }
+  };
+
+  // Evaluate promo validity and calculate discount (similar to OfflineCheckoutScreen)
+  const evaluatePromoLocal = useCallback(
+    (promo) => {
+      if (!promo) {
+        return { valid: false, reason: "No promo selected", discount: 0 };
+      }
+
+      const now = new Date();
+
+      // Check if promo is active
+      if (promo.active === false) {
+        return { valid: false, reason: "Promo not active", discount: 0 };
+      }
+
+      // Check start date
+      if (promo.startDate && now < new Date(promo.startDate)) {
+        return { valid: false, reason: "Promo not started yet", discount: 0 };
+      }
+
+      // Check end date
+      if (promo.endDate && now > new Date(promo.endDate)) {
+        return { valid: false, reason: "Promo expired", discount: 0 };
+      }
+
+      // Check usage limit
+      if (promo.usageLimit && promo.usedCount >= promo.usageLimit) {
+        return {
+          valid: false,
+          reason: "Promo usage limit exceeded",
+          discount: 0,
+        };
+      }
+
+      // Check minimum purchase requirement
+      if (promo.minPurchase && totalPrice < promo.minPurchase) {
+        return {
+          valid: false,
+          reason: `Minimum purchase of ₱${promo.minPurchase} required`,
+          discount: 0,
+        };
+      }
+
+      // Calculate discount based on promo type
+      let discount = 0;
+      const promoType = promo.promoType || promo.type || "fixed";
+
+      if (promoType === "percentage") {
+        discount =
+          totalPrice * (Number(promo.value || promo.discountAmount || 0) / 100);
+      } else {
+        // Fixed amount - cap at total price
+        discount = Math.min(
+          Number(promo.value || promo.discountAmount || 0),
+          totalPrice,
+        );
+      }
+
+      discount = Math.max(0, discount); // Ensure non-negative
+
+      return {
+        valid: true,
+        discount,
+        reason: null,
+        promo,
+      };
+    },
+    [totalPrice],
+  );
 
   const showToastNotification = (message, item = null) => {
     setToastMessage(message);
@@ -227,9 +523,7 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
 
         // If not found locally, check internet before API call
         if (!response) {
-          const networkStatus = await checkNetworkStatus();
-
-          if (!networkStatus.isConnected) {
+          if (!isOnline) {
             Alert.alert(
               "Product Not Found",
               `Product not found in local catalog and you are offline: ${verifiedBarcode}`,
@@ -316,9 +610,7 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
 
       // If not found locally, check internet before API call
       if (!response) {
-        const networkStatus = await checkNetworkStatus();
-
-        if (!networkStatus.isConnected) {
+        if (!isOnline) {
           Alert.alert(
             "Product Not Found",
             "Product not found in local catalog and you are offline",
@@ -408,87 +700,234 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
       return;
     }
 
+    // Transition to payment stage for in-screen payment processing
+    setStage("payment");
+  };
+
+  const handleCompletePayment = async () => {
+    // Validate booklet confirmation
+    if (
+      (customerType === "senior" || customerType === "pwd") &&
+      !bookletConfirmed
+    ) {
+      Alert.alert(
+        "Booklet Not Confirmed",
+        "Please confirm that you have updated the customer's booklet.",
+      );
+      return;
+    }
+
     // Calculate BNPC eligible subtotal
-    const bnpcSubtotal = scannedItems
-      .filter((item) => item.isBNPCEligible && !item.excludedFromDiscount)
-      .reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const bnpcSubtotal = Math.max(
+      0,
+      scannedItems
+        .filter((item) => item.isBNPCEligible && !item.excludedFromDiscount)
+        .reduce(
+          (sum, item) => sum + (item.price || 0) * (item.quantity || 1),
+          0,
+        ),
+    );
 
-    // Calculate regular subtotal (non-BNPC items)
-    const regularSubtotal = scannedItems
-      .filter((item) => !item.isBNPCEligible || item.excludedFromDiscount)
-      .reduce((sum, item) => sum + item.price * item.quantity, 0);
+    // Calculate BNPC discount based on customer type
+    let bnpcDiscount = 0;
+    if (
+      (customerType === "senior" || customerType === "pwd") &&
+      bnpcSubtotal > 0
+    ) {
+      bnpcDiscount = Math.min(bnpcSubtotal * 0.05, 125); // 5% discount capped at ₱125
+    }
 
-    // Transform scanned items to match PaymentScreen expected format
-    const checkoutItems = scannedItems.map((item) => ({
-      productId: item.id,
+    // Calculate promo discount - use pre-validated amount from appliedPromo
+    let promoDiscount = 0;
+    let appliedPromoData = null;
+
+    if (appliedPromo) {
+      // Re-validate promo before final submission (extra safety check)
+      const validation = evaluatePromoLocal(appliedPromo);
+      if (validation.valid) {
+        promoDiscount = Math.max(0, validation.discount);
+        appliedPromoData = {
+          code: appliedPromo.code,
+          name: appliedPromo.name,
+          discount: promoDiscount,
+          discountType: appliedPromo.discountType,
+        };
+      } else {
+        // Promo became invalid, show error and allow retry
+        Alert.alert(
+          "Promo Validation Failed",
+          validation.reason || "Selected promo is no longer valid",
+          [
+            {
+              text: "OK",
+              onPress: () => setAppliedPromo(null),
+            },
+          ],
+        );
+        return;
+      }
+    }
+
+    const finalTotal = Math.max(
+      0,
+      (totalPrice || 0) - (bnpcDiscount || 0) - (promoDiscount || 0),
+    );
+
+    // Transform scanned items to order format matching backend schema
+    const orderItems = scannedItems.map((item) => ({
+      product: item.id,
       name: item.name,
-      unitPrice: item.price,
-      srp: item.srp,
-      quantity: item.quantity,
-      totalPrice: item.subtotal,
-      isBNPCEligible: item.isBNPCEligible && !item.excludedFromDiscount,
-      bnpcCategory: item.bnpcCategory,
-      category: item.category,
       sku: item.sku,
-      barcode: item.barcode,
+      quantity: item.quantity,
+      unitPrice: item.price,
       unit: item.unit,
+      itemTotal: item.subtotal,
+      isBNPCEligible: item.isBNPCEligible && !item.excludedFromDiscount,
       excludedFromDiscount: item.excludedFromDiscount,
-      stockQuantity: item.stockQuantity,
+      category: item.category
+        ? {
+            id: item.category._id || item.category.id,
+            name: item.category.categoryName || item.category.name,
+            isBNPC: item.category.isBNPC || false,
+          }
+        : undefined,
+      status: "SOLD",
     }));
 
-    // Create checkout data object matching PaymentScreen structure
-    const checkoutData = {
-      _id: `temp_${Date.now()}`, // Temporary ID for the transaction
-      items: checkoutItems,
-      totals: {
-        subtotal: totalPrice,
-        bnpcSubtotal: bnpcSubtotal,
-        regularSubtotal: regularSubtotal,
-        discount: 0, // Will be calculated in PaymentScreen
-        finalTotal: totalPrice,
-      },
-      userEligibility: {
-        isSenior: isSenior || false,
-        isPWD: isPWD || false,
-        verified: isSenior || isPWD, // Mark as verified if eligible
-      },
-      discountSnapshot: {
-        eligible: isSenior || isPWD,
-        bnpcSubtotal: bnpcSubtotal,
-        weeklyDiscountUsed: 0, // Start from 0, will be input in PaymentScreen
-        weeklyPurchaseUsed: 0, // Start from 0
-        remainingDiscountCap: 125, // ₱125 weekly cap
-        remainingPurchaseCap: 2500, // ₱2,500 weekly purchase cap
-        maxPossibleDiscount: Math.min(125, 2500, bnpcSubtotal * 0.05), // 5% of eligible items, capped
-      },
-      voucher: null, // No voucher applied yet
-      cashier: {
-        // Add current user/cashier info if available
-        id: "current_cashier_id",
-        name: "Cashier",
-        _id: "current_cashier_id",
-      },
-      status: "pending",
-      paymentMethod: "cash", // Default to cash
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    // Generate a checkout code (in real app, this would come from API)
+    // Generate checkout code for idempotency
     const checkoutCode = `CHK-${Date.now().toString().slice(-8)}`;
 
-    // Clear Redux cart if needed (optional)
-    dispatch(clearCart());
-
-    // Navigate to PaymentScreen with all required data
-    navigation.navigate("Payment", {
-      checkoutData,
-      checkoutCode,
-      scannedItemsCount: scannedItems.length,
-      totalAmount: totalPrice,
-      bnpcEligibleTotal: bnpcSubtotal,
+    // Create transaction payload matching offline cashier structure
+    const finalAmountPaid =
+      totalPrice - bnpcDiscount - (appliedPromoData?.discount || 0);
+    const orderData = {
+      items: orderItems,
+      baseAmount: totalPrice,
+      finalAmountPaid: finalAmountPaid,
+      bnpcEligibleSubtotal: bnpcSubtotal,
+      bnpcDiscount: {
+        autoCalculated: bnpcDiscount,
+        total: bnpcDiscount,
+      },
+      promoDiscount: appliedPromoData
+        ? {
+            code: appliedPromoData.code,
+            amount: appliedPromoData.discount,
+            serverValidated: false,
+          }
+        : { code: null, amount: 0, serverValidated: false },
+      customerType: customerType === "regular" ? "regular" : customerType,
+      bookletUpdated: bookletConfirmed,
+      checkoutCode: checkoutCode,
+      status: "CONFIRMED",
       appUser: false,
-    });
+    };
+
+    setPaymentLoading(true);
+
+    try {
+      if (isOnline) {
+        // Online: Submit to backend
+        try {
+          const result = await confirmOrder(orderData);
+
+          // Success - navigate to order summary
+          Alert.alert(
+            "Order Confirmed",
+            "Your order has been processed successfully.",
+            [
+              {
+                text: "OK",
+                onPress: () => {
+                  dispatch(clearCart());
+                  navigation.navigate("OrderSummary", {
+                    transactionData: result,
+                    checkoutCode: orderData.checkoutCode,
+                  });
+                },
+              },
+            ],
+          );
+        } catch (apiError) {
+          // If API fails, ask to store offline
+          Alert.alert(
+            "API Error",
+            "Failed to submit to backend. Store offline?",
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Store Offline",
+                onPress: async () => {
+                  await storeOfflineOrder(orderData);
+                },
+              },
+            ],
+          );
+        }
+      } else {
+        // Offline: Store to AsyncStorage
+        await storeOfflineOrder(orderData);
+      }
+    } catch (error) {
+      console.error("Payment error:", error);
+      Alert.alert(
+        "Error",
+        error.message || "Failed to process order. Please try again.",
+      );
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
+  const storeOfflineOrder = async (orderData) => {
+    try {
+      const existingOrders = await AsyncStorage.getItem("offline_transactions");
+      const orders = existingOrders ? JSON.parse(existingOrders) : [];
+
+      const pendingOrder = {
+        ...orderData,
+        id: `${orderData.checkoutCode}_${Date.now()}`,
+        submittedAt: new Date().toISOString(),
+        status: "CONFIRMED",
+        localStatus: "pending_sync",
+      };
+
+      orders.push(pendingOrder);
+      await AsyncStorage.setItem(
+        "offline_transactions",
+        JSON.stringify(orders),
+      );
+
+      Alert.alert(
+        "Order Saved Offline",
+        "Your order has been saved locally. It will be synced when you go online.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              // Reset screen
+              setStage("scan");
+              setScannedItems([]);
+              setTotalPrice(0);
+              setCustomerType("regular");
+              setPromoCode("");
+              setAppliedPromo(null);
+              setBookletConfirmed(false);
+              dispatch(clearCart());
+              Alert.alert(
+                "Order Saved",
+                `Checkout Code: ${orderData.checkoutCode}`,
+              );
+            },
+          },
+        ],
+      );
+    } catch (storageError) {
+      Alert.alert(
+        "Storage Error",
+        "Failed to save order locally: " + storageError.message,
+      );
+    }
   };
 
   const handleRemoveItem = (index) => {
@@ -746,100 +1185,442 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
         </View>
       </View>
 
-      {/* Camera Section */}
-      {!permission
-        ? renderLoadingView()
-        : !permission.granted
-          ? renderPermissionView()
-          : renderCameraView()}
+      {/* Camera Section & Items / Payment */}
+      {stage === "scan" ? (
+        <>
+          {/* Camera Section */}
+          {!permission
+            ? renderLoadingView()
+            : !permission.granted
+              ? renderPermissionView()
+              : renderCameraView()}
 
-      {/* Scanned Items Section */}
-      <View style={styles.listContainer}>
-        <View style={styles.listHeader}>
-          <Text style={styles.listTitle}>
-            Scanned Items ({scannedItems.length})
-          </Text>
-          <View style={styles.totalSection}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalPrice}>₱{totalPrice.toFixed(2)}</Text>
+          {/* Scanned Items Section */}
+          <View style={styles.listContainer}>
+            <View style={styles.listHeader}>
+              <Text style={styles.listTitle}>
+                Scanned Items ({scannedItems.length})
+              </Text>
+              <View style={styles.totalSection}>
+                <Text style={styles.totalLabel}>Total</Text>
+                <Text style={styles.totalPrice}>₱{totalPrice.toFixed(2)}</Text>
+              </View>
+            </View>
+
+            {/* BNPC Summary if eligible */}
+            {(isSenior || isPWD) && (
+              <View style={styles.bnpcSummary}>
+                <Text style={styles.bnpcSummaryText}>
+                  BNPC Eligible Items: ₱
+                  {scannedItems
+                    .filter(
+                      (item) =>
+                        item.isBNPCEligible && !item.excludedFromDiscount,
+                    )
+                    .reduce((sum, item) => sum + item.subtotal, 0)
+                    .toFixed(2)}
+                </Text>
+              </View>
+            )}
+
+            {scannedItems.length === 0 ? (
+              <View style={styles.emptyState}>
+                <MaterialIcons name="receipt-long" size={48} color="#E2E8F0" />
+                <Text style={styles.emptyStateText}>
+                  Scan items to appear here
+                </Text>
+                <Text style={styles.emptyStateSubtext}>
+                  Position barcode within the camera frame
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                data={scannedItems}
+                renderItem={renderItem}
+                keyExtractor={(item, index) => `${item.barcode}-${index}`}
+                contentContainerStyle={styles.listContent}
+                showsVerticalScrollIndicator={false}
+              />
+            )}
+
+            {/* Action Buttons */}
+            <View style={styles.actionBar}>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.clearButton]}
+                onPress={() => {
+                  if (scannedItems.length > 0) {
+                    Alert.alert(
+                      "Clear All Items",
+                      "Are you sure you want to clear all scanned items?",
+                      [
+                        { text: "Cancel", style: "cancel" },
+                        {
+                          text: "Clear",
+                          style: "destructive",
+                          onPress: () => setScannedItems([]),
+                        },
+                      ],
+                    );
+                  }
+                }}
+                disabled={scannedItems.length === 0}
+              >
+                <MaterialIcons name="clear-all" size={20} color="#64748B" />
+                <Text style={styles.clearButtonText}>Clear All</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.actionButton,
+                  styles.paymentButton,
+                  scannedItems.length === 0 && styles.disabledButton,
+                ]}
+                onPress={handleProceedToPayment}
+                disabled={scannedItems.length === 0}
+              >
+                <MaterialIcons name="payment" size={20} color="#FFFFFF" />
+                <Text style={styles.paymentButtonText}>
+                  Proceed to Payment ({scannedItems.length})
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        </>
+      ) : (
+        /* Payment Stage */
+        <ScrollView
+          style={styles.paymentContainer}
+          contentContainerStyle={styles.paymentScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.paymentSection}>
+            {/* Order Summary */}
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryTitle}>Order Summary</Text>
 
-        {/* BNPC Summary if eligible */}
-        {(isSenior || isPWD) && (
-          <View style={styles.bnpcSummary}>
-            <Text style={styles.bnpcSummaryText}>
-              BNPC Eligible Items: ₱
-              {scannedItems
-                .filter(
-                  (item) => item.isBNPCEligible && !item.excludedFromDiscount,
-                )
-                .reduce((sum, item) => sum + item.subtotal, 0)
-                .toFixed(2)}
-            </Text>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Items Count</Text>
+                <Text style={styles.summaryValue}>{scannedItems.length}</Text>
+              </View>
+
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Subtotal</Text>
+                <Text style={styles.summaryValue}>
+                  ₱{totalPrice.toFixed(2)}
+                </Text>
+              </View>
+
+              {(isSenior || isPWD) && (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>BNPC Eligible</Text>
+                  <Text style={styles.summaryValue}>
+                    ₱
+                    {scannedItems
+                      .filter(
+                        (item) =>
+                          item.isBNPCEligible && !item.excludedFromDiscount,
+                      )
+                      .reduce((sum, item) => sum + item.subtotal, 0)
+                      .toFixed(2)}
+                  </Text>
+                </View>
+              )}
+
+              <View style={styles.divider} />
+
+              <View style={styles.summaryRow}>
+                <Text style={styles.totalLabel}>Total Due</Text>
+                <Text style={styles.totalAmount}>₱{totalPrice.toFixed(2)}</Text>
+              </View>
+            </View>
+
+            {/* Customer Type Selection */}
+            <View style={styles.customerTypeCard}>
+              <Text style={styles.cardTitle}>Customer Type</Text>
+              <View style={styles.typeOptions}>
+                <TouchableOpacity
+                  style={[
+                    styles.typeOption,
+                    customerType === "regular" && styles.typeOptionActive,
+                  ]}
+                  onPress={() => setCustomerType("regular")}
+                >
+                  <MaterialIcons
+                    name="person"
+                    size={24}
+                    color={customerType === "regular" ? "#00A86B" : "#94A3B8"}
+                  />
+                  <Text
+                    style={[
+                      styles.typeText,
+                      customerType === "regular" && styles.typeTextActive,
+                    ]}
+                  >
+                    Regular
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.typeOption,
+                    customerType === "senior" && styles.typeOptionActive,
+                  ]}
+                  onPress={() => setCustomerType("senior")}
+                >
+                  <MaterialIcons
+                    name="elderly"
+                    size={24}
+                    color={customerType === "senior" ? "#00A86B" : "#94A3B8"}
+                  />
+                  <Text
+                    style={[
+                      styles.typeText,
+                      customerType === "senior" && styles.typeTextActive,
+                    ]}
+                  >
+                    Senior
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.typeOption,
+                    customerType === "pwd" && styles.typeOptionActive,
+                  ]}
+                  onPress={() => setCustomerType("pwd")}
+                >
+                  <MaterialIcons
+                    name="accessible"
+                    size={24}
+                    color={customerType === "pwd" ? "#00A86B" : "#94A3B8"}
+                  />
+                  <Text
+                    style={[
+                      styles.typeText,
+                      customerType === "pwd" && styles.typeTextActive,
+                    ]}
+                  >
+                    PWD
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Discount Info */}
+            {(customerType === "senior" || customerType === "pwd") && (
+              <View style={styles.discountInfoCard}>
+                <View style={styles.discountRow}>
+                  <Text style={styles.discountLabel}>Eligible Amount:</Text>
+                  <Text style={styles.discountValue}>
+                    ₱
+                    {scannedItems
+                      .filter(
+                        (item) =>
+                          item.isBNPCEligible && !item.excludedFromDiscount,
+                      )
+                      .reduce((sum, item) => sum + item.subtotal, 0)
+                      .toFixed(2)}
+                  </Text>
+                </View>
+                <View style={styles.discountRow}>
+                  <Text style={styles.discountLabel}>Discount (5%):</Text>
+                  <Text style={styles.discountValue}>
+                    ₱
+                    {Math.min(
+                      scannedItems
+                        .filter(
+                          (item) =>
+                            item.isBNPCEligible && !item.excludedFromDiscount,
+                        )
+                        .reduce((sum, item) => sum + item.subtotal, 0) * 0.05,
+                      125,
+                    ).toFixed(2)}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {/* Promo Code */}
+            <View style={styles.promoCard}>
+              <Text style={styles.cardTitle}>Promos (Optional)</Text>
+
+              {loadingPromos ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator color="#00A86B" />
+                  <Text style={styles.loadingText}>Loading promos...</Text>
+                </View>
+              ) : promoCatalog.length === 0 ? (
+                <View style={styles.emptyPromoContainer}>
+                  <MaterialIcons name="local-offer" size={32} color="#CBD5E1" />
+                  <Text style={styles.emptyPromoText}>No promos available</Text>
+                </View>
+              ) : (
+                <>
+                  <FlatList
+                    data={promoCatalog}
+                    scrollEnabled={false}
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={[
+                          styles.promoOption,
+                          appliedPromo?.code === item.code &&
+                            styles.promoOptionSelected,
+                        ]}
+                        onPress={() => {
+                          if (appliedPromo?.code === item.code) {
+                            // Deselect if clicking same promo
+                            setAppliedPromo(null);
+                          } else {
+                            // Validate promo before applying
+                            const evaluation = evaluatePromoLocal(item);
+
+                            if (!evaluation.valid) {
+                              Alert.alert(
+                                "Promo Invalid",
+                                evaluation.reason ||
+                                  "This promo cannot be applied",
+                              );
+                              return;
+                            }
+
+                            // Select new promo with validated discount
+                            setAppliedPromo({
+                              code: item.code,
+                              name: item.name,
+                              discountAmount: evaluation.discount,
+                              discountType: item.discountType || "fixed",
+                              isUnlimited: item.isUnlimited,
+                              validatedAt: new Date().toISOString(),
+                            });
+                          }
+                        }}
+                      >
+                        <View style={styles.promoCheckbox}>
+                          {appliedPromo?.code === item.code && (
+                            <MaterialIcons
+                              name="check-circle"
+                              size={20}
+                              color="#00A86B"
+                            />
+                          )}
+                        </View>
+                        <View style={styles.promoInfo}>
+                          <Text style={styles.promoOptionCode}>
+                            {item.code}
+                          </Text>
+                          <Text style={styles.promoOptionName}>
+                            {item.name}
+                          </Text>
+                          {item.isUnlimited === true && (
+                            <Text style={styles.unlimitedBadge}>Unlimited</Text>
+                          )}
+                        </View>
+                        <Text style={styles.promoDiscount}>
+                          {item.discountType === "percentage"
+                            ? `${item.discountAmount || 0}%`
+                            : `₱${(item.discountAmount || 0).toFixed(2)}`}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    keyExtractor={(item) => item.code}
+                  />
+                </>
+              )}
+
+              {appliedPromo && (
+                <View style={styles.appliedPromoBoxNew}>
+                  <MaterialIcons
+                    name="check-circle"
+                    size={18}
+                    color="#00A86B"
+                  />
+                  <View style={styles.appliedPromoInfoNew}>
+                    <Text style={styles.appliedPromoCodeNew}>
+                      {appliedPromo.code || "N/A"}
+                    </Text>
+                    <Text style={styles.appliedPromoNameNew}>
+                      {appliedPromo.name || "Promo"}
+                    </Text>
+                  </View>
+                  <Text style={styles.appliedPromoAmountNew}>
+                    ₱{Math.max(0, appliedPromo.discountAmount || 0).toFixed(2)}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Booklet Confirmation */}
+            {(customerType === "senior" || customerType === "pwd") && (
+              <View style={styles.bookletCard}>
+                <TouchableOpacity
+                  style={styles.checkboxRow}
+                  onPress={() => setBookletConfirmed(!bookletConfirmed)}
+                >
+                  <View
+                    style={[
+                      styles.checkbox,
+                      bookletConfirmed && styles.checkboxChecked,
+                    ]}
+                  >
+                    {bookletConfirmed && (
+                      <MaterialIcons name="check" size={16} color="#FFFFFF" />
+                    )}
+                  </View>
+                  <Text style={styles.checkboxLabel}>
+                    I have updated the customer's booklet
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Button Group */}
+            <View style={styles.paymentButtonGroup}>
+              <TouchableOpacity
+                style={[styles.backButton, styles.paymentBackButton]}
+                onPress={() => {
+                  setStage("scan");
+                  setCustomerType("regular");
+                  setPromoCode("");
+                  setAppliedPromo(null);
+                  setBookletConfirmed(false);
+                }}
+                disabled={paymentLoading}
+              >
+                <MaterialIcons name="arrow-back" size={20} color="#374151" />
+                <Text style={styles.backButtonText}>Back to Scan</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.completeButton,
+                  paymentLoading && styles.disabledButton,
+                ]}
+                onPress={handleCompletePayment}
+                disabled={paymentLoading}
+              >
+                {paymentLoading ? (
+                  <>
+                    <ActivityIndicator
+                      color="#FFFFFF"
+                      style={{ marginRight: 8 }}
+                    />
+                    <Text style={styles.completeButtonText}>Processing...</Text>
+                  </>
+                ) : (
+                  <>
+                    <MaterialIcons
+                      name="check-circle"
+                      size={20}
+                      color="#FFFFFF"
+                    />
+                    <Text style={styles.completeButtonText}>Confirm Order</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
-        )}
-
-        {scannedItems.length === 0 ? (
-          <View style={styles.emptyState}>
-            <MaterialIcons name="receipt-long" size={48} color="#E2E8F0" />
-            <Text style={styles.emptyStateText}>Scan items to appear here</Text>
-            <Text style={styles.emptyStateSubtext}>
-              Position barcode within the camera frame
-            </Text>
-          </View>
-        ) : (
-          <FlatList
-            data={scannedItems}
-            renderItem={renderItem}
-            keyExtractor={(item, index) => `${item.barcode}-${index}`}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-          />
-        )}
-
-        {/* Action Buttons */}
-        <View style={styles.actionBar}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.clearButton]}
-            onPress={() => {
-              if (scannedItems.length > 0) {
-                Alert.alert(
-                  "Clear All Items",
-                  "Are you sure you want to clear all scanned items?",
-                  [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: "Clear",
-                      style: "destructive",
-                      onPress: () => setScannedItems([]),
-                    },
-                  ],
-                );
-              }
-            }}
-            disabled={scannedItems.length === 0}
-          >
-            <MaterialIcons name="clear-all" size={20} color="#64748B" />
-            <Text style={styles.clearButtonText}>Clear All</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              styles.paymentButton,
-              scannedItems.length === 0 && styles.disabledButton,
-            ]}
-            onPress={handleProceedToPayment}
-            disabled={scannedItems.length === 0}
-          >
-            <MaterialIcons name="payment" size={20} color="#FFFFFF" />
-            <Text style={styles.paymentButtonText}>
-              Proceed to Payment ({scannedItems.length})
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+        </ScrollView>
+      )}
 
       {/* Manual Barcode Input Modal */}
       <Modal
@@ -868,7 +1649,7 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
 
             <View style={styles.manualInputContainer}>
               <MaterialIcons
-                name="barcode"
+                name="qr-code-scanner"
                 size={40}
                 color="#1D4ED8"
                 style={styles.barcodeIcon}
@@ -1590,6 +2371,776 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 0.5,
+  },
+  // Payment Screen Styles
+  paymentContainer: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+  },
+  paymentScrollContent: {
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 32,
+  },
+  paymentSection: {
+    width: "100%",
+  },
+  summaryCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  summaryTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1E293B",
+    marginBottom: 14,
+  },
+  summaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+  },
+  summaryLabel: {
+    fontSize: 14,
+    color: "#64748B",
+    fontWeight: "500",
+  },
+  summaryValue: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1E293B",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#E2E8F0",
+    marginVertical: 12,
+  },
+  totalLabel: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1E293B",
+  },
+  totalAmount: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#00A86B",
+  },
+  paymentMethodCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1E293B",
+    marginBottom: 14,
+  },
+  customerTypeCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  typeOptions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  typeOption: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 18,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: "#F3F4F6",
+    borderWidth: 2,
+    borderColor: "#E5E7EB",
+  },
+  typeOptionActive: {
+    backgroundColor: "#ECFDF5",
+    borderColor: "#00A86B",
+  },
+  typeText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#64748B",
+    marginTop: 8,
+  },
+  typeTextActive: {
+    color: "#00A86B",
+  },
+  methodOptions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  methodOption: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: "#F3F4F6",
+    borderWidth: 2,
+    borderColor: "#E5E7EB",
+  },
+  methodOptionActive: {
+    backgroundColor: "#ECFDF5",
+    borderColor: "#00A86B",
+  },
+  methodText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#64748B",
+    marginTop: 6,
+  },
+  methodTextActive: {
+    color: "#00A86B",
+  },
+  // Discount Info Styles
+  discountInfoCard: {
+    backgroundColor: "#F0FDF4",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+    shadowColor: "#00A86B",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  discountRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginVertical: 10,
+  },
+  discountLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#059669",
+  },
+  discountValue: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#059669",
+  },
+  // Promo Code Styles
+  promoCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  loadingContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 32,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: "#64748B",
+    marginTop: 12,
+    fontWeight: "500",
+  },
+  emptyPromoContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 32,
+  },
+  emptyPromoText: {
+    fontSize: 14,
+    color: "#94A3B8",
+    marginTop: 12,
+    fontWeight: "500",
+  },
+  promoOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#E2E8F0",
+    marginBottom: 12,
+    gap: 12,
+  },
+  promoOptionSelected: {
+    backgroundColor: "#F0FDF4",
+    borderColor: "#A7F3D0",
+    shadowColor: "#00A86B",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  promoCheckbox: {
+    width: 28,
+    height: 28,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 4,
+  },
+  promoInfo: {
+    flex: 1,
+  },
+  promoOptionCode: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1E293B",
+  },
+  promoOptionName: {
+    fontSize: 13,
+    color: "#64748B",
+    marginTop: 4,
+  },
+  unlimitedBadge: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#00A86B",
+    marginTop: 6,
+    backgroundColor: "#F0FDF4",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    alignSelf: "flex-start",
+  },
+  promoDiscount: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#00A86B",
+  },
+  appliedPromoBoxNew: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F0FDF4",
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 2,
+    borderColor: "#BBF7D0",
+    marginTop: 14,
+    gap: 12,
+    shadowColor: "#00A86B",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  appliedPromoInfoNew: {
+    flex: 1,
+  },
+  appliedPromoCodeNew: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#059669",
+  },
+  appliedPromoNameNew: {
+    fontSize: 13,
+    color: "#047857",
+    marginTop: 4,
+  },
+  appliedPromoAmountNew: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#00A86B",
+  },
+  cashPaymentCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#374151",
+    marginBottom: 8,
+  },
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#E5E7EB",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    backgroundColor: "#F9FAFB",
+  },
+  currencySymbol: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#374151",
+    marginRight: 4,
+  },
+  cashInput: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  changeDisplay: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: "#ECFDF5",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#A7F3D0",
+  },
+  changeLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#059669",
+  },
+  changeAmount: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#059669",
+  },
+  insufficientWarning: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: "#FFF7ED",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#FED7AA",
+    gap: 10,
+  },
+  warningText: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#9A3412",
+  },
+  paymentButtonGroup: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 24,
+  },
+  paymentBackButton: {
+    flex: 1,
+    backgroundColor: "#F3F4F6",
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  backButton: {
+    flex: 1,
+    backgroundColor: "#F3F4F6",
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  backButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#374151",
+    marginLeft: 8,
+  },
+  completeButton: {
+    flex: 1,
+    backgroundColor: "#00A86B",
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  completeButtonText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    marginLeft: 8,
+  },
+  // Customer Type Styles
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1E293B",
+    marginBottom: 14,
+  },
+  customerTypeCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  typeOptions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  typeOption: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 18,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: "#F3F4F6",
+    borderWidth: 2,
+    borderColor: "#E5E7EB",
+  },
+  typeOptionActive: {
+    backgroundColor: "#ECFDF5",
+    borderColor: "#00A86B",
+  },
+  typeText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#64748B",
+    marginTop: 8,
+  },
+  typeTextActive: {
+    color: "#00A86B",
+  },
+  // Discount Info Styles
+  discountInfoCard: {
+    backgroundColor: "#F0FDF4",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+    shadowColor: "#00A86B",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  discountRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginVertical: 10,
+  },
+  discountLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#059669",
+  },
+  discountValue: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#059669",
+  },
+  // Promo Code Styles
+  promoCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  promoInputGroup: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 12,
+  },
+  promoInput: {
+    flex: 1,
+    backgroundColor: "#F9FAFB",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    fontSize: 14,
+    color: "#111827",
+  },
+  loadingContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 32,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: "#64748B",
+    marginTop: 12,
+    fontWeight: "500",
+  },
+  emptyPromoContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 32,
+  },
+  emptyPromoText: {
+    fontSize: 14,
+    color: "#94A3B8",
+    marginTop: 12,
+    fontWeight: "500",
+  },
+  promoOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#E2E8F0",
+    marginBottom: 12,
+    gap: 12,
+  },
+  promoOptionSelected: {
+    backgroundColor: "#F0FDF4",
+    borderColor: "#A7F3D0",
+    shadowColor: "#00A86B",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  promoCheckbox: {
+    width: 28,
+    height: 28,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 4,
+  },
+  promoInfo: {
+    flex: 1,
+  },
+  promoOptionCode: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1E293B",
+  },
+  promoOptionName: {
+    fontSize: 13,
+    color: "#64748B",
+    marginTop: 4,
+  },
+  unlimitedBadge: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#00A86B",
+    marginTop: 6,
+    backgroundColor: "#F0FDF4",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    alignSelf: "flex-start",
+  },
+  promoDiscount: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#00A86B",
+  },
+  appliedPromoBoxNew: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F0FDF4",
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 2,
+    borderColor: "#BBF7D0",
+    marginTop: 14,
+    gap: 12,
+    shadowColor: "#00A86B",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  appliedPromoInfoNew: {
+    flex: 1,
+  },
+  appliedPromoCodeNew: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#059669",
+  },
+  appliedPromoNameNew: {
+    fontSize: 13,
+    color: "#047857",
+    marginTop: 4,
+  },
+  appliedPromoAmountNew: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#00A86B",
+  },
+  applyPromoButton: {
+    backgroundColor: "#00A86B",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  applyPromoText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  appliedPromoBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F0FDF4",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+    gap: 8,
+  },
+  appliedPromoText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#00A86B",
+  },
+  // Booklet Confirmation Styles
+  bookletCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  checkboxRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderWidth: 2,
+    borderColor: "#D1D5DB",
+    borderRadius: 6,
+    marginRight: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+  },
+  checkboxChecked: {
+    backgroundColor: "#00A86B",
+    borderColor: "#00A86B",
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#374151",
+    flex: 1,
+  },
+  paymentButtonGroup: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 24,
+  },
+  paymentBackButton: {
+    flex: 1,
+    backgroundColor: "#F3F4F6",
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  backButton: {
+    flex: 1,
+    backgroundColor: "#F3F4F6",
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  backButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#374151",
+    marginLeft: 8,
+  },
+  completeButton: {
+    flex: 1,
+    backgroundColor: "#00A86B",
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  completeButtonText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    marginLeft: 8,
   },
 });
 

@@ -130,12 +130,10 @@ const PaymentScreen = ({ route, navigation }) => {
       ? systemBookletUsedBefore.toString()
       : "0",
   );
-  const [cashReceivedInput, setCashReceivedInput] = useState("");
   const [bookletUpdated, setBookletUpdated] = useState(false); // New checkbox state
 
   // Parse inputs
   const bookletUsed = Math.min(parseFloat(bookletUsedInput) || 0, WEEKLY_CAP);
-  const cashReceived = parseFloat(cashReceivedInput) || 0;
 
   // Manual verification state (for cashier override) - AUTO SET FOR APP USERS
   const [manualVerification, setManualVerification] = useState({
@@ -220,7 +218,6 @@ const PaymentScreen = ({ route, navigation }) => {
       voucher,
     0,
   );
-  const changeDue = cashReceived - finalTotal;
 
   const handleManualVerify = (type) => {
     Alert.alert(
@@ -361,14 +358,6 @@ const PaymentScreen = ({ route, navigation }) => {
 
   const handleFinalize = async () => {
     try {
-      if (cashReceived < finalTotal) {
-        Alert.alert(
-          "Insufficient Cash",
-          "Cash received is less than total amount.",
-        );
-        return;
-      }
-
       // Check if booklet was updated for eligible customers
       const finalVerificationType = manualVerification.verified
         ? manualVerification.type
@@ -381,7 +370,7 @@ const PaymentScreen = ({ route, navigation }) => {
       ) {
         Alert.alert(
           "Booklet Not Updated",
-          "Please confirm that you have updated the physical BNPC booklet before finalizing.",
+          "Please confirm that you have updated the physical BNPC booklet before proceeding.",
           [
             { text: "Cancel", style: "cancel" },
             { text: "Continue Anyway", onPress: proceedWithPayment },
@@ -482,8 +471,7 @@ const PaymentScreen = ({ route, navigation }) => {
             loyaltyDiscountAmount +
             voucher,
           finalTotal,
-          cashReceived,
-          changeDue: Math.max(changeDue, 0),
+          finalAmountPaid: finalTotal,
         },
 
         // Weekly caps and usage
@@ -539,7 +527,7 @@ const PaymentScreen = ({ route, navigation }) => {
       );
 
       // Lock the order first before paying
-     if(appUser) await lockedOrder(checkoutCode);
+      if (appUser) await lockedOrder(checkoutCode);
 
       // Call payOrder API if appUser
       if (appUser) {
@@ -980,64 +968,19 @@ const PaymentScreen = ({ route, navigation }) => {
           </View>
         </View>
 
-        {/* Cash Received */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="cash" size={18} color="#374151" />
-            <Text style={styles.sectionTitle}>Cash Payment</Text>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Cash Received</Text>
-            <TextInput
-              style={[styles.input, styles.cashInput]}
-              keyboardType="decimal-pad"
-              value={cashReceivedInput}
-              onChangeText={setCashReceivedInput}
-              placeholder="0.00"
-              autoFocus={true}
-            />
-          </View>
-
-          {cashReceived > 0 && (
-            <View style={styles.changeBox}>
-              <View style={styles.changeRow}>
-                <Text style={styles.changeLabel}>Change Due</Text>
-                <Text
-                  style={[
-                    styles.changeValue,
-                    changeDue >= 0
-                      ? styles.changePositive
-                      : styles.changeNegative,
-                  ]}
-                >
-                  {changeDue >= 0 ? "₱" + changeDue.toFixed(2) : "Insufficient"}
-                </Text>
-              </View>
-            </View>
-          )}
-        </View>
-
-        {/* Finalize Button */}
+        {/* Proceed to Payment Button */}
         <TouchableOpacity
-          style={[
-            styles.finalizeButton,
-            cashReceived < finalTotal && styles.finalizeButtonDisabled,
-          ]}
+          style={styles.finalizeButton}
           onPress={handleFinalize}
-          disabled={cashReceived < finalTotal}
         >
-          <Ionicons name="checkmark-circle" size={22} color="#FFFFFF" />
-          <Text style={styles.finalizeButtonText}>
-            {cashReceived < finalTotal
-              ? "INSUFFICIENT CASH"
-              : "FINALIZE TRANSACTION"}
-          </Text>
+          <Ionicons name="card" size={22} color="#FFFFFF" />
+          <Text style={styles.finalizeButtonText}>PROCEED TO PAYMENT</Text>
         </TouchableOpacity>
 
         {/* Compliance Note */}
         <Text style={styles.complianceNote}>
-          Note: Always update the physical BNPC booklet and check the box above
+          Payment will be processed by store terminal. Update physical BNPC
+          booklet if applicable.
         </Text>
       </ScrollView>
     </SafeAreaView>

@@ -226,7 +226,7 @@ const BarcodeScanner = ({ onDetect, scanProgress = 0, barcodeTypes = ["ean8", "e
         style={StyleSheet.absoluteFillObject}
         facing="back"
         barcodeScannerSettings={{
-          barcodeTypes,
+         barcodeTypes
         }}
         onBarcodeScanned={handleScan}
       />

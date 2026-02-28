@@ -127,8 +127,21 @@ const orderSchema = new mongoose.Schema(
         },
         status: {
           type: String,
-          enum: ["EXCHANGED", "SOLD"],
+          enum: ["EXCHANGED", "SOLD", "RETURNED"],
           default: "SOLD",
+        },
+        exchangeInfo: {
+          replacementItemId: String,
+          replacementName: String,
+          validatedAt: Date,
+          completedAt: Date,
+        },
+        returnInfo: {
+          returnId: mongoose.Schema.Types.ObjectId,
+          reason: String,
+          inspectionStatus: String,
+          fulfillmentType: String,
+          completedAt: Date,
         },
       },
     ],
@@ -276,22 +289,6 @@ const orderSchema = new mongoose.Schema(
       discountSnapshot: mongoose.Schema.Types.Mixed,
       weeklyUsageSnapshot: mongoose.Schema.Types.Mixed,
       totals: mongoose.Schema.Types.Mixed,
-    },
-
-    /* ======================
-       CASH TRANSACTION
-    ======================= */
-    cashTransaction: {
-      cashReceived: {
-        type: Number,
-        // required: true,
-        min: 0,
-      },
-      changeDue: {
-        type: Number,
-        // required: true,
-        min: 0,
-      },
     },
 
     /* ======================

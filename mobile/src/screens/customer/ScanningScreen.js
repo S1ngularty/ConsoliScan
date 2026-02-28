@@ -26,11 +26,14 @@ import { checkNetworkStatus } from "../../utils/netUtil";
 import {
   addToCart,
   removeFromCart,
+  startSession,
 } from "../../features/slices/cart/cartSlice";
 import { useDispatch, useSelector } from "react-redux";
 import { debounceCartSync } from "../../features/slices/cart/cartDebounce";
 import { fetchCatalogFromServer } from "../../features/slices/product/productThunks";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { saveLocally } from "../../features/slices/cart/cartThunks";
+import SessionModal from "../../components/Customer/SessionModal";
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -46,6 +49,7 @@ const ScanningScreen = ({ navigation }) => {
   const [isScanningLocked, setIsScanningLocked] = useState(false);
   const [scanStatus, setScanStatus] = useState("Ready to scan");
   const [scanProgress, setScanProgress] = useState(0);
+  const [showSessionModal, setShowSessionModal] = useState(false);
 
   const toastPosition = useRef(new Animated.Value(100)).current;
   const toastOpacity = useRef(new Animated.Value(0)).current;
@@ -73,8 +77,27 @@ const ScanningScreen = ({ navigation }) => {
   useFocusEffect(
     useCallback(() => {
       dispatch(fetchCatalogFromServer());
-    }, [dispatch]),
+
+      // Check if session is active, if not show modal
+      if (!cartState.sessionActive) {
+        setShowSessionModal(true);
+      }
+    }, [dispatch, cartState.sessionActive]),
   );
+
+  // Handler for starting shopping session
+  const handleStartSession = async () => {
+    dispatch(startSession());
+    await dispatch(saveLocally());
+    setShowSessionModal(false);
+    console.log("🎬 [SCANNING] Shopping session started");
+  };
+
+  const handleCancelSession = () => {
+    setShowSessionModal(false);
+    // Navigate back to home
+    navigation.goBack();
+  };
 
   useEffect(() => {
     return () => {
@@ -622,7 +645,7 @@ const ScanningScreen = ({ navigation }) => {
 
             <View style={styles.manualInputContainer}>
               <MaterialCommunityIcons
-                name="barcode"
+                name="barcode-scan"
                 size={24}
                 color="#00A86B"
               />
@@ -730,6 +753,12 @@ const ScanningScreen = ({ navigation }) => {
           </View>
         </Animated.View>
       )}
+
+      <SessionModal
+        visible={showSessionModal}
+        onStartSession={handleStartSession}
+        onCancel={handleCancelSession}
+      />
     </View>
   );
 };

@@ -61,7 +61,6 @@ export const promoService = {
   // Create new promo
   createPromo: async (promoData) => {
     try {
-      console.log(promoData)
       const response = await axiosInstance.post("/promo", promoData);
       return response.data?.result;
     } catch (error) {

@@ -1,7 +1,6 @@
 const Promo = require("../models/promoModel");
 const Product = require("../models/productModel");
 const Category = require("../models/categoryModel");
-const Cart = require("../models/cartModel");
 const { PromoEngine } = require("./promoServiceEngine");
 
 exports.getAll = async (request) => {
@@ -25,6 +24,19 @@ exports.getSelection = async (request) => {
   return { products, categories };
 };
 
+exports.getSuggestedPromos = async (request) => {
+  // Just return all active, non-expired promos
+  // Validation happens when user selects a promo
+  const now = new Date();
+  const suggestedPromos = await Promo.find({
+    active: true,
+    startDate: { $lte: now },
+    endDate: { $gte: now },
+  });
+
+  return suggestedPromos;
+};
+
 exports.updatePromo = async (request) => {
   if (!request.body) throw new Error("empty body request");
   const { promoId } = request.params;
@@ -41,16 +53,12 @@ exports.updatePromo = async (request) => {
 
 exports.apply = async (request) => {
   const { promoCode } = request.params;
-  const { userId } = request.user;
-  const now = Date.now();
-  const cart = await Cart.findOne({ user: userId }).populate({
-    path: "items.product",
-    populate: {
-      path: "category",
-    },
-  });
+  const { cart } = request.body;
 
-  // console.log(cart.items[0].product.category)
+  if (!cart) throw new Error("cart data is required");
+  if (!cart.items || cart.items.length === 0)
+    throw new Error("cart must contain items");
+
   const promoResult = PromoEngine(cart, promoCode);
 
   return promoResult;

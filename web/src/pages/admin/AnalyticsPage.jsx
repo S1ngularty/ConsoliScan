@@ -271,9 +271,6 @@ function AnalyticsPage() {
         getPromotionAnalytics({ startDate, endDate }),
       ]);
 
-              console.log(categoryRes)
-
-
       const salesResult = getResult(salesRes);
       const userResult = getResult(userRes);
       const orderResult = getResult(orderRes);
@@ -541,7 +538,7 @@ function AnalyticsPage() {
       ══════════════════════════════════════════════ */}
       <Section>
         <SectionHeader
-          icon="📦"
+          icon=""
           title="Order Analytics"
           subtitle="Status breakdown and peak ordering hours"
           accent={C_ORANGE}
@@ -978,7 +975,7 @@ function AnalyticsPage() {
 
           <div className="analytics-card">
             <h3>
-              ⚠️ Low Stock Products
+              Low Stock Products
               <span className="low-stock-badge">{"< 10 units"}</span>
             </h3>
             <DataTable

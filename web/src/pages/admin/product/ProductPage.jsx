@@ -200,7 +200,7 @@ function ProductPage() {
       fetchData();
     } catch (error) {
       showToast("Something went wrong! Please try again.", "error");
-      console.log(error);
+      console.error(error);
     } finally {
       setIsLoading(false);
     }

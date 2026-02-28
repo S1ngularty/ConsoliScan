@@ -1,4 +1,4 @@
-// api/cashier.api.js
+  // api/cashier.api.js
 import axios from "axios";
 import { API_URL } from "../constants/config";
 import { getToken } from "../utils/authUtil";
@@ -35,7 +35,9 @@ axiosInstance.interceptors.response.use(
   (error) => {
     console.error("Axios error:", error.message);
     console.error("Error config:", error.config?.url);
-    console.error("Error response:", error.response?.data);
+    console.error("Error status:", error.response?.status);
+    console.error("Error response:", error.response?.data || "No response data");
+    console.error("Full error:", error);
     return Promise.reject(handleApiError(error));
   },
 );

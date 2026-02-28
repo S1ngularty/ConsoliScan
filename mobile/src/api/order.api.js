@@ -16,6 +16,7 @@ const axiosInstance = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  timeout: 10000, // 10 seconds timeout
 });
 
 axiosInstance.interceptors.request.use(async (config) => {
@@ -32,8 +33,8 @@ axiosInstance.interceptors.response.use(
   (error) => Promise.reject(handleApiError(error)),
 );
 
-export const confirmOrder = async (transaction) => {
-  if (!transaction) return;
+export const confirmOrder = async (orderData) => {
+  if (!orderData) return;
   const token = await getToken();
   if (!token) throw new Error("missing token");
   const response = await apiFetch(`${API_URL}api/v1/confirmOrder`, {
@@ -43,7 +44,7 @@ export const confirmOrder = async (transaction) => {
       "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: JSON.stringify({ transaction }),
+    body: JSON.stringify({ transaction: orderData }),
   });
   const result = await response.json();
   return result;

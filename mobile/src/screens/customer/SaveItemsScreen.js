@@ -26,7 +26,8 @@ import OfflineIndicator from "../../components/Common/OfflineIndicator";
 // Enable LayoutAnimation for Android
 if (
   Platform.OS === "android" &&
-  UIManager.setLayoutAnimationEnabledExperimental
+  UIManager.setLayoutAnimationEnabledExperimental &&
+  !global?.nativeFabricUIManager
 ) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
@@ -327,7 +328,7 @@ const SavedItemsScreen = ({ navigation }) => {
               <View style={styles.detailsGrid}>
                 <View style={styles.detailItem}>
                   <MaterialCommunityIcons
-                    name="barcode"
+                    name="barcode-scan"
                     size={16}
                     color="#64748b"
                   />

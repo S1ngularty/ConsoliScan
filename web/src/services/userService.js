@@ -11,7 +11,6 @@ export async function getMe() {
     if (!result) throw new Error("failed to get current user");
     return result.data.user;
   } catch (error) {
-    console.log(error);
     return null;
   }
 }
@@ -33,19 +32,13 @@ export async function getAllUser() {
     });
     return data;
   } catch (error) {
-    console.log(error);
-    return error;
-  }
-}
-
-export async function getOneUser(id = "") {
+    return error;(id = "") {
   try {
     const result = await axios.get(`api/v1/user/${id}`);
     if (!result) throw new Error("failed to get the user");
     const data = result.data;
     return data;
   } catch (error) {
-    console.log(error);
     return error;
   }
 }
@@ -57,14 +50,12 @@ export async function updateProfile(id = "", data = {}) {
     const data = isUpdated.data.result;
     return data;
   } catch (error) {
-    console.log(error);
     return error;
   }
 }
 
 export async function createUser(userInfo) {
   try {
-    console.log(userInfo);
     const result = await axios.post("api/v1/user", userInfo, {
       headers: {
         "Content-Type": "multipart/form-data",
@@ -73,14 +64,12 @@ export async function createUser(userInfo) {
     if (!result) throw new Error("failed to create User");
     return result.data.result;
   } catch (error) {
-    console.log(error);
-    return error;
+      return error;
   }
 }
 
 export async function editUser(userInfo, userId) {
   try {
-    console.log(userInfo);
     const result = await axios.put(`api/v1/profile/user/${userId}`, userInfo, {
       headers: {
         "Content-Type": "multipart/form-data",
@@ -89,7 +78,6 @@ export async function editUser(userInfo, userId) {
     if (!result) throw new Error("failed to create User");
     return result.data.result;
   } catch (error) {
-    console.log(error);
     return error;
   }
 }
@@ -116,8 +104,7 @@ export async function updateAvatar(file, userId) {
     if (!isUpload) throw new Error("failed to update the avatar");
     // return isUpload;
   } catch (error) {
-    console.log(error);
-    return error;
+      return error;
   }
 }
 
@@ -130,7 +117,6 @@ export async function deleteUser(id) {
 export async function updatePermission(id, data) {
   if (!id) throw new Error("missing id field");
   if (!data) throw new Error("empty fields to update");
-  console.log(data);
   const result = await axios.put(`/api/v1/user/roles/${id}`, data);
   if (!result) throw new Error("something went wrong");
   return result.data.result;
@@ -181,11 +167,6 @@ export async function applyEligibility(id, data) {
     if (!response) throw new Error("Failed to send request");
     return response.data;
   } catch (error) {
-    console.error("Apply eligibility error:", error);
-    if (error.response) {
-      console.error("Server response:", error.response.data);
-      console.error("Status code:", error.response.status);
-    }
     throw error;
   }
 }

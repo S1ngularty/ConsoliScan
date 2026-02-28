@@ -65,7 +65,11 @@ const ScanMethodModal = ({ visible, onClose, navigation }) => {
                   <View
                     style={[styles.optionIcon, { backgroundColor: "#DBEAFE" }]}
                   >
-                    <MaterialIcons name="barcode" size={28} color="#1D4ED8" />
+                    <MaterialIcons
+                      name="qr-code-scanner"
+                      size={28}
+                      color="#1D4ED8"
+                    />
                   </View>
                   <View style={styles.optionContent}>
                     <Text style={styles.optionTitle}>Barcode Scanning</Text>
