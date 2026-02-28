@@ -249,7 +249,7 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
   // STAGE 1: Scan Customer QR Code (with consistency checking)
   const handleQRScanned = useCallback((_, qrData) => {
     const now = Date.now();
-
+    // console.log("Scanned QR data:", qrData );
     // Add current scan to buffer
     scanBufferRef.current.push({
       data: qrData,
@@ -304,7 +304,7 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
         // If not JSON, treat as checkout code
         parsedData = { checkoutCode: qrData };
       }
-
+      // console.log(parsedData);
       const { cartSnapshot, user, checkoutCode, totals } = parsedData;
 
       if (
@@ -341,6 +341,7 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
       if (!customerCart) {
         return;
       }
+      console.log("Scanned barcode:", barcode);
 
       const now = Date.now();
 
@@ -734,6 +735,7 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
       const transaction = {
         id: `offline-${Date.now()}`,
         checkoutCode: customerCart.checkoutCode,
+        user: customerCart.user?.userId || null,
         customerData: customerCart.user || {},
         customerType,
         customerScope,
@@ -863,7 +865,7 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
       <View style={styles.scannerContainer}>
         <BarcodeScanner
           onDetect={handleQRScanned}
-          barcodeTypes={["qrcode"]}
+          barcodeTypes={["qr"]}
           scanProgress={scanProgress}
         />
       </View>
