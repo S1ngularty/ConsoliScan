@@ -32,7 +32,11 @@ export async function getAllUser() {
     });
     return data;
   } catch (error) {
-    return error;(id = "") {
+    return error;
+  }
+}
+
+export async function getUser(id = "") {
   try {
     const result = await axios.get(`api/v1/user/${id}`);
     if (!result) throw new Error("failed to get the user");
@@ -64,7 +68,7 @@ export async function createUser(userInfo) {
     if (!result) throw new Error("failed to create User");
     return result.data.result;
   } catch (error) {
-      return error;
+    return error;
   }
 }
 
@@ -104,7 +108,7 @@ export async function updateAvatar(file, userId) {
     if (!isUpload) throw new Error("failed to update the avatar");
     // return isUpload;
   } catch (error) {
-      return error;
+    return error;
   }
 }
 
@@ -142,7 +146,7 @@ export async function verificationRequest(userId, data) {
 export async function applyEligibility(id, data) {
   try {
     if (!id || !data) throw new Error("Missing ID or data");
-    
+
     // Convert data to FormData if it isn't already
     let formData;
     if (data instanceof FormData) {
@@ -150,15 +154,16 @@ export async function applyEligibility(id, data) {
     } else {
       formData = new FormData();
       // Explicitly append files and fields
-      if (data.idFront) formData.append('idFront', data.idFront);
-      if (data.idBack) formData.append('idBack', data.idBack);
-      if (data.userPhoto) formData.append('userPhoto', data.userPhoto);
-      
-      formData.append('idNumber', data.idNumber);
-      formData.append('idType', data.idType);
-      formData.append('dateIssued', data.dateIssued);
-      if (data.expiryDate) formData.append('expiryDate', data.expiryDate);
-      if (data.typeOfDisability) formData.append('typeOfDisability', data.typeOfDisability);
+      if (data.idFront) formData.append("idFront", data.idFront);
+      if (data.idBack) formData.append("idBack", data.idBack);
+      if (data.userPhoto) formData.append("userPhoto", data.userPhoto);
+
+      formData.append("idNumber", data.idNumber);
+      formData.append("idType", data.idType);
+      formData.append("dateIssued", data.dateIssued);
+      if (data.expiryDate) formData.append("expiryDate", data.expiryDate);
+      if (data.typeOfDisability)
+        formData.append("typeOfDisability", data.typeOfDisability);
     }
 
     // Pass the ID as a URL parameter, NOT in the body
