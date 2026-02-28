@@ -87,7 +87,7 @@ function UserModalComponent({ isOpen, data, mode, onClose, onSave }) {
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="user-modal modal-overlay" onClick={onClose}>
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
         <header className="modal-header">
           <div className="header-title">
@@ -219,7 +219,9 @@ function UserModalComponent({ isOpen, data, mode, onClose, onSave }) {
                   >
                     <option value="user">User</option>
                     <option value="admin">Store Manager (Admin)</option>
-                    <option value="super_admin">System Owner (Super Admin)</option>
+                    <option value="super_admin">
+                      System Owner (Super Admin)
+                    </option>
                     <option value="checker">Checker</option>
                   </select>
                 </div>

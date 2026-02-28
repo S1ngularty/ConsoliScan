@@ -457,7 +457,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={handleOverlayClick}>
+    <div className="product-modal modal-overlay" onClick={handleOverlayClick}>
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
         {/* HEADER - Fixed */}
         <header className="modal-header">

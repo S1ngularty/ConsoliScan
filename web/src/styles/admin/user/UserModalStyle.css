@@ -1,4 +1,4 @@
-.modal-overlay {
+.user-modal .modal-overlay {
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.7);
@@ -11,7 +11,7 @@
   animation: fadeIn 0.3s ease-out;
 }
 
-.modal-container {
+.user-modal .modal-container {
   background: white;
   width: 100%;
   max-width: 1200px;
@@ -22,10 +22,11 @@
   overflow: hidden;
   animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   transform-origin: center center;
+  max-height: 90vh; /* Limit overall modal height */
 }
 
 /* Header UI */
-.modal-header {
+.user-modal .modal-header {
   padding: 24px 32px;
   border-bottom: 1px solid #f1f5f9;
   display: flex;
@@ -34,11 +35,11 @@
   animation: slideDown 0.5s ease-out 0.1s both;
 }
 
-.icon-circle {
+.user-modal .icon-circle {
   width: 40px;
   height: 40px;
   background: #ecfdf5;
-  color: #00A86B;
+  color: #00a86b;
   border-radius: 10px;
   display: flex;
   align-items: center;
@@ -46,12 +47,12 @@
   transition: all 0.3s ease;
 }
 
-.icon-circle:hover {
+.user-modal .icon-circle:hover {
   transform: scale(1.05);
   background: #d1fae5;
 }
 
-.close-x {
+.user-modal .close-x {
   background: transparent;
   border: none;
   padding: 8px;
@@ -61,66 +62,100 @@
   transition: all 0.3s ease;
 }
 
-.close-x:hover {
+.user-modal .close-x:hover {
   background: #f1f5f9;
   color: #1e293b;
   transform: rotate(90deg);
 }
 
-.header-title h2 { 
-  font-size: 1.25rem; 
-  color: #1e293b; 
-  margin: 0; 
+.user-modal .header-title h2 {
+  font-size: 1.25rem;
+  color: #1e293b;
+  margin: 0;
   animation: fadeIn 0.6s ease-out 0.2s both;
 }
-.subtitle { 
-  font-size: 0.75rem; 
-  color: #94a3b8; 
-  margin: 0; 
+
+.user-modal .subtitle {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin: 0;
   font-family: monospace;
   animation: fadeIn 0.6s ease-out 0.3s both;
 }
 
 /* Body & Panels */
-.modal-body-columns {
+.user-modal .modal-scrollable-content {
+  max-height: 65vh; /* Adjust this value based on your needs */
+  overflow-y: auto;
+  padding: 0 32px;
+  flex: 1;
+}
+
+/* Custom scrollbar styles for the modal */
+.user-modal .modal-scrollable-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.user-modal .modal-scrollable-content::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.user-modal .modal-scrollable-content::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+  transition: background 0.3s ease;
+}
+
+.user-modal .modal-scrollable-content::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.user-modal .modal-body-columns {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 40px;
-  padding: 32px;
+  padding: 24px 0 32px 0; /* Adjusted padding for scroll */
   animation: fadeIn 0.6s ease-out 0.4s both;
 }
 
-.side-panel {
+.user-modal .side-panel {
   animation: slideIn 0.5s ease-out forwards;
   opacity: 0;
+  min-height: min-content; /* Prevent collapse */
 }
 
-.side-panel:nth-child(1) {
+.user-modal .side-panel:nth-child(1) {
   animation-delay: 0.3s;
 }
 
-.side-panel:nth-child(2) {
+.user-modal .side-panel:nth-child(2) {
   animation-delay: 0.4s;
 }
 
-.section-label {
+.user-modal .section-label {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
-  color: #00A86B;
+  color: #00a86b;
   margin-bottom: 20px;
   transform: translateY(10px);
   animation: fadeSlideUp 0.5s ease-out forwards;
 }
 
-.section-label:nth-of-type(1) { animation-delay: 0.5s; }
-.section-label:nth-of-type(2) { animation-delay: 0.6s; }
+.user-modal .section-label:nth-of-type(1) {
+  animation-delay: 0.5s;
+}
+
+.user-modal .section-label:nth-of-type(2) {
+  animation-delay: 0.6s;
+}
 
 /* Form Elements */
-.input-grid {
+.user-modal .input-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
@@ -128,7 +163,7 @@
   animation: fadeIn 0.6s ease-out forwards;
 }
 
-.input-group {
+.user-modal .input-group {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -139,29 +174,47 @@
 }
 
 /* Staggered animation for input groups */
-.input-group:nth-child(1) { animation-delay: 0.6s; }
-.input-group:nth-child(2) { animation-delay: 0.65s; }
-.input-group:nth-child(3) { animation-delay: 0.7s; }
-.input-group:nth-child(4) { animation-delay: 0.75s; }
-.input-group:nth-child(5) { animation-delay: 0.8s; }
-.input-group:nth-child(6) { animation-delay: 0.85s; }
+.user-modal .input-group:nth-child(1) {
+  animation-delay: 0.6s;
+}
 
-.input-group input{
+.user-modal .input-group:nth-child(2) {
+  animation-delay: 0.65s;
+}
+
+.user-modal .input-group:nth-child(3) {
+  animation-delay: 0.7s;
+}
+
+.user-modal .input-group:nth-child(4) {
+  animation-delay: 0.75s;
+}
+
+.user-modal .input-group:nth-child(5) {
+  animation-delay: 0.8s;
+}
+
+.user-modal .input-group:nth-child(6) {
+  animation-delay: 0.85s;
+}
+
+.user-modal .input-group input {
   width: 90%;
 }
 
-.input-group label { 
-  font-size: 0.8rem; 
-  font-weight: 600; 
+.user-modal .input-group label {
+  font-size: 0.8rem;
+  font-weight: 600;
   color: #475569;
   transition: color 0.3s ease;
 }
 
-.input-group input:focus + label {
-  color: #00A86B;
+.user-modal .input-group input:focus + label {
+  color: #00a86b;
 }
 
-.input-group input, .input-group select {
+.user-modal .input-group input,
+.user-modal .input-group select {
   padding: 10px 14px;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
@@ -169,15 +222,16 @@
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.input-group input:focus, .input-group select:focus { 
-  border-color: #00A86B; 
-  outline: none; 
+.user-modal .input-group input:focus,
+.user-modal .input-group select:focus {
+  border-color: #00a86b;
+  outline: none;
   box-shadow: 0 0 0 3px rgba(0, 168, 107, 0.1);
   transform: translateY(-2px);
 }
 
 /* Avatar Preview */
-.avatar-upload-section {
+.user-modal .avatar-upload-section {
   display: flex;
   align-items: center;
   gap: 16px;
@@ -187,7 +241,7 @@
   animation: fadeSlideUp 0.5s ease-out 0.5s forwards;
 }
 
-.modal-avatar-preview {
+.user-modal .modal-avatar-preview {
   width: 64px;
   height: 64px;
   border-radius: 16px;
@@ -197,12 +251,12 @@
   cursor: pointer;
 }
 
-.modal-avatar-preview:hover {
+.user-modal .modal-avatar-preview:hover {
   transform: scale(1.05);
-  border-color: #00A86B;
+  border-color: #00a86b;
 }
 
-.change-photo-btn {
+.user-modal .change-photo-btn {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   padding: 6px 12px;
@@ -213,14 +267,14 @@
   transition: all 0.3s ease;
 }
 
-.change-photo-btn:hover {
-  background: #00A86B;
+.user-modal .change-photo-btn:hover {
+  background: #00a86b;
   color: white;
-  border-color: #00A86B;
+  border-color: #00a86b;
   transform: translateY(-2px);
 }
 
-.info-box {
+.user-modal .info-box {
   background: #f8fafc;
   padding: 16px;
   border-radius: 12px;
@@ -229,28 +283,29 @@
   animation: fadeIn 0.5s ease-out 0.9s forwards;
 }
 
-.info-box p { 
-  font-size: 0.8rem; 
-  color: #64748b; 
+.user-modal .info-box p {
+  font-size: 0.8rem;
+  color: #64748b;
   margin: 4px 0;
   transition: color 0.3s ease;
 }
 
-.info-box:hover p {
+.user-modal .info-box:hover p {
   color: #475569;
 }
 
 /* Footer Actions */
-.modal-footer {
+.user-modal .modal-footer {
   padding: 24px 32px;
   background: #f8fafc;
   display: flex;
   justify-content: flex-end;
   gap: 12px;
   animation: slideUp 0.5s ease-out 0.8s both;
+  border-top: 1px solid #e2e8f0;
 }
 
-.btn-secondary {
+.user-modal .btn-secondary {
   background: white;
   color: #64748b;
   border: 1px solid #e2e8f0;
@@ -261,34 +316,34 @@
   transition: all 0.3s ease;
 }
 
-.btn-secondary:hover {
+.user-modal .btn-secondary:hover {
   background: #f1f5f9;
   color: #475569;
   transform: translateY(-2px);
   border-color: #cbd5e1;
 }
 
-.btn-primary { 
-  background: #00A86B; 
-  color: white; 
-  border: none; 
-  padding: 12px 24px; 
-  border-radius: 10px; 
-  cursor: pointer; 
-  display: flex; 
-  align-items: center; 
-  gap: 8px; 
+.user-modal .btn-primary {
+  background: #00a86b;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-weight: 600;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.btn-primary:hover {
+.user-modal .btn-primary:hover {
   background: #00965c;
   transform: translateY(-2px);
   box-shadow: 0 10px 25px -5px rgba(0, 168, 107, 0.3);
 }
 
-.btn-primary:active {
+.user-modal .btn-primary:active {
   transform: translateY(0);
 }
 
@@ -348,117 +403,92 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .modal-body-columns {
+  .user-modal .modal-body-columns {
     grid-template-columns: 1fr;
     gap: 24px;
   }
-  
-  .modal-container {
+
+  .user-modal .modal-container {
     animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1);
   }
-}
 
-/* Add these styles to your existing UserModalStyle.css */
-
-/* Scrollable content wrapper */
-.modal-scrollable-content {
-  max-height: 65vh; /* Adjust this value based on your needs */
-  overflow-y: auto;
-  padding: 0 32px;
-  flex: 1;
-}
-
-/* Custom scrollbar styles for the modal */
-.modal-scrollable-content::-webkit-scrollbar {
-  width: 6px;
-}
-
-.modal-scrollable-content::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 3px;
-}
-
-.modal-scrollable-content::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
-  transition: background 0.3s ease;
-}
-
-.modal-scrollable-content::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-/* Adjust modal container to handle scrollable content */
-.modal-container {
-  background: white;
-  width: 100%;
-  max-width: 1200px;
-  border-radius: 20px;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  overflow: hidden;
-  animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  transform-origin: center center;
-  max-height: 90vh; /* Limit overall modal height */
-}
-
-/* Adjust body columns for scrollable content */
-.modal-body-columns {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 40px;
-  padding: 24px 0 32px 0; /* Adjusted padding for scroll */
-  animation: fadeIn 0.6s ease-out 0.4s both;
-}
-
-/* Ensure side panels have proper spacing */
-.side-panel {
-  animation: slideIn 0.5s ease-out forwards;
-  opacity: 0;
-  min-height: min-content; /* Prevent collapse */
-}
-
-/* Responsive adjustments for scrollable modal */
-@media (max-width: 768px) {
-  .modal-scrollable-content {
+  .user-modal .modal-scrollable-content {
     max-height: 60vh;
     padding: 0 20px;
   }
-  
-  .modal-body-columns {
-    grid-template-columns: 1fr;
-    gap: 24px;
+
+  .user-modal .modal-body-columns {
     padding: 20px 0 28px 0;
   }
 }
 
 /* For very small screens */
 @media (max-width: 480px) {
-  .modal-scrollable-content {
+  .user-modal .modal-scrollable-content {
     max-height: 55vh;
     padding: 0 16px;
   }
-  
-  .modal-container {
+
+  .user-modal .modal-container {
     max-height: 85vh;
   }
 }
 
 /* Smooth scrolling behavior */
-.modal-scrollable-content {
+.user-modal .modal-scrollable-content {
   scroll-behavior: smooth;
 }
 
-/* Optional: Fade effect at the top and bottom of scrollable area */
-.modal-scrollable-content::before,
-.modal-scrollable-content::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 20px;
-  pointer-events: none;
-  z-index: 1;
+/* Animation Keyframes */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
