@@ -86,6 +86,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
     if (isOpen && data) {
       setProductInfo({
         ...data,
+        category: data.category?._id || data.category || "",
         salePrice: data.salePrice || "",
         saleActive: data.saleActive || false,
       });

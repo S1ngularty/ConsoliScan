@@ -20,7 +20,10 @@ export const handleProductRequest = async (data, files, requestMethod) => {
   const formData = new FormData();
   for (let pair of Object.entries(data)) {
     if (pair[0] === "images") continue;
-    formData.append(pair[0], pair[1]);
+    // Extract _id if value is an object (e.g., category), otherwise use the value as-is
+    const value =
+      typeof pair[1] === "object" && pair[1]?._id ? pair[1]._id : pair[1];
+    formData.append(pair[0], value);
   }
   if (files) {
     for (let file of files) {
