@@ -9,7 +9,6 @@
 
 const Order = require("../models/orderModel");
 const CheckoutQueue = require("../models/checkoutQueueModel");
-const Exchange = require("../models/ExchangeModel");
 
 /**
  * Get cashier dashboard statistics
@@ -110,7 +109,7 @@ async function getRecentTransactions(request) {
     .sort({ confirmedAt: -1 })
     .limit(parseInt(limit))
     .lean();
-    // console.log("Recent Orders:", recentOrders);
+  // console.log("Recent Orders:", recentOrders);
   const transactions = recentOrders.map((order) => ({
     _id: order._id,
     transactionId: order.checkoutCode,
@@ -158,44 +157,6 @@ async function getPendingQueues(request) {
       createdAt: q.createdAt,
     })),
     total: queues.length,
-  };
-}
-
-/**
- * Get recent exchanges handled by cashier
- * GET /api/v1/cashier/recent-exchanges
- */
-async function getRecentExchanges(request) {
-  const { userId } = request.user;
-  const query = request.query || {};
-  const { limit = 5 } = query;
-
-  const exchanges = await Exchange.find({
-    cashierId: userId,
-    status: { $in: ["VALIDATED", "COMPLETED"] },
-  })
-    .select(
-      "status originalItemName replacementItemName price timestamps customerId",
-    )
-    .sort({ "timestamps.validatedAt": -1 })
-    .limit(parseInt(limit))
-    .populate("customerId", "firstName lastName")
-    .lean();
-
-  return {
-    exchanges: exchanges.map((ex) => ({
-      _id: ex._id,
-      status: ex.status,
-      originalItem: ex.originalItemName,
-      replacementItem: ex.replacementItemName,
-      price: ex.price,
-      customerName: ex.customerId
-        ? `${ex.customerId.firstName} ${ex.customerId.lastName}`
-        : "N/A",
-      validatedAt: ex.timestamps.validatedAt,
-      completedAt: ex.timestamps.completedAt,
-    })),
-    total: exchanges.length,
   };
 }
 
@@ -661,7 +622,6 @@ module.exports = {
   getDashboardStats,
   getRecentTransactions,
   getPendingQueues,
-  getRecentExchanges,
   getInventory,
   updateStock,
   getSalesReports,

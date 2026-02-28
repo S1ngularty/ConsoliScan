@@ -153,7 +153,11 @@ const ProductDetailSheet = ({ product, onConfirm, onCancel }) => {
             <Text style={styles.statValue}>{product?.stockQuantity || 0}</Text>
           </View>
           <View style={styles.statItem}>
-            <MaterialCommunityIcons name="barcode" size={18} color="#666" />
+            <MaterialCommunityIcons
+              name="barcode-scan"
+              size={18}
+              color="#666"
+            />
             <Text style={styles.statLabel}>Barcode</Text>
             <Text style={styles.statValue}>{product?.barcode || "N/A"}</Text>
           </View>

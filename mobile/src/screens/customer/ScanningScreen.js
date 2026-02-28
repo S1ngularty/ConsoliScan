@@ -645,7 +645,7 @@ const ScanningScreen = ({ navigation }) => {
 
             <View style={styles.manualInputContainer}>
               <MaterialCommunityIcons
-                name="barcode"
+                name="barcode-scan"
                 size={24}
                 color="#00A86B"
               />

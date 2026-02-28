@@ -279,7 +279,7 @@ const HomeScreen = ({ navigation }) => {
               <Text style={styles.sectionTitle}>Quick Actions</Text>
               <View style={styles.actionsGrid}>
                 <QuickActionButton
-                  icon="shopping-cart"
+                  icon="cart-outline"
                   title="New Transaction"
                   subtitle="Start scanning items"
                   onPress={() => setScanModalVisible(true)}
@@ -314,11 +314,11 @@ const HomeScreen = ({ navigation }) => {
                 />
 
                 <QuickActionButton
-                  icon="swap-horizontal"
-                  title="Exchange Returns"
+                  icon="undo-variant"
+                  title="Returns"
                   subtitle="Process item returns"
-                  onPress={() => navigation.navigate("ExchangeReturn")}
-                  color="#10B981"
+                  onPress={() => navigation.navigate("ReturnValidation")}
+                  color="#EF4444"
                   disabled={isOffline || isServerDown}
                 />
               </View>

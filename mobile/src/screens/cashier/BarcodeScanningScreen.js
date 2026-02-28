@@ -798,7 +798,8 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
     const checkoutCode = `CHK-${Date.now().toString().slice(-8)}`;
 
     // Create transaction payload matching offline cashier structure
-    const finalAmountPaid = totalPrice - bnpcDiscount - (appliedPromoData?.discount || 0);
+    const finalAmountPaid =
+      totalPrice - bnpcDiscount - (appliedPromoData?.discount || 0);
     const orderData = {
       items: orderItems,
       baseAmount: totalPrice,
@@ -1648,7 +1649,7 @@ const BarcodeScanningScreen = ({ navigation, route }) => {
 
             <View style={styles.manualInputContainer}>
               <MaterialIcons
-                name="barcode"
+                name="qr-code-scanner"
                 size={40}
                 color="#1D4ED8"
                 style={styles.barcodeIcon}

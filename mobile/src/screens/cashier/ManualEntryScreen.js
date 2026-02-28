@@ -114,7 +114,7 @@ const ManualEntryScreen = () => {
               <View style={styles.inputContainer}>
                 <View style={styles.inputIcon}>
                   <MaterialCommunityIcons
-                    name="barcode"
+                    name="barcode-scan"
                     size={22}
                     color="#64748B"
                   />

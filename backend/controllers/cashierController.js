@@ -28,12 +28,6 @@ const getRecentTransactions = controllerWrapper(
 const getPendingQueues = controllerWrapper(cashierService.getPendingQueues);
 
 /**
- * GET /api/v1/cashier/recent-exchanges
- * Get recent exchanges handled by the cashier
- */
-const getRecentExchanges = controllerWrapper(cashierService.getRecentExchanges);
-
-/**
  * GET /api/v1/cashier/inventory
  * Get inventory list with search and filters
  */
@@ -81,7 +75,6 @@ module.exports = {
   getDashboardStats,
   getRecentTransactions,
   getPendingQueues,
-  getRecentExchanges,
   getInventory,
   updateStock,
   getSalesReports,

@@ -127,8 +127,21 @@ const orderSchema = new mongoose.Schema(
         },
         status: {
           type: String,
-          enum: ["EXCHANGED", "SOLD"],
+          enum: ["EXCHANGED", "SOLD", "RETURNED"],
           default: "SOLD",
+        },
+        exchangeInfo: {
+          replacementItemId: String,
+          replacementName: String,
+          validatedAt: Date,
+          completedAt: Date,
+        },
+        returnInfo: {
+          returnId: mongoose.Schema.Types.ObjectId,
+          reason: String,
+          inspectionStatus: String,
+          fulfillmentType: String,
+          completedAt: Date,
         },
       },
     ],

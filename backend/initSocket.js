@@ -2,7 +2,7 @@ const jwtToken = require("jsonwebtoken");
 const { Server } = require("socket.io");
 const { setSocketInstance } = require("./helper/socketEmitter");
 const { registerCheckoutEvents } = require("./services/registerCheckoutEvents");
-const { registerExchangeEvents } = require("./services/registerExchangeEvents");
+const { registerReturnEvents } = require("./services/registerReturnEvents");
 let io = null;
 
 const initSocket = (rawServer) => {
@@ -32,7 +32,7 @@ const initSocket = (rawServer) => {
       success: true,
     });
     registerCheckoutEvents(socket);
-    registerExchangeEvents(socket);
+    registerReturnEvents(socket);
   });
 
   setSocketInstance(io);
