@@ -24,8 +24,11 @@ export default function CheckoutQRScreen({ route, navigation }) {
   const [cashier, setCashier] = useState("");
   const userState = useSelector((state) => state.auth);
   const dispatch = useDispatch();
-  const offlineQrValue = offlineMode
+
+  // Generate QR value with mode indicator
+  const qrValue = offlineMode
     ? JSON.stringify({
+        mode: "offline",
         checkoutCode,
         user: {
           userId: checkoutData?.user || userState.user?.userId || null,
@@ -37,8 +40,10 @@ export default function CheckoutQRScreen({ route, navigation }) {
         },
         totals: checkoutData?.totals || null,
       })
-    : null;
-  const qrValue = offlineMode && offlineQrValue ? offlineQrValue : checkoutCode;
+    : JSON.stringify({
+        mode: "online",
+        checkoutCode,
+      });
 
   // Animation for smooth progress bar
   const progressAnim = useRef(new Animated.Value(0)).current;
