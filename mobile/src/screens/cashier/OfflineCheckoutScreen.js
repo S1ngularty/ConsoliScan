@@ -24,6 +24,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import BarcodeScanner from "../../components/BarcodeScanner";
 import { useFocusEffect } from "@react-navigation/native";
 import { getPromos } from "../../api/promo.api";
+import { confirmOrder } from "../../api/order.api";
 import {
   fetchCatalogFromServer,
   loadCatalogFromStorage,
@@ -33,7 +34,10 @@ import { readPromos, writePromos } from "../../utils/promoStorage";
 const { width } = Dimensions.get("window");
 
 export default function OfflineCheckoutScreen({ route, navigation }) {
-  const [stage, setStage] = useState("qr"); // qr | scan | discount
+  // Check if we have pre-scanned customer data (from QRScanningScreen)
+  const { skipScanningStage, preScannedCustomerData } = route.params || {};
+
+  const [stage, setStage] = useState(skipScanningStage ? "scan" : "qr"); // qr | scan | discount
   const [customerCart, setCustomerCart] = useState(null);
   const [originalCartItems, setOriginalCartItems] = useState([]); // Track original items from QR
   const [scannedItems, setScannedItems] = useState([]);
@@ -76,6 +80,29 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
     }
     setLocalIsOnline(isOnline);
   }, [isOnline]);
+
+  // Initialize with pre-scanned customer data if provided
+  useEffect(() => {
+    if (skipScanningStage && preScannedCustomerData) {
+      const { cartSnapshot, user, checkoutCode, totals } =
+        preScannedCustomerData;
+
+      if (cartSnapshot?.items?.length > 0) {
+        const originalItems = cartSnapshot.items;
+        setCustomerCart({
+          checkoutCode: checkoutCode || `CHK-${Date.now()}`,
+          items: originalItems,
+          user,
+          totals: totals || { subtotal: 0, finalTotal: 0 },
+        });
+        setOriginalCartItems(originalItems);
+        console.log(
+          "✅ [OFFLINE CHECKOUT] Pre-scanned customer data loaded:",
+          checkoutCode,
+        );
+      }
+    }
+  }, [skipScanningStage, preScannedCustomerData]);
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -822,7 +849,20 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
         localStatus: "pending_sync",
       };
 
-      // Save to AsyncStorage
+      if (isOnline) {
+        await confirmOrder(transaction);
+        Alert.alert("Success", "Transaction sent to server successfully.", [
+          {
+            text: "OK",
+            onPress: () => {
+              navigation.navigate("DrawTabs", { screen: "Home" });
+            },
+          },
+        ]);
+        return;
+      }
+
+      // Save to AsyncStorage only when offline
       const existingTransactions = await AsyncStorage.getItem(
         "offline_transactions",
       );
@@ -848,7 +888,12 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
         ],
       );
     } catch (error) {
-      Alert.alert("Error", "Failed to save transaction");
+      Alert.alert(
+        "Error",
+        isOnline
+          ? "Failed to send transaction to server"
+          : "Failed to save transaction",
+      );
     }
   };
 
@@ -893,6 +938,27 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
   // RENDER: Item Scan & Validation Stage
   const renderScanStage = () => (
     <View style={styles.stageContainer}>
+      {/* Show customer info if pre-scanned */}
+      {skipScanningStage && customerCart?.user && (
+        <View style={styles.customerBanner}>
+          <MaterialCommunityIcons
+            name="account-check"
+            size={20}
+            color="#00A86B"
+          />
+          <View style={styles.customerBannerText}>
+            <Text style={styles.customerBannerTitle}>
+              Customer: {customerCart.user.userName || "Guest"}
+            </Text>
+            {customerCart.user.userEmail && (
+              <Text style={styles.customerBannerSubtitle}>
+                {customerCart.user.userEmail}
+              </Text>
+            )}
+          </View>
+        </View>
+      )}
+
       <View style={styles.header}>
         <Text style={styles.title}>Scan Customer Items</Text>
         <Text style={styles.subtitle}>
@@ -1203,14 +1269,19 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#DC2626" />
+      <StatusBar
+        barStyle={isOnline ? "dark-content" : "light-content"}
+        backgroundColor={isOnline ? "#ffffff" : "#DC2626"}
+      />
 
       {/* Offline Banner */}
-      <View style={styles.offlineBanner}>
-        <MaterialCommunityIcons name="wifi-off" size={16} color="#fff" />
-        <Text style={styles.offlineBannerText}>OFFLINE MODE</Text>
-        <View style={styles.badgeDot} />
-      </View>
+      {!isOnline && (
+        <View style={styles.offlineBanner}>
+          <MaterialCommunityIcons name="wifi-off" size={16} color="#fff" />
+          <Text style={styles.offlineBannerText}>OFFLINE MODE</Text>
+          <View style={styles.badgeDot} />
+        </View>
+      )}
 
       {/* Header with Stage Indicator */}
       <View style={styles.headerBar}>
@@ -1288,16 +1359,18 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
       </ScrollView>
 
       {/* Footer */}
-      <View style={styles.footerBar}>
-        <MaterialCommunityIcons
-          name="database-lock"
-          size={14}
-          color="#FFA500"
-        />
-        <Text style={styles.footerText}>
-          Data stored locally • Will sync when online
-        </Text>
-      </View>
+      {!isOnline && (
+        <View style={styles.footerBar}>
+          <MaterialCommunityIcons
+            name="database-lock"
+            size={14}
+            color="#FFA500"
+          />
+          <Text style={styles.footerText}>
+            Data stored locally • Will sync when online
+          </Text>
+        </View>
+      )}
 
       <Modal
         transparent
@@ -1481,6 +1554,31 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: "#FCA5A5",
+  },
+  customerBanner: {
+    backgroundColor: "#F0F9F5",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "#D1F4E0",
+  },
+  customerBannerText: {
+    flex: 1,
+  },
+  customerBannerTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#0F172A",
+    marginBottom: 2,
+  },
+  customerBannerSubtitle: {
+    fontSize: 12,
+    color: "#64748B",
   },
   headerBar: {
     flexDirection: "row",

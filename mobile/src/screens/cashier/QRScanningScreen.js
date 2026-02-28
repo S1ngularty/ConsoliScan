@@ -107,16 +107,54 @@ const QRScannerScreen = () => {
     if (now - lastScanTime < 2000) return;
     setLastScanTime(now);
 
-    const checkoutCode = data.trim();
-
     try {
       setIsLoading(true);
+      // console.log("📱 [QR SCAN] Data scanned:", data);
+      // Try to parse QR as JSON first
+      let parsedData;
+      let mode = "online"; // default to online mode
+      let checkoutCode = null;
+
+      try {
+        parsedData = JSON.parse(data);
+        mode = parsedData.mode || "online";
+        checkoutCode = parsedData.checkoutCode;
+      } catch {
+        // Not JSON, treat as plain checkout code (legacy online format)
+        checkoutCode = data.trim();
+        mode = "online";
+      }
+
+      // SCENARIO 1: Offline customer → Navigate to OfflineCheckoutScreen with pre-scanned data
+      if (mode === "offline") {
+        if (!parsedData.cartSnapshot?.items?.length) {
+          throw new Error("Invalid offline checkout: no items found");
+        }
+
+        // Offline payload may not include checkoutCode; generate a fallback if missing
+        if (!parsedData.checkoutCode) {
+          parsedData.checkoutCode = `CHK-${Date.now().toString().slice(-8)}`;
+        }
+
+        setShowSuccessModal(true);
+
+        setTimeout(() => {
+          setShowSuccessModal(false);
+          navigation.navigate("OfflineCheckout", {
+            skipScanningStage: true,
+            preScannedCustomerData: parsedData,
+          });
+        }, 1600);
+        return;
+      }
 
       if (!checkoutCode) throw new Error("Invalid QR code");
       if (!/^CHK-[A-Z0-9]{8}$/i.test(checkoutCode))
         throw new Error("Invalid checkout code format. Expected: CHK-XXXXXXXX");
 
+      // SCENARIO 2: Online customer → Fetch from server and validate
       const response = await getCheckoutDetails(checkoutCode);
+      console.log("📡 [QR SCAN] Server response:", response);
       console.log("✅ [QR SCAN] Checkout details retrieved:", response);
       await new Promise((r) => setTimeout(r, 1000));
 
