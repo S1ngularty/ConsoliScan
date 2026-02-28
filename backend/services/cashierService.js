@@ -9,7 +9,6 @@
 
 const Order = require("../models/orderModel");
 const CheckoutQueue = require("../models/checkoutQueueModel");
-const Exchange = require("../models/ExchangeModel");
 
 /**
  * Get cashier dashboard statistics
@@ -33,7 +32,7 @@ async function getDashboardStats(request) {
   // Calculate statistics
   const salesToday = todayOrders.length;
   const revenue = todayOrders.reduce(
-    (sum, order) => sum + (order.finalAmountPaid || 0),
+    (sum, order) => sum + Number(order.finalAmountPaid || 0),
     0,
   );
   const transactions = todayOrders.length;
@@ -69,14 +68,14 @@ async function getDashboardStats(request) {
   }).lean();
 
   const weekRevenue = weekOrders.reduce(
-    (sum, order) => sum + (order.finalAmountPaid || 0),
+    (sum, order) => sum + Number(order.finalAmountPaid || 0),
     0,
   );
 
   return {
     today: {
       salesToday,
-      revenue: parseFloat(revenue.toFixed(2)),
+      revenue: parseFloat(Number().toFixed(2)),
       transactions,
       specialCustomers,
       hourlyStats,
@@ -84,7 +83,7 @@ async function getDashboardStats(request) {
     },
     week: {
       transactions: weekOrders.length,
-      revenue: parseFloat(weekRevenue.toFixed(2)),
+      revenue: parseFloat(Number(weekRevenue).toFixed(2)),
     },
     cashierId: userId,
     timestamp: new Date(),
@@ -110,11 +109,11 @@ async function getRecentTransactions(request) {
     .sort({ confirmedAt: -1 })
     .limit(parseInt(limit))
     .lean();
-
+  // console.log("Recent Orders:", recentOrders);
   const transactions = recentOrders.map((order) => ({
     _id: order._id,
     transactionId: order.checkoutCode,
-    amount: parseFloat(order.finalAmountPaid.toFixed(2)),
+    amount: parseFloat(Number(order.finalAmountPaid || 0).toFixed(2)),
     paymentMethod: (order.paymentMethod || "cash").toUpperCase(),
     timestamp: order.confirmedAt,
     itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0),
@@ -162,58 +161,12 @@ async function getPendingQueues(request) {
 }
 
 /**
- * Get recent exchanges handled by cashier
- * GET /api/v1/cashier/recent-exchanges
- */
-async function getRecentExchanges(request) {
-  const { userId } = request.user;
-  const query = request.query || {};
-  const { limit = 5 } = query;
-
-  const exchanges = await Exchange.find({
-    cashierId: userId,
-    status: { $in: ["VALIDATED", "COMPLETED"] },
-  })
-    .select(
-      "status originalItemName replacementItemName price timestamps customerId",
-    )
-    .sort({ "timestamps.validatedAt": -1 })
-    .limit(parseInt(limit))
-    .populate("customerId", "firstName lastName")
-    .lean();
-
-  return {
-    exchanges: exchanges.map((ex) => ({
-      _id: ex._id,
-      status: ex.status,
-      originalItem: ex.originalItemName,
-      replacementItem: ex.replacementItemName,
-      price: ex.price,
-      customerName: ex.customerId
-        ? `${ex.customerId.firstName} ${ex.customerId.lastName}`
-        : "N/A",
-      validatedAt: ex.timestamps.validatedAt,
-      completedAt: ex.timestamps.completedAt,
-    })),
-    total: exchanges.length,
-  };
-}
-
-/**
  * Get inventory list with search and filters
  * GET /api/v1/cashier/inventory
  */
 async function getInventory(request) {
-  console.log("=== getInventory called ===");
-  console.log("request:", typeof request);
-  console.log("request.query:", request.query);
-  console.log("request.params:", request.params);
-  console.log("request.user:", request.user);
-
   const query = request.query || {};
   const { search, category, lowStock, page = 1, limit = 20 } = query;
-
-  console.log("Extracted values:", { search, category, lowStock, page, limit });
 
   const Product = require("../models/productModel");
 
@@ -432,12 +385,12 @@ async function getSalesReports(request) {
       end: dateQuery.confirmedAt?.$lte || dateQuery.confirmedAt?.$lt || null,
     },
     summary: {
-      totalRevenue: parseFloat(totalRevenue.toFixed(2)),
+      totalRevenue: parseFloat(totalRevenue).toFixed(2),
       totalTransactions,
       totalItems,
-      averageTransactionValue: parseFloat(
-        (totalRevenue / Math.max(totalTransactions, 1)).toFixed(2),
-      ),
+      averageTransactionValue: Number(
+        totalRevenue / Math.max(totalTransactions, 1),
+      ).toFixed(2),
       specialCustomers,
     },
     paymentMethods,
@@ -490,12 +443,11 @@ async function getTransactionHistory(request) {
       .lean(),
     Order.countDocuments(query),
   ]);
-
   return {
     transactions: orders.map((order) => ({
       _id: order._id,
       transactionId: order.checkoutCode,
-      amount: parseFloat(order.finalAmountPaid.toFixed(2)),
+      amount: parseFloat(Number(order.finalAmountPaid || 0).toFixed(2)),
       paymentMethod: (order.paymentMethod || "cash").toUpperCase(),
       timestamp: order.confirmedAt,
       itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0),
@@ -548,10 +500,6 @@ async function getProfile(request) {
   const User = require("../models/userModel");
   const mongoose = require("mongoose");
 
-  console.log("=== getProfile called ===");
-  console.log("userId:", userId);
-  console.log("userId type:", typeof userId);
-
   const user = await User.findById(userId).select(
     "name email contactNumber avatar role address street city state country zipCode createdAt",
   );
@@ -567,7 +515,6 @@ async function getProfile(request) {
 
   // Convert userId to ObjectId for aggregation
   const cashierObjectId = new mongoose.Types.ObjectId(userId);
-  console.log("cashierObjectId:", cashierObjectId);
 
   const [totalTransactions, totalSales, todayTransactions] = await Promise.all([
     Order.countDocuments({ cashier: cashierObjectId, status: "CONFIRMED" }),
@@ -675,7 +622,6 @@ module.exports = {
   getDashboardStats,
   getRecentTransactions,
   getPendingQueues,
-  getRecentExchanges,
   getInventory,
   updateStock,
   getSalesReports,

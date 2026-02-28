@@ -9,16 +9,20 @@ import {
   Alert,
   Animated,
   Easing,
+  Modal,
+  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { useSelector } from "react-redux";
 
 const FRAME_SIZE = 240;
 const CORNER_LEN = 26;
 const CORNER_W = 3;
-const SCAN_DELAY_MS = 1200;
+const CONSISTENCY_THRESHOLD = 5;
+const SCAN_TIMEOUT_MS = 1000;
 
 // ─── Animated progress bar (JS-driven width) ─────────────────────────────────
 const AnimatedBar = ({ pct, color = "#00A86B", height = 6 }) => {
@@ -77,12 +81,33 @@ const QRScanValidationScreen = () => {
 
   const [permission, requestPermission] = useCameraPermissions();
   const [scannedItems, setScannedItems] = useState([]);
+  const [originalOrderItems] = useState([...orderItems]); // Track original requirements
   const [remainingItems, setRemainingItems] = useState([...orderItems]);
+  const [allOrderItems, setAllOrderItems] = useState([...orderItems]); // Track all items including added ones
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastResult, setLastResult] = useState(null); // { success, message }
   const [cameraFacing, setCameraFacing] = useState("back");
   const [scanComplete, setScanComplete] = useState(false);
+  const [adjustModalVisible, setAdjustModalVisible] = useState(false);
+  const [adjustingItem, setAdjustingItem] = useState(null);
+  const [adjustQuantity, setAdjustQuantity] = useState("");
+  const [showAddItemModal, setShowAddItemModal] = useState(false);
+  const [pendingProduct, setPendingProduct] = useState(null);
+  const [showQuantityModal, setShowQuantityModal] = useState(false);
+  const [quantityInput, setQuantityInput] = useState("1");
 
+  const catalogProducts = useSelector((state) => state.product?.products || []);
+
+  const getProductByBarcode = useCallback(
+    (barcode) =>
+      catalogProducts.find(
+        (product) => String(product.barcode) === String(barcode),
+      ),
+    [catalogProducts],
+  );
+
+  const scanBufferRef = useRef([]);
+  const resetTimeoutRef = useRef(null);
   const lastScanTime = useRef(0);
   const scanTimeout = useRef(null);
   const scanAnim = useRef(new Animated.Value(0)).current;
@@ -108,6 +133,7 @@ const QRScanValidationScreen = () => {
     ).start();
     return () => {
       if (scanTimeout.current) clearTimeout(scanTimeout.current);
+      if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current);
     };
   }, []);
 
@@ -116,83 +142,348 @@ const QRScanValidationScreen = () => {
       setScanComplete(true);
   }, [remainingItems.length]);
 
-  // ── THE FIX: always call setIsProcessing(false) regardless of match ─────
+  // ── Consistency threshold scanning with buffer ──────────────────────────
   const handleBarCodeScanned = useCallback(
     ({ data }) => {
       const now = Date.now();
-      if (now - lastScanTime.current < SCAN_DELAY_MS || isProcessing) return;
-      lastScanTime.current = now;
+      if (isProcessing) return;
 
       const scannedCode = data?.trim();
       if (!scannedCode) return;
 
-      setIsProcessing(true);
-      setLastResult(null);
-
-      const itemIndex = remainingItems.findIndex(
-        (item) => item.product?.barcode === scannedCode,
+      // Clear old scans from buffer
+      scanBufferRef.current = scanBufferRef.current.filter(
+        (scan) => now - scan.timestamp < SCAN_TIMEOUT_MS,
       );
 
-      if (itemIndex === -1) {
-        // ── WRONG BARCODE — immediately reset, show error feedback ──────────
-        flash(false);
-        setLastResult({ success: false, message: "Barcode not in this order" });
-        setIsProcessing(false); // <-- was missing in original
-        return;
+      // Add current scan to buffer
+      scanBufferRef.current.push({ code: scannedCode, timestamp: now });
+
+      // Clear previous reset timeout
+      if (resetTimeoutRef.current) {
+        clearTimeout(resetTimeoutRef.current);
       }
 
-      // ── VALID SCAN ───────────────────────────────────────────────────────
-      const item = remainingItems[itemIndex];
-      flash(true);
+      // Count consistent scans
+      const consistentScans = scanBufferRef.current.filter(
+        (scan) => scan.code === scannedCode,
+      ).length;
 
-      setScannedItems((prev) => {
-        const idx = prev.findIndex((s) => s.sku === item.sku);
-        if (idx !== -1) {
-          const updated = [...prev];
-          if (updated[idx].scannedQuantity < item.quantity) {
-            updated[idx] = {
-              ...updated[idx],
-              scannedQuantity: updated[idx].scannedQuantity + 1,
-            };
-            if (updated[idx].scannedQuantity === item.quantity) {
+      // Check if we've reached consistency threshold
+      if (consistentScans >= CONSISTENCY_THRESHOLD) {
+        // Process the scan
+        setIsProcessing(true);
+        setLastResult(null);
+        scanBufferRef.current = [];
+
+        const itemIndex = remainingItems.findIndex(
+          (item) => item.product?.barcode === scannedCode,
+        );
+
+        if (itemIndex === -1) {
+          // Check if barcode exists in catalog
+          const matchedProduct = getProductByBarcode(scannedCode);
+          if (matchedProduct) {
+            // Product exists but not in order - ask to add
+            setPendingProduct(matchedProduct);
+            setShowAddItemModal(true);
+            setTimeout(() => setIsProcessing(false), 300);
+            return;
+          }
+          // Wrong barcode
+          flash(false);
+          setLastResult({
+            success: false,
+            message: "Barcode not in catalog",
+          });
+          setTimeout(() => setIsProcessing(false), 500);
+          return;
+        }
+
+        // Valid scan
+        const item = remainingItems[itemIndex];
+        flash(true);
+
+        setScannedItems((prev) => {
+          const idx = prev.findIndex((s) => s.sku === item.sku);
+          if (idx !== -1) {
+            const updated = [...prev];
+            if (updated[idx].scannedQuantity < item.quantity) {
+              updated[idx] = {
+                ...updated[idx],
+                scannedQuantity: updated[idx].scannedQuantity + 1,
+              };
+              if (updated[idx].scannedQuantity === item.quantity) {
+                setRemainingItems((r) => r.filter((_, i) => i !== itemIndex));
+              }
+              setLastResult({ success: true, message: `${item.name} ✓` });
+            } else {
+              flash(false);
+              setLastResult({
+                success: false,
+                message: `Already fully scanned`,
+              });
+            }
+            return updated;
+          } else {
+            if (item.quantity === 1) {
               setRemainingItems((r) => r.filter((_, i) => i !== itemIndex));
             }
             setLastResult({ success: true, message: `${item.name} ✓` });
-          } else {
-            flash(false);
-            setLastResult({ success: false, message: `Already fully scanned` });
+            return [
+              ...prev,
+              {
+                ...item,
+                scannedQuantity: 1,
+                scannedAt: new Date().toISOString(),
+              },
+            ];
           }
-          return updated;
-        } else {
-          if (item.quantity === 1) {
-            setRemainingItems((r) => r.filter((_, i) => i !== itemIndex));
-          }
-          setLastResult({ success: true, message: `${item.name} ✓` });
-          return [
-            ...prev,
-            {
-              ...item,
-              scannedQuantity: 1,
-              scannedAt: new Date().toISOString(),
-            },
-          ];
-        }
-      });
+        });
 
-      scanTimeout.current = setTimeout(
-        () => setIsProcessing(false),
-        SCAN_DELAY_MS,
-      );
+        setTimeout(() => setIsProcessing(false), 800);
+      }
+
+      // Set timeout to clear buffer if no more scans
+      resetTimeoutRef.current = setTimeout(() => {
+        scanBufferRef.current = [];
+      }, SCAN_TIMEOUT_MS);
     },
     [remainingItems, isProcessing, flash],
   );
+
+  // ── Add missing item handlers ───────────────────────────────────────────
+  const handleAddMissingItem = () => {
+    // Move to quantity modal instead of adding immediately
+    setShowAddItemModal(false);
+    setQuantityInput("1");
+    setShowQuantityModal(true);
+  };
+
+  const handleConfirmAddItem = () => {
+    if (!pendingProduct) return;
+
+    const qty = parseInt(quantityInput) || 1;
+    if (qty < 1 || qty > 999) {
+      Alert.alert(
+        "Invalid Quantity",
+        "Please enter a quantity between 1 and 999.",
+      );
+      return;
+    }
+
+    const newItem = {
+      sku: pendingProduct.sku || pendingProduct._id,
+      name: pendingProduct.name,
+      quantity: qty,
+      product: pendingProduct,
+    };
+
+    // Add to all order items
+    setAllOrderItems((prev) => [...prev, newItem]);
+
+    // Add to remaining items
+    setRemainingItems((prev) => [...prev, newItem]);
+
+    // Add to scanned items with full quantity
+    setScannedItems((prev) => [
+      ...prev,
+      {
+        ...newItem,
+        scannedQuantity: qty,
+        scannedAt: new Date().toISOString(),
+      },
+    ]);
+
+    // Remove from remaining since we just scanned it
+    setTimeout(() => {
+      setRemainingItems((r) => r.filter((item) => item.sku !== newItem.sku));
+    }, 100);
+
+    setPendingProduct(null);
+    setShowQuantityModal(false);
+    setQuantityInput("1");
+
+    flash(true);
+    setLastResult({
+      success: true,
+      message: `${pendingProduct.name} (${qty}) added ✓`,
+    });
+  };
+
+  const handleSkipMissingItem = () => {
+    setPendingProduct(null);
+    setShowAddItemModal(false);
+    flash(false);
+    setLastResult({
+      success: false,
+      message: "Item not added",
+    });
+  };
+
+  const handleCancelQuantity = () => {
+    setShowQuantityModal(false);
+    setQuantityInput("1");
+    setPendingProduct(null);
+  };
+
+  const adjustNewItemQty = (delta) => {
+    const current = parseInt(quantityInput) || 1;
+    const newQty = Math.max(1, Math.min(999, current + delta));
+    setQuantityInput(newQty.toString());
+  };
+
+  // ── Manual quantity adjustment ──────────────────────────────────────────
+  const handleOpenAdjustModal = (item) => {
+    const existingScanned = scannedItems.find((s) => s.sku === item.sku);
+    setAdjustingItem(item);
+    setAdjustQuantity(
+      String(existingScanned ? existingScanned.scannedQuantity : 0),
+    );
+    setAdjustModalVisible(true);
+  };
+
+  const handleConfirmAdjustment = () => {
+    if (!adjustingItem) return;
+
+    const qty = parseInt(adjustQuantity, 10);
+    if (isNaN(qty) || qty < 0) {
+      Alert.alert("Invalid Quantity", "Please enter a valid number");
+      return;
+    }
+
+    // Check if item is in original order (not exceeded)
+    const originalItem = originalOrderItems.find(
+      (item) => item.sku === adjustingItem.sku,
+    );
+    const requiredQty = originalItem
+      ? originalItem.quantity
+      : adjustingItem.quantity;
+
+    // Allow quantities up to 999 for flexibility
+    if (qty > 999) {
+      Alert.alert("Invalid Quantity", "Maximum quantity is 999");
+      return;
+    }
+
+    // Update scanned items
+    setScannedItems((prev) => {
+      const existingIdx = prev.findIndex((s) => s.sku === adjustingItem.sku);
+
+      if (qty === 0) {
+        // Remove from scanned if set to 0
+        if (existingIdx !== -1) {
+          return prev.filter((_, i) => i !== existingIdx);
+        }
+        return prev;
+      }
+
+      if (existingIdx !== -1) {
+        // Update existing
+        const updated = [...prev];
+        updated[existingIdx] = {
+          ...updated[existingIdx],
+          scannedQuantity: qty,
+        };
+        return updated;
+      } else {
+        // Add new
+        return [
+          ...prev,
+          {
+            ...adjustingItem,
+            scannedQuantity: qty,
+            scannedAt: new Date().toISOString(),
+          },
+        ];
+      }
+    });
+
+    // Update remaining items - only check against original required quantity
+    const itemIndex = remainingItems.findIndex(
+      (item) => item.sku === adjustingItem.sku,
+    );
+    if (qty >= requiredQty && itemIndex !== -1) {
+      setRemainingItems((r) => r.filter((_, i) => i !== itemIndex));
+    } else if (qty < requiredQty && itemIndex === -1) {
+      // Add back to remaining if not fully scanned
+      setRemainingItems((r) => [...r, adjustingItem]);
+    }
+
+    setAdjustModalVisible(false);
+    setAdjustingItem(null);
+    setAdjustQuantity("");
+  };
+
+  // ── Recalculate totals based on allOrderItems (similar to CartScreen) ──
+  const recalculateTotals = () => {
+    const originalCheckoutData = route.params?.checkoutData || {};
+
+    // Calculate new subtotal from all order items
+    const subtotal = allOrderItems.reduce((sum, item) => {
+      const itemTotal =
+        (item.product?.salePrice || item.product?.price || 0) * item.quantity;
+      return sum + itemTotal;
+    }, 0);
+
+    // Get eligible BNPC items (items that qualify for BNPC discount)
+    const bnpcEligibleItems = allOrderItems.filter((item) => {
+      const product = item.product;
+      return (
+        product && product.bnpc === true && product.bnpcEligibility === true
+      );
+    });
+
+    // Calculate BNPC eligible subtotal
+    const bnpcEligibleSubtotal = bnpcEligibleItems.reduce((sum, item) => {
+      const itemTotal =
+        (item.product?.salePrice || item.product?.price || 0) * item.quantity;
+      return sum + itemTotal;
+    }, 0);
+
+    // Keep existing discount calculations from original checkout
+    const bnpcDiscount = originalCheckoutData.totals?.bnpcDiscount || 0;
+    const promoDiscount = originalCheckoutData.totals?.promoDiscount || 0;
+    const loyaltyDiscount = originalCheckoutData.totals?.loyaltyDiscount || 0;
+
+    // Calculate final total
+    const finalTotal = Math.max(
+      subtotal - bnpcDiscount - promoDiscount - loyaltyDiscount,
+      0,
+    );
+
+    // Return updated checkout data with recalculated totals
+    return {
+      ...originalCheckoutData,
+      totals: {
+        subtotal,
+        bnpcEligibleSubtotal,
+        bnpcDiscount,
+        promoDiscount,
+        loyaltyDiscount,
+        finalTotal,
+      },
+      discountBreakdown: {
+        bnpcDiscount,
+        promoDiscount,
+        loyaltyDiscount,
+      },
+      bnpcProducts: bnpcEligibleItems.map((item) => ({
+        name: item.name,
+        sku: item.sku,
+        quantity: item.quantity,
+        price: item.product?.salePrice || item.product?.price || 0,
+      })),
+    };
+  };
 
   const handleCompleteValidation = () => {
     const totalScanned = scannedItems.reduce(
       (s, i) => s + i.scannedQuantity,
       0,
     );
-    const totalOrder = orderItems.reduce((s, i) => s + i.quantity, 0);
+    // Use allOrderItems for total calculation (includes added items)
+    const totalOrder = allOrderItems.reduce((s, i) => s + i.quantity, 0);
     const result = {
       isValidated: remainingItems.length === 0,
       validationMethod: "qr_scan",
@@ -201,7 +492,11 @@ const QRScanValidationScreen = () => {
       totalCount: totalOrder,
       scannedItems,
       remainingItems,
+      allOrderItems, // Include all items (original + added)
     };
+
+    // Recalculate checkout data with new items
+    const updatedCheckoutData = recalculateTotals();
 
     if (remainingItems.length > 0) {
       Alert.alert(
@@ -215,7 +510,7 @@ const QRScanValidationScreen = () => {
               navigation.navigate("Payment", {
                 validationResult: result,
                 checkoutCode,
-                checkoutData: route.params?.checkoutData,
+                checkoutData: updatedCheckoutData,
                 appUser: route.params?.checkoutData?.userType === "user",
               }),
           },
@@ -226,7 +521,7 @@ const QRScanValidationScreen = () => {
     navigation.navigate("Payment", {
       validationResult: result,
       checkoutCode,
-      checkoutData: route.params?.checkoutData,
+      checkoutData: updatedCheckoutData,
       appUser: route.params?.checkoutData?.userType === "user",
     });
   };
@@ -257,7 +552,8 @@ const QRScanValidationScreen = () => {
   };
 
   const totalScanned = scannedItems.reduce((s, i) => s + i.scannedQuantity, 0);
-  const totalOrder = orderItems.reduce((s, i) => s + i.quantity, 0);
+  // Use allOrderItems for total calculation (includes added items)
+  const totalOrder = allOrderItems.reduce((s, i) => s + i.quantity, 0);
   const overallPct = totalOrder > 0 ? (totalScanned / totalOrder) * 100 : 0;
 
   // ── Permission screens ──────────────────────────────────────────────────
@@ -531,14 +827,27 @@ const QRScanValidationScreen = () => {
                       </View>
                       <View style={styles.itemProgress}>
                         <Text style={styles.itemQty}>
-                          {prog.scannedQuantity}/{item.quantity}
+                          {prog.scannedQuantity > item.quantity
+                            ? `${item.quantity} + ${prog.scannedQuantity - item.quantity}`
+                            : `${prog.scannedQuantity}/${item.quantity}`}
                         </Text>
                         <AnimatedBar
-                          pct={prog.pct}
+                          pct={Math.min(prog.pct, 100)}
                           color="#00A86B"
                           height={4}
                         />
                       </View>
+                      <TouchableOpacity
+                        style={styles.adjustBtn}
+                        onPress={() => handleOpenAdjustModal(item)}
+                        activeOpacity={0.7}
+                      >
+                        <MaterialCommunityIcons
+                          name="pencil"
+                          size={18}
+                          color="#00A86B"
+                        />
+                      </TouchableOpacity>
                     </View>
                   );
                 })}
@@ -640,6 +949,221 @@ const QRScanValidationScreen = () => {
           <Text style={styles.processingText}>Processing…</Text>
         </View>
       )}
+
+      {/* Quantity Adjustment Modal */}
+      <Modal
+        visible={adjustModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setAdjustModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <MaterialCommunityIcons name="ballot" size={24} color="#00A86B" />
+              <Text style={styles.modalTitle}>Adjust Quantity</Text>
+            </View>
+
+            {adjustingItem && (
+              <>
+                <View style={styles.modalItemInfo}>
+                  <Text style={styles.modalItemName} numberOfLines={2}>
+                    {adjustingItem.name}
+                  </Text>
+                  <Text style={styles.modalItemSub}>
+                    SKU: {adjustingItem.sku}
+                  </Text>
+                  <Text style={styles.modalItemSub}>
+                    Required: {adjustingItem.quantity} (Max: 999)
+                  </Text>
+                </View>
+
+                <View style={styles.modalInputSection}>
+                  <Text style={styles.modalInputLabel}>Scanned Quantity</Text>
+                  <View style={styles.modalInputRow}>
+                    <TouchableOpacity
+                      style={styles.modalQtyBtn}
+                      onPress={() => {
+                        const current = parseInt(adjustQuantity, 10) || 0;
+                        if (current > 0) {
+                          setAdjustQuantity(String(current - 1));
+                        }
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name="minus"
+                        size={20}
+                        color="#64748b"
+                      />
+                    </TouchableOpacity>
+
+                    <TextInput
+                      style={styles.modalInput}
+                      value={adjustQuantity}
+                      onChangeText={setAdjustQuantity}
+                      keyboardType="number-pad"
+                      placeholder="0"
+                      placeholderTextColor="#94a3b8"
+                    />
+
+                    <TouchableOpacity
+                      style={styles.modalQtyBtn}
+                      onPress={() => {
+                        const current = parseInt(adjustQuantity, 10) || 0;
+                        if (current < 999) {
+                          setAdjustQuantity(String(current + 1));
+                        }
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name="plus"
+                        size={20}
+                        color="#64748b"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={styles.modalCancelBtn}
+                    onPress={() => {
+                      setAdjustModalVisible(false);
+                      setAdjustingItem(null);
+                      setAdjustQuantity("");
+                    }}
+                  >
+                    <Text style={styles.modalCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.modalConfirmBtn}
+                    onPress={handleConfirmAdjustment}
+                  >
+                    <MaterialCommunityIcons
+                      name="check"
+                      size={18}
+                      color="#fff"
+                    />
+                    <Text style={styles.modalConfirmText}>Confirm</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Add Item Modal */}
+      <Modal
+        transparent
+        animationType="fade"
+        visible={showAddItemModal}
+        onRequestClose={handleSkipMissingItem}
+      >
+        <View style={styles.addItemOverlay}>
+          <View style={styles.addItemCard}>
+            <MaterialCommunityIcons
+              name="alert-circle"
+              size={28}
+              color="#F59E0B"
+            />
+            <Text style={styles.addItemTitle}>Item Not In Order</Text>
+            <Text style={styles.addItemText}>
+              {pendingProduct?.name || "Unknown Item"} was scanned but is not in
+              this order. Add it?
+            </Text>
+            <View style={styles.addItemActions}>
+              <TouchableOpacity
+                style={styles.addItemSecondaryButton}
+                onPress={handleSkipMissingItem}
+              >
+                <Text style={styles.addItemSecondaryText}>Do Not Add</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.addItemPrimaryButton}
+                onPress={handleAddMissingItem}
+              >
+                <Text style={styles.addItemPrimaryText}>Add Item</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Quantity Input Modal for New Items */}
+      <Modal visible={showQuantityModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <MaterialCommunityIcons
+                name="package-variant"
+                size={28}
+                color="#00A86B"
+              />
+              <Text style={styles.modalTitle}>Add Item Quantity</Text>
+            </View>
+
+            <View style={styles.modalItemInfo}>
+              <Text style={styles.modalItemName}>
+                {pendingProduct?.name || "Product"}
+              </Text>
+              <Text style={styles.modalItemSub}>
+                Set the quantity for this new item
+              </Text>
+            </View>
+
+            <View style={styles.modalInputSection}>
+              <Text style={styles.modalInputLabel}>Quantity</Text>
+              <View style={styles.modalInputRow}>
+                <TouchableOpacity
+                  style={styles.modalQtyBtn}
+                  onPress={() => adjustNewItemQty(-1)}
+                >
+                  <MaterialCommunityIcons
+                    name="minus"
+                    size={20}
+                    color="#64748B"
+                  />
+                </TouchableOpacity>
+                <TextInput
+                  style={styles.modalInput}
+                  value={quantityInput}
+                  onChangeText={setQuantityInput}
+                  keyboardType="number-pad"
+                  selectTextOnFocus
+                />
+                <TouchableOpacity
+                  style={styles.modalQtyBtn}
+                  onPress={() => adjustNewItemQty(1)}
+                >
+                  <MaterialCommunityIcons
+                    name="plus"
+                    size={20}
+                    color="#64748B"
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={handleCancelQuantity}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalConfirmBtn}
+                onPress={handleConfirmAddItem}
+              >
+                <MaterialCommunityIcons name="check" size={18} color="#fff" />
+                <Text style={styles.modalConfirmText}>Add Item</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -953,6 +1477,192 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   processingText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+
+  // Adjust button
+  adjustBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "#f0fdf4",
+    borderWidth: 1,
+    borderColor: "#bbf7d0",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 8,
+  },
+
+  // Adjustment Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15,23,42,0.75)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalContent: {
+    width: "100%",
+    maxWidth: 380,
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 24,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#0f172a",
+  },
+  modalItemInfo: {
+    backgroundColor: "#f8fafc",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
+  },
+  modalItemName: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#0f172a",
+    marginBottom: 6,
+    lineHeight: 20,
+  },
+  modalItemSub: {
+    fontSize: 12,
+    color: "#64748b",
+    marginTop: 2,
+  },
+  modalInputSection: {
+    marginBottom: 24,
+  },
+  modalInputLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0f172a",
+    marginBottom: 10,
+  },
+  modalInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  modalQtyBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalInput: {
+    flex: 1,
+    height: 44,
+    backgroundColor: "#f8fafc",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    paddingHorizontal: 16,
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#0f172a",
+    textAlign: "center",
+  },
+  modalActions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    alignItems: "center",
+  },
+  modalCancelText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#64748b",
+  },
+  modalConfirmBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: "#00A86B",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  modalConfirmText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#fff",
+  },
+
+  // Add Item Modal
+  addItemOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  addItemCard: {
+    width: "100%",
+    maxWidth: 360,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    alignItems: "center",
+  },
+  addItemTitle: {
+    marginTop: 8,
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1E293B",
+  },
+  addItemText: {
+    marginTop: 8,
+    fontSize: 13,
+    color: "#475569",
+    textAlign: "center",
+  },
+  addItemActions: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 16,
+  },
+  addItemPrimaryButton: {
+    backgroundColor: "#00A86B",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  addItemPrimaryText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  addItemSecondaryButton: {
+    backgroundColor: "#E2E8F0",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  addItemSecondaryText: {
+    color: "#1E293B",
+    fontWeight: "600",
+    fontSize: 13,
+  },
 });
 
 export default QRScanValidationScreen;

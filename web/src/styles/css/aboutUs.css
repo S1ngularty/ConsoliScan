@@ -65,10 +65,16 @@
   padding: 80px 20px;
 }
 
-.about-hero h1 {
-  font-size: 48px;
+.about-hero .hero__title {
+  color: white;
+  font-size: clamp(32px, 5vw, 64px);
   font-weight: 800;
   margin: 0 0 16px 0;
+  line-height: 1.1;
+}
+
+.about-hero .title__line {
+  display: block;
 }
 
 .about-hero p {
@@ -76,6 +82,7 @@
   opacity: 0.9;
   margin: 0;
   font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 /* --- Common Section Styles --- */
@@ -87,13 +94,15 @@
 
 .section-label {
   display: inline-block;
-  background-color: #fff7ed; /* Light orange */
+  background-color: transparent;
   color: var(--orange);
-  padding: 8px 16px;
-  border-radius: 20px;
+  padding: 0;
+  border-radius: 0;
   font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 20px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 16px;
 }
 
 .about-section-header {
@@ -101,11 +110,30 @@
   margin-bottom: 60px;
 }
 
+.about-section-header.center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.section-label {
+  display: inline-block;
+  background-color: transparent; /* Changed from light orange to transparent */
+  color: var(--orange);
+  padding: 0; /* Removed padding */
+  border-radius: 0; /* Removed border-radius */
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase; /* Added uppercase */
+  letter-spacing: 2px; /* Added letter spacing */
+  margin-bottom: 16px; /* Adjusted margin */
+}
+
 .about-section-header h2 {
   font-size: 36px;
   font-weight: 800;
   color: var(--green);
-  margin: 16px 0 0 0;
+  margin: 0;
 }
 
 /* --- Mission & Vision --- */
@@ -161,24 +189,53 @@
 
 /* --- Distinctive Container for Story and Values --- */
 .distinctive-container {
-  background-color: #312e2e;
-  padding: 80px 40px;
-  margin: 40px auto;
-  max-width: 1250px; /* Limit width to leave spaces on sides */
-  border-radius: 30px; /* Curve the edges */
-  color: white;
+  background: linear-gradient(135deg, #ffffff 0%, #f8faf8 100%); /* Subtle gradient */
+  padding: 80px 60px;
+  margin: 60px auto;
+  max-width: 1250px;
+  border-radius: 40px; /* Softer curves */
+  color: var(--text);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.04);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(92, 111, 43, 0.08); /* Subtle green tint border */
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
 }
 
-/* Adjust text colors inside the dark container for readability */
+.distinctive-container:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 30px 60px rgba(92, 111, 43, 0.1);
+}
+
+/* Decorative background glow */
+.distinctive-container::before {
+  content: '';
+  position: absolute;
+  top: -200px;
+  right: -200px;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(222, 128, 43, 0.03) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Ensure content sits above decorative elements */
+.story-container {
+  position: relative;
+  z-index: 1;
+}
+
+/* Adjust text colors inside the container for readability */
 .distinctive-container .story-content p {
-  color: #e2e8f0;
+  color: #334155; 
 }
 
 /* Remove default padding from sections inside the container to avoid double padding */
 .distinctive-container .about-section {
   padding: 0;
-  max-width: 100%; /* Ensure inner sections fill the container */
-  margin-bottom: 0; /* Remove margin since containers are separated */
+  max-width: 100%; 
+  margin-bottom: 0; 
 }
 
 .distinctive-container .about-section:last-child {
@@ -189,40 +246,49 @@
 .story-container {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 60px;
+  gap: 80px; /* More breathing room */
   align-items: center;
 }
 
 .story-content {
-  text-align: center; /* Center content in story section */
+  text-align: center; 
 }
 
 .story-content h2 {
-  font-size: 36px;
+  font-size: 42px; /* Larger title */
   font-weight: 800;
-  color: var(--green);
-  margin: 16px 0 24px 0;
+  background: linear-gradient(90deg, var(--green), #3a4a15);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent; /* Gradient text */
+  margin: 0 0 32px 0;
 }
 
 .story-content p {
-  color: var(--muted);
+  color: #334155; 
   line-height: 1.8;
-  margin-bottom: 20px;
-  font-size: 16px;
+  margin-bottom: 24px;
+  font-size: 17px;
+  font-weight: 500;
+  text-align: justify;
 }
 
 .story-image {
   width: 100%;
-  height: 400px;
-  background-color: #e2e8f0;
-  border-radius: 24px;
+  height: 450px;
+  border-radius: 30px;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #94a3b8;
-  font-size: 18px;
-  font-weight: 600;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  border: 8px solid white; /* Photo frame effect */
+  transform: rotate(2deg); /* Playful tilt */
+  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.distinctive-container:hover .story-image {
+  transform: rotate(0deg) scale(1.02); /* Straighten and pop on hover */
+  box-shadow: 0 25px 50px rgba(92, 111, 43, 0.15);
 }
 
 .story-image img {

@@ -1,6 +1,6 @@
 import debounce from "lodash.debounce";
-import { syncCartToServer } from "./cartThunks";
+import { saveLocally } from "./cartThunks";
 
 export const debounceCartSync = debounce((dispatch) => {
-  dispatch(syncCartToServer());
-},2000);
+  dispatch(saveLocally());
+}, 2000);

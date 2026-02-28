@@ -19,7 +19,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useSelector } from "react-redux";
 import { fetchOrders, downloadReceipt } from "../../api/order.api";
+import OfflineIndicator from "../../components/Common/OfflineIndicator";
 
 // ─── Animated Filter Chip ────────────────────────────────────────────────────
 const FilterChip = ({ label, isActive, onPress }) => {
@@ -89,7 +91,7 @@ const OrderCard = ({
   order,
   onDetails,
   onDownload,
-  onExchange,
+  onReturn,
   downloadingId,
   index,
 }) => {
@@ -99,9 +101,9 @@ const OrderCard = ({
   const spinLoop = useRef(null);
   const isDownloading = downloadingId === order._id;
 
-  // ── Check if this order has any exchangeable items ──
-  const hasExchangeableItems = order.items?.some(
-    (i) => i.status !== "EXCHANGED",
+  // ── Check if this order has any returnable items ──
+  const hasReturnableItems = order.items?.some(
+    (i) => i.status !== "EXCHANGED" && i.status !== "RETURNED",
   );
 
   useEffect(() => {
@@ -180,6 +182,10 @@ const OrderCard = ({
   const totalDiscount =
     order.discountBreakdown?.total || order.seniorPwdDiscountAmount || 0;
   const itemCount = order.items?.length || 0;
+  const returnedCount =
+    order.items?.filter((i) => i.status === "RETURNED").length || 0;
+  const exchangedCount =
+    order.items?.filter((i) => i.status === "EXCHANGED").length || 0;
   const pointsEarned =
     order.loyaltyDiscount?.pointsEarned || order.pointsEarned || 0;
 
@@ -226,36 +232,92 @@ const OrderCard = ({
               color="#64748b"
             />
             <Text style={styles.itemsLabel}>{itemCount} items</Text>
+            {returnedCount > 0 && (
+              <View style={styles.itemsReturnedBadge}>
+                <MaterialCommunityIcons name="undo" size={10} color="#EF4444" />
+                <Text style={styles.itemsReturnedText}>
+                  {returnedCount} returned
+                </Text>
+              </View>
+            )}
+            {exchangedCount > 0 && (
+              <View style={styles.itemsExchangedBadge}>
+                <MaterialCommunityIcons
+                  name="swap-horizontal"
+                  size={10}
+                  color="#3B82F6"
+                />
+                <Text style={styles.itemsExchangedText}>
+                  {exchangedCount} exchanged
+                </Text>
+              </View>
+            )}
           </View>
           <View style={styles.itemsList}>
-            {(order.items || []).slice(0, 3).map((item, i) => (
-              <View key={item._id || `order-item-${i}`} style={styles.itemRow}>
-                <MaterialCommunityIcons
-                  name="circle-small"
-                  size={16}
-                  color="#64748b"
-                />
-                <Text style={styles.itemName} numberOfLines={1}>
-                  {item.name}
-                </Text>
-                <Text style={styles.itemQuantity}>x{item.quantity}</Text>
-                <Text style={styles.itemPrice}>
-                  ₱{(item.unitPrice * item.quantity).toFixed(2)}
-                </Text>
-                {item.status === "EXCHANGED" && (
-                  <View style={styles.exchangedBadgeInline}>
-                    <MaterialCommunityIcons
-                      name="swap-horizontal"
-                      size={10}
-                      color="#3B82F6"
-                    />
-                    <Text style={styles.exchangedBadgeInlineText}>
-                      Exchanged
-                    </Text>
-                  </View>
-                )}
-              </View>
-            ))}
+            {(order.items || []).slice(0, 3).map((item, i) => {
+              const isReturned = item.status === "RETURNED";
+              const isExchanged = item.status === "EXCHANGED";
+              return (
+                <View
+                  key={item._id || `order-item-${i}`}
+                  style={[
+                    styles.itemRow,
+                    isReturned && styles.itemRowReturned,
+                    isExchanged && styles.itemRowExchanged,
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name={
+                      isReturned
+                        ? "undo"
+                        : isExchanged
+                          ? "swap-horizontal"
+                          : "circle-small"
+                    }
+                    size={16}
+                    color={
+                      isReturned
+                        ? "#EF4444"
+                        : isExchanged
+                          ? "#3B82F6"
+                          : "#64748b"
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.itemName,
+                      (isReturned || isExchanged) && styles.itemNameAdjusted,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {item.name}
+                  </Text>
+                  <Text style={styles.itemQuantity}>x{item.quantity}</Text>
+                  <Text
+                    style={[
+                      styles.itemPrice,
+                      (isReturned || isExchanged) && styles.itemPriceAdjusted,
+                    ]}
+                  >
+                    ₱{(item.unitPrice * item.quantity).toFixed(2)}
+                  </Text>
+                  {isExchanged && (
+                    <View style={styles.exchangedBadgeInline}>
+                      <Text style={styles.exchangedBadgeInlineText}>
+                        Exchanged
+                      </Text>
+                    </View>
+                  )}
+                  {isReturned && (
+                    <View style={styles.returnedBadgeInline}>
+                      <Text style={styles.returnedBadgeInlineText}>
+                        Returned
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
             {(order.items || []).length > 3 && (
               <Text style={styles.moreItems}>
                 +{order.items.length - 3} more items
@@ -331,25 +393,18 @@ const OrderCard = ({
           )}
         </TouchableOpacity>
 
-        {/* Exchange — only shown for confirmed orders with exchangeable items */}
-        {order.status === "CONFIRMED" && hasExchangeableItems && (
+        {/* Return — only shown for confirmed orders with returnable items */}
+        {order.status === "CONFIRMED" && hasReturnableItems && (
           <TouchableOpacity
-            style={[styles.cardActionBtn, styles.cardActionBtnExchange]}
-            onPress={() => onExchange(order)}
+            style={[styles.cardActionBtn, styles.cardActionBtnReturn]}
+            onPress={() => onReturn(order)}
             activeOpacity={0.75}
           >
-            <MaterialCommunityIcons
-              name="swap-horizontal"
-              size={16}
-              color="#3B82F6"
-            />
+            <MaterialCommunityIcons name="undo" size={16} color="#EF4444" />
             <Text
-              style={[
-                styles.cardActionBtnText,
-                styles.cardActionBtnExchangeText,
-              ]}
+              style={[styles.cardActionBtnText, styles.cardActionBtnReturnText]}
             >
-              Exchange
+              Return
             </Text>
           </TouchableOpacity>
         )}
@@ -364,7 +419,7 @@ const OrderDetailsModal = ({
   visible,
   onClose,
   onDownload,
-  onExchangeItem,
+  onReturnItem,
   downloadingId,
 }) => {
   const slideY = useRef(new Animated.Value(700)).current;
@@ -501,7 +556,7 @@ const OrderDetailsModal = ({
             </View>
           </View>
 
-          {/* ── Items — each has an Exchange button if eligible ── */}
+          {/* ── Items — each has a Return button if eligible ── */}
           <View style={styles.modalSection}>
             <Text style={styles.sectionTitle}>
               Order Items ({(order.items || []).length})
@@ -509,27 +564,71 @@ const OrderDetailsModal = ({
             <View style={styles.modalItemsList}>
               {(order.items || []).map((item, i) => {
                 const isExchanged = item.status === "EXCHANGED";
+                const isReturned = item.status === "RETURNED";
                 return (
                   <View
                     key={i}
                     style={[
                       styles.modalItemCard,
                       isExchanged && styles.modalItemCardExchanged,
+                      isReturned && styles.modalItemCardReturned,
                     ]}
                   >
                     <View style={styles.modalItemIcon}>
                       <MaterialCommunityIcons
                         name={
-                          isExchanged
-                            ? "swap-horizontal-circle"
-                            : "circle-small"
+                          isReturned
+                            ? "undo-variant"
+                            : isExchanged
+                              ? "swap-horizontal-circle"
+                              : "circle-small"
                         }
                         size={20}
-                        color={isExchanged ? "#3B82F6" : "#64748b"}
+                        color={
+                          isReturned
+                            ? "#EF4444"
+                            : isExchanged
+                              ? "#3B82F6"
+                              : "#64748b"
+                        }
                       />
                     </View>
                     <View style={styles.modalItemInfo}>
-                      <Text style={styles.modalItemName}>{item.name}</Text>
+                      <View style={styles.modalItemNameRow}>
+                        <Text
+                          style={[
+                            styles.modalItemName,
+                            (isReturned || isExchanged) &&
+                              styles.modalItemNameAdjusted,
+                          ]}
+                        >
+                          {item.name}
+                        </Text>
+                        {isReturned && (
+                          <View style={styles.modalReturnedChip}>
+                            <MaterialCommunityIcons
+                              name="undo"
+                              size={10}
+                              color="#fff"
+                            />
+                            <Text style={styles.modalReturnedChipText}>
+                              RETURNED
+                            </Text>
+                          </View>
+                        )}
+                        {isExchanged && (
+                          <View style={styles.modalExchangedChip}>
+                            <MaterialCommunityIcons
+                              name="swap-horizontal"
+                              size={10}
+                              color="#fff"
+                            />
+                            <Text style={styles.modalExchangedChipText}>
+                              EXCHANGED
+                            </Text>
+                          </View>
+                        )}
+                      </View>
                       <View style={styles.modalItemDetails}>
                         <Text style={styles.modalItemQuantity}>
                           Qty: {item.quantity}
@@ -543,29 +642,44 @@ const OrderDetailsModal = ({
                           → {item.exchangeInfo.replacementName}
                         </Text>
                       )}
+                      {isReturned && item.returnInfo && (
+                        <View style={styles.modalReturnInfo}>
+                          <Text style={styles.modalReturnInfoText}>
+                            {item.returnInfo.fulfillmentType === "LOYALTY"
+                              ? `✓ Returned for loyalty points`
+                              : `✓ Returned - Item swapped`}
+                          </Text>
+                          {item.returnInfo.completedAt && (
+                            <Text style={styles.modalReturnInfoDate}>
+                              on{" "}
+                              {new Date(
+                                item.returnInfo.completedAt,
+                              ).toLocaleDateString()}
+                            </Text>
+                          )}
+                        </View>
+                      )}
                     </View>
                     <View style={{ alignItems: "flex-end", gap: 6 }}>
                       <Text style={styles.modalItemTotal}>
                         ₱{((item.unitPrice || 0) * item.quantity).toFixed(2)}
                       </Text>
-                      {/* ── Per-item Exchange button ── */}
-                      {isConfirmed && !isExchanged ? (
+                      {/* ── Per-item Return button ── */}
+                      {isConfirmed && !isExchanged && !isReturned ? (
                         <TouchableOpacity
-                          style={styles.itemExchangeBtn}
+                          style={styles.itemReturnBtn}
                           onPress={() => {
                             handleClose();
-                            setTimeout(() => onExchangeItem(order, item), 280);
+                            setTimeout(() => onReturnItem(order, item), 280);
                           }}
                           activeOpacity={0.75}
                         >
                           <MaterialCommunityIcons
-                            name="swap-horizontal"
+                            name="undo"
                             size={11}
-                            color="#3B82F6"
+                            color="#EF4444"
                           />
-                          <Text style={styles.itemExchangeBtnText}>
-                            Exchange
-                          </Text>
+                          <Text style={styles.itemReturnBtnText}>Return</Text>
                         </TouchableOpacity>
                       ) : isExchanged ? (
                         <View style={styles.itemExchangedTag}>
@@ -576,6 +690,17 @@ const OrderDetailsModal = ({
                           />
                           <Text style={styles.itemExchangedTagText}>
                             Exchanged
+                          </Text>
+                        </View>
+                      ) : isReturned ? (
+                        <View style={styles.itemReturnedTag}>
+                          <MaterialCommunityIcons
+                            name="check"
+                            size={10}
+                            color="#EF4444"
+                          />
+                          <Text style={styles.itemReturnedTagText}>
+                            Returned
                           </Text>
                         </View>
                       ) : null}
@@ -822,7 +947,7 @@ const OrderHistoryScreen = ({ navigation }) => {
     { id: "week", label: "This Week" },
     { id: "month", label: "This Month" },
     { id: "discount", label: "With Discount" },
-    { id: "exchange", label: "Exchanged" },
+    { id: "exchange", label: "Exchanged/Returned" },
   ];
 
   const fetchOrderList = async () => {
@@ -865,14 +990,14 @@ const OrderHistoryScreen = ({ navigation }) => {
     }
   };
 
-  // ── Navigate to ExchangeScreen ──────────────────────────────────────────────
-  const handleNavigateExchange = useCallback(
+  // ── Navigate to ReturnScreen ──────────────────────────────────────────────
+  const handleNavigateReturn = useCallback(
     (order, item = null) => {
       console.log(order);
       const params = { order }; // Pass the full order object
       // If a specific item was tapped, pass its _id
       if (item) params.itemId = item.product;
-      navigation.navigate("Exchange", params);
+      navigation.navigate("Return", params);
     },
     [navigation],
   );
@@ -898,7 +1023,9 @@ const OrderHistoryScreen = ({ navigation }) => {
         );
       case "exchange":
         return orders.filter((o) =>
-          o.items?.some((i) => i.status === "EXCHANGED"),
+          o.items?.some(
+            (i) => i.status === "EXCHANGED" || i.status === "RETURNED",
+          ),
         );
       default:
         return orders;
@@ -933,14 +1060,40 @@ const OrderHistoryScreen = ({ navigation }) => {
     setShowDetails(false);
   }, []);
 
+  const networkState = useSelector((state) => state.network);
+
+  // Local state to trigger re-renders when network state changes
+  const [isOffline, setIsOffline] = useState(false);
+  const [isServerDown, setIsServerDown] = useState(false);
+
+  // Sync with Redux network state
+  useEffect(() => {
+    setIsOffline(networkState.isOffline);
+    setIsServerDown(networkState.isServerDown);
+  }, [networkState.isOffline, networkState.isServerDown]);
+
   if (loading && !refreshing) {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00A86B" />
-          <Text style={styles.loadingText}>Loading orders…</Text>
-        </View>
+        {isOffline || isServerDown ? (
+          <OfflineIndicator />
+        ) : (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#00A86B" />
+            <Text style={styles.loadingText}>Loading orders…</Text>
+          </View>
+        )}
+      </SafeAreaView>
+    );
+  }
+
+  // Show offline indicator if server is down (even after loading failed)
+  if ((isOffline || isServerDown) && !refreshing) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
+        <OfflineIndicator />
       </SafeAreaView>
     );
   }
@@ -1016,7 +1169,7 @@ const OrderHistoryScreen = ({ navigation }) => {
               index={i}
               onDetails={openDetails}
               onDownload={handleDownloadReceipt}
-              onExchange={(order) => handleNavigateExchange(order, null)}
+              onReturn={(order) => handleNavigateReturn(order, null)}
               downloadingId={downloadingId}
             />
           ))
@@ -1065,7 +1218,7 @@ const OrderHistoryScreen = ({ navigation }) => {
           visible={showDetails}
           onClose={closeDetails}
           onDownload={handleDownloadReceipt}
-          onExchangeItem={handleNavigateExchange}
+          onReturnItem={handleNavigateReturn}
           downloadingId={downloadingId}
         />
       )}
@@ -1190,11 +1343,57 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
     gap: 8,
+    flexWrap: "wrap",
   },
   itemsLabel: { fontSize: 13, fontWeight: "700", color: "#64748b" },
+  itemsReturnedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(239,68,68,0.1)",
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    gap: 3,
+  },
+  itemsReturnedText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#EF4444",
+  },
+  itemsExchangedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(59,130,246,0.1)",
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    gap: 3,
+  },
+  itemsExchangedText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#3B82F6",
+  },
   itemsList: { gap: 8 },
   itemRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  itemRowReturned: {
+    backgroundColor: "rgba(239,68,68,0.05)",
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+    marginHorizontal: -6,
+  },
+  itemRowExchanged: {
+    backgroundColor: "rgba(59,130,246,0.05)",
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+    marginHorizontal: -6,
+  },
   itemName: { flex: 1, fontSize: 14, color: "#334155" },
+  itemNameAdjusted: {
+    fontWeight: "600",
+  },
   itemQuantity: {
     fontSize: 12,
     color: "#94a3b8",
@@ -1202,6 +1401,10 @@ const styles = StyleSheet.create({
     minWidth: 40,
   },
   itemPrice: { fontSize: 13, fontWeight: "700", color: "#0f172a" },
+  itemPriceAdjusted: {
+    textDecorationLine: "line-through",
+    opacity: 0.6,
+  },
   moreItems: {
     fontSize: 12,
     color: "#94a3b8",
@@ -1209,19 +1412,33 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
+  returnedBadgeInline: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#EF4444",
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    gap: 2,
+  },
+  returnedBadgeInlineText: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: "#fff",
+  },
   exchangedBadgeInline: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(59,130,246,0.1)",
+    backgroundColor: "#3B82F6",
     borderRadius: 6,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    gap: 2,
   },
   exchangedBadgeInlineText: {
     fontSize: 9,
-    fontWeight: "700",
-    color: "#3B82F6",
+    fontWeight: "800",
+    color: "#fff",
   },
 
   orderFooter: {
@@ -1275,12 +1492,12 @@ const styles = StyleSheet.create({
     borderColor: "#E2E8F0",
   },
   cardActionBtnActive: { backgroundColor: "#F0FDF8", borderColor: "#00A86B" },
-  cardActionBtnExchange: {
-    backgroundColor: "rgba(59,130,246,0.06)",
-    borderColor: "rgba(59,130,246,0.2)",
+  cardActionBtnReturn: {
+    backgroundColor: "rgba(239,68,68,0.06)",
+    borderColor: "rgba(239,68,68,0.2)",
   },
   cardActionBtnText: { fontSize: 12, fontWeight: "600", color: "#00A86B" },
-  cardActionBtnExchangeText: { color: "#3B82F6" },
+  cardActionBtnReturnText: { color: "#EF4444" },
 
   emptyContainer: {
     alignItems: "center",
@@ -1404,16 +1621,60 @@ const styles = StyleSheet.create({
   modalItemCard: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    marginBottom: 4,
   },
-  modalItemCardExchanged: { opacity: 0.75 },
+  modalItemCardExchanged: {
+    backgroundColor: "rgba(59,130,246,0.05)",
+  },
+  modalItemCardReturned: {
+    backgroundColor: "rgba(239,68,68,0.05)",
+  },
   modalItemIcon: { width: 32, alignItems: "center" },
   modalItemInfo: { flex: 1, marginLeft: 8 },
+  modalItemNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 4,
+  },
   modalItemName: {
     fontSize: 14,
     fontWeight: "600",
     color: "#0f172a",
-    marginBottom: 4,
+  },
+  modalItemNameAdjusted: {
+    flex: 1,
+  },
+  modalReturnedChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#EF4444",
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    gap: 2,
+  },
+  modalReturnedChipText: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: "#fff",
+  },
+  modalExchangedChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#3B82F6",
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    gap: 2,
+  },
+  modalExchangedChipText: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: "#fff",
   },
   modalItemDetails: { flexDirection: "row", gap: 12 },
   modalItemQuantity: { fontSize: 12, color: "#64748b" },
@@ -1425,7 +1686,33 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontStyle: "italic",
   },
+  modalReturnInfo: {
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(239,68,68,0.1)",
+  },
+  modalReturnInfoText: {
+    fontSize: 11,
+    color: "#EF4444",
+    fontWeight: "600",
+  },
+  modalReturnInfoDate: {
+    fontSize: 10,
+    color: "#94a3b8",
+    marginTop: 2,
+  },
 
+  itemReturnBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(239,68,68,0.1)",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    gap: 3,
+  },
+  itemReturnBtnText: { fontSize: 10, fontWeight: "700", color: "#EF4444" },
   itemExchangeBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -1436,6 +1723,16 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   itemExchangeBtnText: { fontSize: 10, fontWeight: "700", color: "#3B82F6" },
+  itemReturnedTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(239,68,68,0.08)",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    gap: 3,
+  },
+  itemReturnedTagText: { fontSize: 10, fontWeight: "700", color: "#EF4444" },
   itemExchangedTag: {
     flexDirection: "row",
     alignItems: "center",

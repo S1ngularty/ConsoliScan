@@ -7,6 +7,7 @@ import "../styles/css/aboutUs.css";
 import egoImage from "../styles/assets/Ego.png";
 import sachzieImage from "../styles/assets/sachzie.jpg";
 import leviImage from "../styles/assets/levi.jpg";
+import developmentImage from "../styles/assets/development.jpg";
 import { QrCode, ShieldCheck, BrainCircuit, Star, Tag, FileText, LayoutDashboard, History } from "lucide-react";
 
 const AboutUs = () => {
@@ -46,13 +47,15 @@ const AboutUs = () => {
 
       {/* Hero Section */}
       <section className="about-hero">
-        <h1>About ConsoliScan</h1>
+        <h1 className="hero__title">
+          <span className="title__line">About ConsoliScan</span>
+        </h1>
         <p>A Smart Solution for Efficient Grocery Shopping</p>
       </section>
 
-{/* Team */}
+      {/* Team */}
       <section className="about-section">
-        <div className="about-section-header">
+        <div className="about-section-header center">
           <span className="section-label">Our Team</span>
           <h2>The Students Behind ConsoliScan</h2>
         </div>
@@ -82,9 +85,10 @@ const AboutUs = () => {
             </div>
             <h3>Our Mission</h3>
             <p>
-              To provide a smart, accessible tool that simplifies the grocery shopping experience. 
-              We aim to help users track their purchases, reduce food waste, and make smarter, 
-              budget-friendly decisions through innovative technology.
+              To provide grocery shoppers with a smart and user-friendly platform that simplifies 
+              purchasing decisions, helps them track spending, manage shopping lists, and make budget-conscious choices. 
+              We aim to enhance convenience, reduce unnecessary purchases,
+              and support more mindful consumption through accessible technology.
             </p>
           </div>
           <div className="mv-card">
@@ -93,9 +97,9 @@ const AboutUs = () => {
             </div>
             <h3>Our Vision</h3>
             <p>
-              We envision a world where technology bridges the gap between consumption and sustainability. 
-              By empowering individuals with data-driven insights, we hope to foster a community 
-              conscious of their shopping habits and environmental impact.
+              We envision a future where grocery shopping is seamless, informed, and empowering. 
+              By giving users meaningful insights into their buying habits and expenses, 
+              we strive to promote smarter spending, reduced waste, and a more responsible approach to everyday consumption.
             </p>
           </div>
         </div>
@@ -104,7 +108,7 @@ const AboutUs = () => {
       {/* Our Story Container */}
       <div className="distinctive-container">
         <section className="about-section">
-          <div className="about-section-header">
+          <div className="about-section-header center">
             <span className="section-label">Our Story</span>
           </div>
           <div className="story-container">
@@ -124,8 +128,7 @@ const AboutUs = () => {
               </p>
             </div>
             <div className="story-image">
-              {/* Image Placeholder */}
-              <span>[Story Image Placeholder]</span>
+              <img src={developmentImage} alt="ConsoliScan Development Story" />
             </div>
           </div>
         </section>
@@ -134,7 +137,7 @@ const AboutUs = () => {
       {/* Core Features Container */}
       <div className="distinctive-container">
         <section className="about-section">
-          <div className="about-section-header">
+          <div className="about-section-header center">
             <span className="section-label">Core Features</span>
             <h2>What Drives Our Project</h2>
           </div>

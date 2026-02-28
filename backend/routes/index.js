@@ -9,10 +9,10 @@ const checkoutQueue = require("./queueRoute");
 const order = require("./orderRoutes");
 const promo = require("./promoRoute");
 const loyalty = require("./loyaltyConfigRoute");
-const exchange = require("./exchangeRoute");
 const cashier = require("./cashierRoute");
 const adminDashboard = require("./adminDashboardRoute");
 const savedItems = require("./savedItemsRoute");
+const returns = require("./returnRoute");
 
 module.exports = {
   product,
@@ -26,8 +26,8 @@ module.exports = {
   checkoutQueue,
   promo,
   loyalty,
-  exchange,
   cashier,
   adminDashboard,
   savedItems,
+  returns,
 };

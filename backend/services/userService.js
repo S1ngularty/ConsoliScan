@@ -110,6 +110,8 @@ exports.getHomeScreenData = async (request) => {
   ]);
 
   const user = {
+    firstName: userInfo.firstName,
+    lastName: userInfo.lastName,
     eligibilityDiscountUsage: userInfo.eligibiltyDiscountUsage || {},
     loyaltyPoints: userInfo.loyaltyPoints || 0,
     is_eligibility_verified: eligibilityInfo?.isVerified || false,

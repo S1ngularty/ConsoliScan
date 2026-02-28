@@ -12,11 +12,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
+import { useSelector } from "react-redux";
 import {
   getDashboardStats,
   getRecentTransactions,
 } from "../../api/cashier.api";
 import ScanMethodModal from "../../components/cashier/ScanMethodModal";
+import OfflineIndicator from "../../components/Common/OfflineIndicator";
 
 const { width } = Dimensions.get("window");
 
@@ -33,6 +35,17 @@ const HomeScreen = ({ navigation }) => {
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const networkState = useSelector((state) => state.network);
+
+  // Local state to trigger re-renders when network state changes
+  const [isOffline, setIsOffline] = useState(false);
+  const [isServerDown, setIsServerDown] = useState(false);
+
+  // Sync with Redux network state
+  useEffect(() => {
+    setIsOffline(networkState.isOffline);
+    setIsServerDown(networkState.isServerDown);
+  }, [networkState.isOffline, networkState.isServerDown]);
 
   useEffect(() => {
     updateTime();
@@ -53,10 +66,11 @@ const HomeScreen = ({ navigation }) => {
 
       // Fetch dashboard stats
       const dashboardData = await getDashboardStats();
+      // console.log("Dashboard data:", dashboardData);
       if (dashboardData) {
         setStats({
           salesToday: dashboardData.today?.salesToday || 0,
-          revenue: dashboardData.today?.revenue || 0,
+          revenue: dashboardData.week?.revenue || 0,
           transactions: dashboardData.today?.transactions || 0,
           specialCustomers: dashboardData.today?.specialCustomers || 0,
         });
@@ -68,7 +82,7 @@ const HomeScreen = ({ navigation }) => {
         setRecentTransactions(transactionsData.transactions);
       }
     } catch (error) {
-      console.error("Error fetching dashboard data:", error);
+      // Error loading dashboard data
     } finally {
       setLoading(false);
     }
@@ -102,17 +116,44 @@ const HomeScreen = ({ navigation }) => {
     subtitle,
     onPress,
     color = "#00A86B",
+    disabled = false,
   }) => (
     <TouchableOpacity
-      style={styles.quickActionCard}
+      style={[
+        styles.quickActionCard,
+        disabled && styles.quickActionCardDisabled,
+      ]}
       onPress={onPress}
-      activeOpacity={0.8}
+      activeOpacity={disabled ? 0.5 : 0.8}
+      disabled={disabled}
     >
-      <View style={[styles.iconCircle, { backgroundColor: `${color}20` }]}>
-        <MaterialCommunityIcons name={icon} size={32} color={color} />
+      <View
+        style={[
+          styles.iconCircle,
+          {
+            backgroundColor: disabled ? "#f1f5f9" : `${color}20`,
+          },
+        ]}
+      >
+        <MaterialCommunityIcons
+          name={icon}
+          size={32}
+          color={disabled ? "#cbd5e1" : color}
+        />
       </View>
-      <Text style={styles.actionTitle}>{title}</Text>
-      <Text style={styles.actionSubtitle}>{subtitle}</Text>
+      <Text
+        style={[styles.actionTitle, disabled && styles.actionTitleDisabled]}
+      >
+        {title}
+      </Text>
+      <Text
+        style={[
+          styles.actionSubtitle,
+          disabled && styles.actionSubtitleDisabled,
+        ]}
+      >
+        {subtitle}
+      </Text>
     </TouchableOpacity>
   );
 
@@ -156,189 +197,207 @@ const HomeScreen = ({ navigation }) => {
         </View>
       </View>
 
-      {loading && !refreshing ? (
+      {loading && !isOffline && !isServerDown && !refreshing ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#00A86B" />
           <Text style={styles.loadingText}>Loading dashboard...</Text>
         </View>
       ) : (
-        <ScrollView
-          style={styles.content}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={["#00A86B"]}
-              tintColor="#00A86B"
-            />
-          }
-        >
-          {/* Greeting */}
-          <View style={styles.greetingSection}>
-            <Text style={styles.greetingText}>
-              {greeting}, <Text style={styles.userName}>Cashier</Text>
-            </Text>
-            <Text style={styles.dateText}>
-              {new Date().toLocaleDateString("en-US", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </Text>
-          </View>
-
-          {/* Quick Stats */}
-          <View style={styles.statsSection}>
-            <Text style={styles.sectionTitle}>Today's Overview</Text>
-            <View style={styles.statsGrid}>
-              <StatCard
-                value={stats.salesToday.toLocaleString()}
-                label="Sales Today"
-                icon="shopping"
-                color="#00A86B"
-              />
-              <StatCard
-                value={`₱${stats.revenue.toLocaleString()}`}
-                label="Revenue"
-                icon="currency-php"
-                color="#00965C"
-              />
-              <StatCard
-                value={stats.transactions.toString()}
-                label="Transactions"
-                icon="receipt"
-                color="#64748B"
-              />
-              <StatCard
-                value={stats.specialCustomers.toString()}
-                label="PWD/Senior"
-                icon="account-group"
-                color="#FF9800"
-              />
+        <>
+          {/* Offline Banner */}
+          {(isOffline || isServerDown) && (
+            <View style={styles.offlineBannerHome}>
+              <MaterialCommunityIcons name="wifi-off" size={16} color="#fff" />
+              <Text style={styles.offlineBannerText}>
+                {isServerDown ? "Server Down" : "Offline Mode"}
+              </Text>
+              <Text style={styles.offlineSubtext}>
+                {isServerDown ? "Using local data" : "No connection"}
+              </Text>
             </View>
-          </View>
-
-          {/* Quick Actions */}
-          <View style={styles.actionsSection}>
-            <Text style={styles.sectionTitle}>Quick Actions</Text>
-            <View style={styles.actionsGrid}>
-              <QuickActionButton
-                icon="shopping-cart"
-                title="New Transaction"
-                subtitle="Start scanning items"
-                onPress={() => setScanModalVisible(true)}
-                color="#00A86B"
+          )}
+          <ScrollView
+            style={styles.content}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={["#00A86B"]}
+                tintColor="#00A86B"
               />
-
-              <QuickActionButton
-                icon="package-variant"
-                title="Inventory"
-                subtitle="Check stock levels"
-                onPress={() => navigation.navigate("Inventory")}
-                color="#3B82F6"
-              />
-
-              <QuickActionButton
-                icon="chart-line"
-                title="Reports"
-                subtitle="View sales analytics"
-                onPress={() => navigation.navigate("Reports")}
-                color="#8B5CF6"
-              />
-
-              <QuickActionButton
-                icon="account-group"
-                title="Customers"
-                subtitle="PWD/Senior lookup"
-                onPress={() => console.log("Customer Lookup")}
-                color="#EF4444"
-              />
-
-              <QuickActionButton
-                icon="swap-horizontal"
-                title="Exchange Returns"
-                subtitle="Process item returns"
-                onPress={() => navigation.navigate("ExchangeReturn")}
-                color="#10B981"
-              />
-            </View>
-          </View>
-
-          {/* Recent Transactions */}
-          <View style={styles.recentSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recent Transactions</Text>
-              <TouchableOpacity
-                onPress={() => navigation.navigate("Transaction")}
-              >
-                <Text style={styles.viewAllText}>View All</Text>
-              </TouchableOpacity>
+            }
+          >
+            {/* Greeting */}
+            <View style={styles.greetingSection}>
+              <Text style={styles.greetingText}>
+                {greeting}, <Text style={styles.userName}>Cashier</Text>
+              </Text>
+              <Text style={styles.dateText}>
+                {new Date().toLocaleDateString("en-US", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </Text>
             </View>
 
-            <View style={styles.recentList}>
-              {recentTransactions.length > 0 ? (
-                recentTransactions.map((transaction, index) => (
-                  <TouchableOpacity
-                    key={transaction._id || index}
-                    style={styles.recentItem}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.recentItemLeft}>
-                      <View style={styles.transactionIcon}>
-                        <MaterialCommunityIcons
-                          name="receipt"
-                          size={20}
-                          color="#00A86B"
-                        />
+            {/* Quick Stats */}
+            <View style={styles.statsSection}>
+              <Text style={styles.sectionTitle}>Today's Overview</Text>
+              <View style={styles.statsGrid}>
+                <StatCard
+                  value={stats.salesToday.toLocaleString()}
+                  label="Sales Today"
+                  icon="shopping"
+                  color="#00A86B"
+                />
+                <StatCard
+                  value={`₱${stats.revenue.toLocaleString()}`}
+                  label="Revenue"
+                  icon="currency-php"
+                  color="#00965C"
+                />
+                <StatCard
+                  value={stats.transactions.toString()}
+                  label="Transactions"
+                  icon="receipt"
+                  color="#64748B"
+                />
+                <StatCard
+                  value={stats.specialCustomers.toString()}
+                  label="PWD/Senior"
+                  icon="account-group"
+                  color="#FF9800"
+                />
+              </View>
+            </View>
+
+            {/* Quick Actions */}
+            <View style={styles.actionsSection}>
+              <Text style={styles.sectionTitle}>Quick Actions</Text>
+              <View style={styles.actionsGrid}>
+                <QuickActionButton
+                  icon="cart-outline"
+                  title="New Transaction"
+                  subtitle="Start scanning items"
+                  onPress={() => setScanModalVisible(true)}
+                  color="#00A86B"
+                />
+
+                <QuickActionButton
+                  icon="package-variant"
+                  title="Inventory"
+                  subtitle="Check stock levels"
+                  onPress={() => navigation.navigate("Inventory")}
+                  color="#3B82F6"
+                  disabled={isOffline || isServerDown}
+                />
+
+                <QuickActionButton
+                  icon="chart-line"
+                  title="Reports"
+                  subtitle="View sales analytics"
+                  onPress={() => navigation.navigate("Reports")}
+                  color="#8B5CF6"
+                  disabled={isOffline || isServerDown}
+                />
+
+                <QuickActionButton
+                  icon="account-group"
+                  title="Customers"
+                  subtitle="PWD/Senior lookup"
+                  onPress={() => {}}
+                  color="#EF4444"
+                  disabled={isOffline || isServerDown}
+                />
+
+                <QuickActionButton
+                  icon="undo-variant"
+                  title="Returns"
+                  subtitle="Process item returns"
+                  onPress={() => navigation.navigate("ReturnValidation")}
+                  color="#EF4444"
+                  disabled={isOffline || isServerDown}
+                />
+              </View>
+            </View>
+
+            {/* Recent Transactions */}
+            <View style={styles.recentSection}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Recent Transactions</Text>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate("Transaction")}
+                >
+                  <Text style={styles.viewAllText}>View All</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.recentList}>
+                {recentTransactions.length > 0 ? (
+                  recentTransactions.map((transaction, index) => (
+                    <TouchableOpacity
+                      key={transaction._id || index}
+                      style={styles.recentItem}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.recentItemLeft}>
+                        <View style={styles.transactionIcon}>
+                          <MaterialCommunityIcons
+                            name="receipt"
+                            size={20}
+                            color="#00A86B"
+                          />
+                        </View>
+                        <View>
+                          <Text style={styles.transactionId}>
+                            {transaction.transactionId}
+                          </Text>
+                          <Text style={styles.transactionTime}>
+                            {new Date(transaction.timestamp).toLocaleTimeString(
+                              "en-US",
+                              {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                              },
+                            )}
+                          </Text>
+                        </View>
                       </View>
-                      <View>
-                        <Text style={styles.transactionId}>
-                          {transaction.transactionId}
+                      <View style={styles.recentItemRight}>
+                        <Text style={styles.transactionAmount}>
+                          ₱{Number(transaction.amount).toFixed(2)}
                         </Text>
-                        <Text style={styles.transactionTime}>
-                          {new Date(transaction.timestamp).toLocaleTimeString(
-                            "en-US",
-                            {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: true,
-                            },
-                          )}
-                        </Text>
+                        <View style={styles.paymentBadge}>
+                          <Text style={styles.paymentText}>
+                            {transaction.paymentMethod}
+                          </Text>
+                        </View>
                       </View>
-                    </View>
-                    <View style={styles.recentItemRight}>
-                      <Text style={styles.transactionAmount}>
-                        ₱{transaction.amount.toFixed(2)}
-                      </Text>
-                      <View style={styles.paymentBadge}>
-                        <Text style={styles.paymentText}>
-                          {transaction.paymentMethod}
-                        </Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                ))
-              ) : (
-                <View style={styles.emptyTransactions}>
-                  <MaterialCommunityIcons
-                    name="receipt-text-outline"
-                    size={40}
-                    color="#94A3B8"
-                  />
-                  <Text style={styles.emptyText}>
-                    No transactions yet today
-                  </Text>
-                  <Text style={styles.emptySubtext}>
-                    Start scanning to see recent transactions
-                  </Text>
-                </View>
-              )}
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <View style={styles.emptyTransactions}>
+                    <MaterialCommunityIcons
+                      name="receipt-text-outline"
+                      size={40}
+                      color="#94A3B8"
+                    />
+                    <Text style={styles.emptyText}>
+                      No transactions yet today
+                    </Text>
+                    <Text style={styles.emptySubtext}>
+                      Start scanning to see recent transactions
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
-          </View>
-        </ScrollView>
+          </ScrollView>
+        </>
       )}
     </SafeAreaView>
   );
@@ -348,6 +407,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F8FAFC",
+  },
+  offlineBannerHome: {
+    backgroundColor: "#DC2626",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  offlineBannerText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#fff",
+    flex: 1,
+  },
+  offlineSubtext: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: "#FCA5A5",
   },
   header: {
     backgroundColor: "#00A86B",
@@ -467,6 +545,11 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
+  quickActionCardDisabled: {
+    backgroundColor: "#F8FAFC",
+    borderColor: "#E2E8F0",
+    opacity: 0.6,
+  },
   iconCircle: {
     width: 56,
     height: 56,
@@ -482,10 +565,16 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 4,
   },
+  actionTitleDisabled: {
+    color: "#94A3B8",
+  },
   actionSubtitle: {
     fontSize: 12,
     color: "#64748B",
     textAlign: "center",
+  },
+  actionSubtitleDisabled: {
+    color: "#CBD5E1",
   },
   recentSection: {
     padding: 20,

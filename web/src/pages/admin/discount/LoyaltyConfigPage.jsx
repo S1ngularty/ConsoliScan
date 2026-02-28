@@ -1,4 +1,3 @@
-// src/pages/admin/loyalty/LoyaltyConfigPage.jsx
 import React, { useState, useEffect } from "react";
 import {
   Save,
@@ -14,6 +13,7 @@ import {
   Shield,
   TrendingUp,
   Coins,
+  Info,
 } from "lucide-react";
 import "../../../styles/admin/discount/LoyaltyConfigPageStyle.css";
 import Loader from "../../../components/common/LoaderComponent";
@@ -26,7 +26,7 @@ import {
 
 const LoyaltyConfigPage = () => {
   const [config, setConfig] = useState({
-    pointsToCurrencyRate: 100,
+    pointsToCurrencyRate: 1, // Default: 1 point = 1 Peso
     maxRedeemPercent: 20,
     earnRate: 1,
     enabled: true,
@@ -57,7 +57,7 @@ const LoyaltyConfigPage = () => {
       }
     } catch (error) {
       console.error("Failed to fetch loyalty config:", error);
-      alert("Failed to fetch configuration. Please try again.");
+      // Fallback or alert handled by UI state
     } finally {
       setLoading(false);
     }
@@ -69,11 +69,11 @@ const LoyaltyConfigPage = () => {
 
     switch (name) {
       case "pointsToCurrencyRate":
-        if (!value || value === "") error = "Points rate is required";
-        else if (isNaN(value)) error = "Points rate must be a number";
+        if (!value && value !== 0) error = "Point value is required";
+        else if (isNaN(value)) error = "Value must be a number";
         else if (parseFloat(value) <= 0)
-          error = "Points rate must be greater than 0";
-        else if (parseFloat(value) > 1000) error = "Points rate is too high";
+          error = "Value must be greater than 0";
+        else if (parseFloat(value) > 1000) error = "Value is unusually high";
         break;
 
       case "maxRedeemPercent":
@@ -84,11 +84,10 @@ const LoyaltyConfigPage = () => {
         break;
 
       case "earnRate":
-        if (!value || value === "") error = "Earn rate is required";
+        if (!value && value !== 0) error = "Earn rate is required";
         else if (isNaN(value)) error = "Earn rate must be a number";
         else if (parseFloat(value) <= 0)
           error = "Earn rate must be greater than 0";
-        else if (parseFloat(value) > 10) error = "Earn rate is too high";
         break;
 
       default:
@@ -132,11 +131,10 @@ const LoyaltyConfigPage = () => {
       // Then update UI
       setConfig((prev) => ({ ...prev, [field]: newStatus }));
       
-      alert(`Loyalty program ${newStatus ? 'activated' : 'deactivated'} successfully!`);
+      // alert(`Loyalty program ${newStatus ? 'activated' : 'deactivated'} successfully!`);
     } catch (error) {
       console.error("Failed to update program status:", error);
       alert("Failed to update program status. Please try again.");
-      // Don't update UI on error
     } finally {
       setUpdatingStatus(false);
     }
@@ -210,7 +208,7 @@ const LoyaltyConfigPage = () => {
     try {
       await resetLoyaltyPoints();
       setResetSuccess(true);
-      alert("All customer loyalty points have been reset to 0.");
+      // alert("All customer loyalty points have been reset to 0.");
       
       // Close modal after short delay to show success state
       setTimeout(() => {
@@ -228,20 +226,25 @@ const LoyaltyConfigPage = () => {
   };
 
   const calculateExamples = () => {
-    const pointsRate = parseFloat(config.pointsToCurrencyRate) || 100;
-    const earnRate = parseFloat(config.earnRate) || 1;
-    const maxPercent = parseFloat(config.maxRedeemPercent) || 20;
+    // Mobile logic: pointsDiscount = points * pointsToCurrencyRate
+    // So pointsToCurrencyRate is "Value per Point"
+    const valuePerPoint = parseFloat(config.pointsToCurrencyRate) || 0;
+    const earnRate = parseFloat(config.earnRate) || 0;
+    const maxPercent = parseFloat(config.maxRedeemPercent) || 0;
 
     const examplePurchase = 1000;
     const pointsEarned = examplePurchase * earnRate;
-    const pointValue = pointsRate > 0 ? 1 / pointsRate : 0.01;
     const maxRedeemValue = (examplePurchase * maxPercent) / 100;
-    const pointsNeededForMax = pointValue > 0 ? maxRedeemValue / pointValue : 0;
+    
+    // How many points needed to get maxRedeemValue?
+    // maxRedeemValue = pointsNeeded * valuePerPoint
+    // pointsNeeded = maxRedeemValue / valuePerPoint
+    const pointsNeededForMax = valuePerPoint > 0 ? maxRedeemValue / valuePerPoint : 0;
 
     return {
       examplePurchase,
       pointsEarned,
-      pointValue,
+      valuePerPoint,
       maxRedeemValue,
       pointsNeededForMax,
     };
@@ -270,7 +273,7 @@ const LoyaltyConfigPage = () => {
           <div>
             <h1 className="loyalty-title">Loyalty Program Configuration</h1>
             <p className="loyalty-subtitle">
-              Configure how customers earn and redeem loyalty points (in PHP ₱)
+              Configure earning rates and redemption values for customer loyalty points
             </p>
           </div>
         </div>
@@ -310,8 +313,7 @@ const LoyaltyConfigPage = () => {
             </div>
             <div className="card-body">
               <p className="card-description">
-                When inactive, customers cannot earn or redeem loyalty points.
-                Existing points will be preserved.
+                Enable or disable the loyalty program. When inactive, customers cannot earn or redeem points, but their balances are preserved.
               </p>
             </div>
           </div>
@@ -321,15 +323,15 @@ const LoyaltyConfigPage = () => {
             <div className="card-header">
               <div className="card-title">
                 <Coins size={20} />
-                <h3>Points Conversion (PHP)</h3>
+                <h3>Points Value & Earning</h3>
               </div>
             </div>
             <div className="card-body">
-              {/* Points to Currency Rate */}
+              {/* Points Value */}
               <div className="form-group" data-field="pointsToCurrencyRate">
                 <label>
-                  <Coins size={16} />
-                  Points to Peso Rate *
+                  <DollarSign size={16} />
+                  Point Value (₱) *
                 </label>
                 <div className="input-with-suffix">
                   <input
@@ -339,13 +341,12 @@ const LoyaltyConfigPage = () => {
                       handleInputChange("pointsToCurrencyRate", e.target.value)
                     }
                     onBlur={() => handleBlur("pointsToCurrencyRate")}
-                    step="1"
-                    min="1"
-                    max="1000"
+                    step="0.01"
+                    min="0.01"
                     className={errors.pointsToCurrencyRate ? "input-error" : ""}
-                    disabled={!config.enabled} // Disabled when program is inactive
+                    disabled={!config.enabled}
                   />
-                  <span className="input-suffix">points = ₱1.00</span>
+                  <span className="input-suffix">Peso value per 1 point</span>
                 </div>
                 {errors.pointsToCurrencyRate && (
                   <div className="error-message">
@@ -354,7 +355,40 @@ const LoyaltyConfigPage = () => {
                   </div>
                 )}
                 <div className="input-hint">
-                  How many loyalty points equal ₱1.00 in discount
+                  <Info size={12} />
+                  Example: Enter <strong>1.00</strong> for 1 Point = ₱1.00. Enter <strong>0.01</strong> for 1 Point = ₱0.01.
+                </div>
+              </div>
+
+              {/* Earn Rate */}
+              <div className="form-group" data-field="earnRate">
+                <label>
+                  <TrendingUp size={16} />
+                  Earning Rate *
+                </label>
+                <div className="input-with-suffix">
+                  <input
+                    type="number"
+                    value={config.earnRate}
+                    onChange={(e) =>
+                      handleInputChange("earnRate", e.target.value)
+                    }
+                    onBlur={() => handleBlur("earnRate")}
+                    step="0.1"
+                    min="0.1"
+                    className={errors.earnRate ? "input-error" : ""}
+                    disabled={!config.enabled}
+                  />
+                  <span className="input-suffix">points per ₱1 spent</span>
+                </div>
+                {errors.earnRate && (
+                  <div className="error-message">
+                    <AlertCircle size={12} />
+                    <span>{errors.earnRate}</span>
+                  </div>
+                )}
+                <div className="input-hint">
+                  How many points a customer earns for every Peso spent.
                 </div>
               </div>
 
@@ -362,7 +396,7 @@ const LoyaltyConfigPage = () => {
               <div className="form-group" data-field="maxRedeemPercent">
                 <label>
                   <Percent size={16} />
-                  Maximum Redeem Percent *
+                  Max Redemption Limit *
                 </label>
                 <div className="input-with-suffix">
                   <input
@@ -376,7 +410,7 @@ const LoyaltyConfigPage = () => {
                     min="0"
                     max="100"
                     className={errors.maxRedeemPercent ? "input-error" : ""}
-                    disabled={!config.enabled} // Disabled when program is inactive
+                    disabled={!config.enabled}
                   />
                   <span className="input-suffix">% of order total</span>
                 </div>
@@ -387,40 +421,7 @@ const LoyaltyConfigPage = () => {
                   </div>
                 )}
                 <div className="input-hint">
-                  Maximum percentage of order total that can be paid with points
-                </div>
-              </div>
-
-              {/* Earn Rate */}
-              <div className="form-group" data-field="earnRate">
-                <label>
-                  <TrendingUp size={16} />
-                  Points Earn Rate *
-                </label>
-                <div className="input-with-suffix">
-                  <input
-                    type="number"
-                    value={config.earnRate}
-                    onChange={(e) =>
-                      handleInputChange("earnRate", e.target.value)
-                    }
-                    onBlur={() => handleBlur("earnRate")}
-                    step="0.1"
-                    min="0.1"
-                    max="10"
-                    className={errors.earnRate ? "input-error" : ""}
-                    disabled={!config.enabled} // Disabled when program is inactive
-                  />
-                  <span className="input-suffix">points per ₱1 spent</span>
-                </div>
-                {errors.earnRate && (
-                  <div className="error-message">
-                    <AlertCircle size={12} />
-                    <span>{errors.earnRate}</span>
-                  </div>
-                )}
-                <div className="input-hint">
-                  How many points customers earn for each ₱1.00 spent
+                  The maximum percentage of an order that can be paid using points.
                 </div>
               </div>
             </div>
@@ -437,14 +438,12 @@ const LoyaltyConfigPage = () => {
             <div className="card-body">
               <p className="warning-text">
                 <Shield size={16} />
-                This action will reset ALL customer loyalty points to 0. This
-                cannot be undone and should only be used when migrating to a new
-                points system or starting fresh.
+                This action will reset <strong>ALL</strong> customer loyalty points to 0. This cannot be undone.
               </p>
               <button
                 className="btn-reset"
                 onClick={handleResetClick}
-                disabled={isResetting || !config.enabled} // Disabled when program is inactive or resetting
+                disabled={isResetting || !config.enabled}
               >
                 <RefreshCw size={16} className={isResetting ? "spin" : ""} />
                 <span>{isResetting ? "Resetting..." : "Reset All Points"}</span>
@@ -460,7 +459,7 @@ const LoyaltyConfigPage = () => {
             <div className="card-header">
               <div className="card-title">
                 <Award size={20} />
-                <h3>Program Preview (PHP)</h3>
+                <h3>Program Preview</h3>
               </div>
               <div
                 className={`program-status ${config.enabled ? "active" : "inactive"}`}
@@ -481,23 +480,21 @@ const LoyaltyConfigPage = () => {
             <div className="card-body">
               <div className="preview-grid">
                 <div className="preview-item">
-                  <div className="preview-label">Points Value</div>
+                  <div className="preview-label">1 Point Value</div>
                   <div className="preview-value">
-                    1 point = ₱
-                    {(1 / (config.pointsToCurrencyRate || 100)).toFixed(4)}
+                    ₱{parseFloat(config.pointsToCurrencyRate || 0).toFixed(2)}
                   </div>
                 </div>
                 <div className="preview-item">
-                  <div className="preview-label">Earn Rate</div>
+                  <div className="preview-label">Earning</div>
                   <div className="preview-value">
-                    {config.earnRate || 1} point
-                    {config.earnRate !== 1 ? "s" : ""} per ₱1
+                    {config.earnRate || 0} pts / ₱1
                   </div>
                 </div>
                 <div className="preview-item">
-                  <div className="preview-label">Max Redemption</div>
+                  <div className="preview-label">Max Usage</div>
                   <div className="preview-value">
-                    {config.maxRedeemPercent || 20}% of order
+                    {config.maxRedeemPercent || 0}% of total
                   </div>
                 </div>
               </div>
@@ -509,73 +506,60 @@ const LoyaltyConfigPage = () => {
             <div className="card-header">
               <div className="card-title">
                 <Coins size={20} />
-                <h3>Example Calculations (PHP)</h3>
+                <h3>Example Scenario</h3>
               </div>
             </div>
             <div className="card-body">
               <div className="example-scenario">
-                <h4>Scenario: Customer spends ₱{examples.examplePurchase}</h4>
+                <h4>Customer spends ₱{examples.examplePurchase.toLocaleString()}</h4>
                 <div className="example-details">
                   <div className="example-row">
                     <span className="example-label">Points earned:</span>
                     <span className="example-value">
-                      {examples.pointsEarned.toFixed(0)} points
+                      +{examples.pointsEarned.toLocaleString()} pts
                     </span>
                   </div>
                   <div className="example-row">
-                    <span className="example-label">Value per point:</span>
+                    <span className="example-label">Points value:</span>
                     <span className="example-value">
-                      ₱{examples.pointValue.toFixed(4)}
+                      ₱{(examples.pointsEarned * examples.valuePerPoint).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="divider"></div>
+
+                <h4>Redeeming on ₱{examples.examplePurchase.toLocaleString()} Order</h4>
+                 <div className="example-details">
+                  <div className="example-row">
+                    <span className="example-label">Max redeemable ({(config.maxRedeemPercent || 0)}%):</span>
+                    <span className="example-value">
+                      -₱{examples.maxRedeemValue.toFixed(2)}
                     </span>
                   </div>
                   <div className="example-row">
-                    <span className="example-label">
-                      Max points redeemable:
-                    </span>
+                    <span className="example-label">Points needed:</span>
                     <span className="example-value">
-                      {examples.pointsNeededForMax.toFixed(0)} points
-                      <span className="example-note">
-                        (worth ₱{examples.maxRedeemValue.toFixed(2)})
-                      </span>
-                    </span>
-                  </div>
-                  <div className="example-row">
-                    <span className="example-label">Customer pays:</span>
-                    <span className="example-value">
-                      ₱
-                      {(
-                        examples.examplePurchase - examples.maxRedeemValue
-                      ).toFixed(2)}
-                      <span className="example-note">
-                        + {examples.pointsNeededForMax.toFixed(0)} points
-                      </span>
+                      {examples.pointsNeededForMax.toLocaleString()} pts
                     </span>
                   </div>
                 </div>
               </div>
 
               <div className="notes-section">
-                <h4>Important Notes:</h4>
+                <h4>Rules & Notes:</h4>
                 <ul className="notes-list">
                   <li>
                     <CheckCircle size={12} />
-                    Points are awarded after payment is confirmed
+                    Points are awarded based on the final paid amount.
                   </li>
                   <li>
                     <CheckCircle size={12} />
-                    Points never expire (unless program is discontinued)
+                    Points value is fixed at ₱{parseFloat(config.pointsToCurrencyRate || 0).toFixed(2)} per point.
                   </li>
                   <li>
                     <CheckCircle size={12} />
-                    Points cannot be transferred between accounts
-                  </li>
-                  <li>
-                    <CheckCircle size={12} />
-                    Returns will deduct earned points proportionally
-                  </li>
-                  <li>
-                    <CheckCircle size={12} />
-                    Points are based on PHP (₱) currency
+                    Redemption is capped at {config.maxRedeemPercent}% of the order subtotal.
                   </li>
                 </ul>
               </div>
@@ -585,51 +569,26 @@ const LoyaltyConfigPage = () => {
           {/* Summary */}
           <div className="summary-card">
             <div className="summary-header">
-              <h3>Configuration Summary (PHP)</h3>
+              <h3>Configuration Summary</h3>
             </div>
             <div className="summary-body">
               <p>
-                With these settings, customers earn{" "}
-                <strong>
-                  {config.earnRate} point{config.earnRate !== 1 ? "s" : ""}
-                </strong>{" "}
-                for every ₱1 spent. Each point is worth{" "}
-                <strong>
-                  ₱{(1 / (config.pointsToCurrencyRate || 100)).toFixed(4)}
-                </strong>
-                . They can redeem points for up to{" "}
-                <strong>{config.maxRedeemPercent}%</strong> of their order
-                total.
+                Customers earn <strong>{config.earnRate} points</strong> for every ₱1 spent. 
+                Each point is worth <strong>₱{parseFloat(config.pointsToCurrencyRate || 0).toFixed(2)}</strong>.
               </p>
               <div className="conversion-examples">
-                <h4>Quick Examples:</h4>
+                <h4>Quick Look:</h4>
                 <div className="conversion-grid">
                   <div className="conversion-item">
-                    <span className="conversion-label">₱100 purchase:</span>
+                    <span className="conversion-label">100 Points =</span>
                     <span className="conversion-value">
-                      Earns {(config.earnRate * 100).toFixed(0)} points
+                      ₱{(100 * (parseFloat(config.pointsToCurrencyRate) || 0)).toFixed(2)}
                     </span>
                   </div>
                   <div className="conversion-item">
-                    <span className="conversion-label">₱500 purchase:</span>
+                    <span className="conversion-label">500 Points =</span>
                     <span className="conversion-value">
-                      Earns {(config.earnRate * 500).toFixed(0)} points
-                    </span>
-                  </div>
-                  <div className="conversion-item">
-                    <span className="conversion-label">
-                      {config.pointsToCurrencyRate} points:
-                    </span>
-                    <span className="conversion-value">
-                      Worth ₱1.00 discount
-                    </span>
-                  </div>
-                  <div className="conversion-item">
-                    <span className="conversion-label">
-                      {config.pointsToCurrencyRate * 10} points:
-                    </span>
-                    <span className="conversion-value">
-                      Worth ₱10.00 discount
+                      ₱{(500 * (parseFloat(config.pointsToCurrencyRate) || 0)).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -654,7 +613,7 @@ const LoyaltyConfigPage = () => {
             <button
               className="btn-primary"
               onClick={handleSave}
-              disabled={saving || !config.enabled} // Disabled when program is inactive
+              disabled={saving || !config.enabled}
             >
               {saving ? (
                 <>
@@ -692,14 +651,11 @@ const LoyaltyConfigPage = () => {
             <div className="modal-body">
               <p className="warning-message">
                 <strong>Warning:</strong> This action will permanently reset ALL
-                customer loyalty points to 0. This includes all customers,
-                regardless of their current point balance.
+                customer loyalty points to 0.
               </p>
               <ul className="warning-list">
-                <li>All points will be lost and cannot be recovered</li>
-                <li>This action cannot be undone</li>
-                <li>Customers will be notified of the reset</li>
-                <li>Consider exporting point data before proceeding</li>
+                <li>All points will be lost immediately.</li>
+                <li>This action cannot be undone.</li>
               </ul>
               <div className="confirmation-input">
                 <label>
@@ -769,6 +725,12 @@ const LoyaltyConfigPage = () => {
           color: #00A86B;
           margin-top: 12px;
           font-size: 14px;
+          font-weight: 500;
+        }
+        .divider {
+            height: 1px;
+            background-color: #f1f5f9;
+            margin: 12px 0;
         }
       `}</style>
     </div>

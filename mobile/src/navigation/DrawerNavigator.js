@@ -1,14 +1,8 @@
 import React from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Alert
-} from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import { createDrawerNavigator } from "@react-navigation/drawer";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import {logout} from "../features/slices/auth/authThunks"
+import { logout } from "../features/slices/auth/authThunks";
 import { useDispatch } from "react-redux";
 
 // Import screens
@@ -20,12 +14,12 @@ import ProfileScreen from "../screens/cashier/ProfileScreen";
 
 // Import logout action (update path based on your project structure)
 // import { logout } from "../store/slices/authSlice";
-import {useSelector} from "react-redux";
+import { useSelector } from "react-redux";
 
 const Drawer = createDrawerNavigator();
 
 // Custom Drawer Content
-const CustomDrawerContent = ({ state, descriptors, navigation, userState}) => {
+const CustomDrawerContent = ({ state, descriptors, navigation, userState }) => {
   const dispatch = useDispatch(); // Add useDispatch here
 
   const handleLogout = () => {
@@ -65,8 +59,12 @@ const CustomDrawerContent = ({ state, descriptors, navigation, userState}) => {
             <MaterialCommunityIcons name="account" size={28} color="#FFFFFF" />
           </View>
           <View style={styles.userDetails}>
-            <Text style={styles.userName}>{userState?.user?.name || "Guest User"}</Text>
-            <Text style={styles.userRole}>{userState?.user?.role || "Cashier"}</Text>
+            <Text style={styles.userName}>
+              {userState?.user?.name || "Guest User"}
+            </Text>
+            <Text style={styles.userRole}>
+              {userState?.user?.role || "Cashier"}
+            </Text>
           </View>
         </View>
       </View>
@@ -91,11 +89,11 @@ const CustomDrawerContent = ({ state, descriptors, navigation, userState}) => {
               case "Home":
                 return isFocused ? "home" : "home-outline";
               case "Transaction":
-                return isFocused ? "cash-register" : "cash-register-outline";
+                return isFocused ? "cash-register" : "receipt-text-outline";
               case "Inventory":
                 return isFocused ? "package-variant" : "package-variant-closed";
               case "Reports":
-                return isFocused ? "chart-bar" : "chart-bar-outline";
+                return isFocused ? "chart-bar" : "chart-box-outline";
               case "Profile":
                 return isFocused ? "account" : "account-outline";
               default:
@@ -151,17 +149,17 @@ const CustomDrawerContent = ({ state, descriptors, navigation, userState}) => {
 
       {/* Footer */}
       <View style={styles.footer}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.footerItem}
-          onPress={() => navigation.navigate('Settings')}
+          onPress={() => navigation.navigate("Settings")}
         >
           <MaterialCommunityIcons name="cog-outline" size={22} color="#666" />
           <Text style={styles.footerText}>Settings</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.footerItem}
-          onPress={() => navigation.navigate('Help')}
+          onPress={() => navigation.navigate("Help")}
         >
           <MaterialCommunityIcons
             name="help-circle-outline"
@@ -188,7 +186,9 @@ export default function DrawerNavigator() {
   const userState = useSelector((state) => state.auth);
   return (
     <Drawer.Navigator
-      drawerContent={(props) => <CustomDrawerContent {...props} userState={userState} />}
+      drawerContent={(props) => (
+        <CustomDrawerContent {...props} userState={userState} />
+      )}
       screenOptions={{
         headerShown: false,
         drawerStyle: {
@@ -200,40 +200,40 @@ export default function DrawerNavigator() {
         swipeEnabled: true,
       }}
     >
-      <Drawer.Screen 
-        name="Home" 
+      <Drawer.Screen
+        name="Home"
         component={HomeScreen}
         options={{
           drawerLabel: "Dashboard",
           title: "Dashboard",
         }}
       />
-      <Drawer.Screen 
-        name="Transaction" 
+      <Drawer.Screen
+        name="Transaction"
         component={TransactionScreen}
         options={{
           drawerLabel: "New Transaction",
           title: "New Transaction",
         }}
       />
-      <Drawer.Screen 
-        name="Inventory" 
+      <Drawer.Screen
+        name="Inventory"
         component={InventoryScreen}
         options={{
           drawerLabel: "Inventory",
           title: "Inventory",
         }}
       />
-      <Drawer.Screen 
-        name="Reports" 
+      <Drawer.Screen
+        name="Reports"
         component={ReportsScreen}
         options={{
           drawerLabel: "Reports",
           title: "Reports",
         }}
       />
-      <Drawer.Screen 
-        name="Profile" 
+      <Drawer.Screen
+        name="Profile"
         component={ProfileScreen}
         options={{
           drawerLabel: "Profile",
@@ -264,14 +264,14 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#1E293B",
     marginLeft: 12,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: "Inter_700Bold",
   },
   headerSubtitle: {
     fontSize: 14,
     color: "#64748B",
     marginBottom: 24,
     marginLeft: 4,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: "Inter_400Regular",
   },
   userInfo: {
     flexDirection: "row",
@@ -299,12 +299,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#1E293B",
     marginBottom: 2,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: "Inter_600SemiBold",
   },
   userRole: {
     fontSize: 13,
     color: "#64748B",
-    fontFamily: 'Inter_400Regular',
+    fontFamily: "Inter_400Regular",
   },
   divider: {
     height: 1,
@@ -335,12 +335,12 @@ const styles = StyleSheet.create({
     color: "#666",
     fontWeight: "500",
     marginLeft: 8,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: "Inter_500Medium",
   },
   menuLabelActive: {
     color: "#00A86B",
     fontWeight: "600",
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: "Inter_600SemiBold",
   },
   activeIndicator: {
     position: "absolute",
@@ -366,13 +366,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
     marginLeft: 16,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: "Inter_500Medium",
   },
   logoutItem: {
     marginTop: 8,
   },
   logoutText: {
     color: "#EF4444",
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: "Inter_600SemiBold",
   },
 });

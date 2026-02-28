@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,7 +12,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
+import { useSelector } from "react-redux";
 import { getSalesReports } from "../../api/cashier.api";
+import OfflineIndicator from "../../components/Common/OfflineIndicator";
 
 const { width } = Dimensions.get("window");
 
@@ -21,6 +23,17 @@ const ReportsScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState("today");
+  const networkState = useSelector((state) => state.network);
+
+  // Local state to trigger re-renders when network state changes
+  const [isOffline, setIsOffline] = useState(false);
+  const [isServerDown, setIsServerDown] = useState(false);
+
+  // Sync with Redux network state
+  useEffect(() => {
+    setIsOffline(networkState.isOffline);
+    setIsServerDown(networkState.isServerDown);
+  }, [networkState.isOffline, networkState.isServerDown]);
 
   useFocusEffect(
     useCallback(() => {
@@ -73,6 +86,19 @@ const ReportsScreen = ({ navigation }) => {
     </View>
   );
 
+  const summary = reportData?.summary || {};
+  const totalRevenue = Number(summary.totalRevenue || 0);
+  const totalTransactions = Number(summary.totalTransactions || 0);
+  const totalItems = Number(summary.totalItems || 0);
+  const specialCustomers = Number(summary.specialCustomers || 0);
+  const paymentMethods =
+    reportData?.paymentMethods && typeof reportData.paymentMethods === "object"
+      ? reportData.paymentMethods
+      : {};
+  const topItems = Array.isArray(reportData?.topItems)
+    ? reportData.topItems
+    : [];
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -94,10 +120,14 @@ const ReportsScreen = ({ navigation }) => {
         <PeriodButton period="month" label="This Month" />
       </View>
 
-      {loading && !refreshing ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00A86B" />
-        </View>
+      {(loading || isOffline || isServerDown) && !refreshing ? (
+        isOffline || isServerDown ? (
+          <OfflineIndicator />
+        ) : (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#00A86B" />
+          </View>
+        )
       ) : (
         <ScrollView
           style={styles.content}
@@ -111,25 +141,25 @@ const ReportsScreen = ({ navigation }) => {
                 <StatCard
                   icon="currency-php"
                   label="Total Revenue"
-                  value={`₱${reportData.summary.totalRevenue.toLocaleString()}`}
+                  value={`₱${totalRevenue.toLocaleString()}`}
                   color="#00A86B"
                 />
                 <StatCard
                   icon="receipt"
                   label="Transactions"
-                  value={reportData.summary.totalTransactions}
+                  value={totalTransactions}
                   color="#3B82F6"
                 />
                 <StatCard
                   icon="package-variant"
                   label="Items Sold"
-                  value={reportData.summary.totalItems}
+                  value={totalItems}
                   color="#8B5CF6"
                 />
                 <StatCard
                   icon="account-group"
                   label="PWD/Senior"
-                  value={reportData.summary.specialCustomers}
+                  value={specialCustomers}
                   color="#FF9800"
                 />
               </View>
@@ -137,24 +167,22 @@ const ReportsScreen = ({ navigation }) => {
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Payment Methods</Text>
                 <View style={styles.paymentMethodsCard}>
-                  {Object.entries(reportData.paymentMethods).map(
-                    ([method, count]) => (
-                      <View key={method} style={styles.paymentRow}>
-                        <Text style={styles.paymentMethod}>{method}</Text>
-                        <Text style={styles.paymentCount}>
-                          {count} transactions
-                        </Text>
-                      </View>
-                    ),
-                  )}
+                  {Object.entries(paymentMethods).map(([method, count]) => (
+                    <View key={method} style={styles.paymentRow}>
+                      <Text style={styles.paymentMethod}>{method}</Text>
+                      <Text style={styles.paymentCount}>
+                        {count} transactions
+                      </Text>
+                    </View>
+                  ))}
                 </View>
               </View>
 
-              {reportData.topItems && reportData.topItems.length > 0 && (
+              {topItems.length > 0 && (
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>Top Selling Items</Text>
                   <View style={styles.topItemsCard}>
-                    {reportData.topItems.slice(0, 5).map((item, index) => (
+                    {topItems.slice(0, 5).map((item, index) => (
                       <View key={index} style={styles.topItemRow}>
                         <View style={styles.topItemRank}>
                           <Text style={styles.rankText}>{index + 1}</Text>
@@ -162,7 +190,8 @@ const ReportsScreen = ({ navigation }) => {
                         <View style={styles.topItemInfo}>
                           <Text style={styles.topItemName}>{item.name}</Text>
                           <Text style={styles.topItemStats}>
-                            {item.quantity} units • ₱{item.revenue.toFixed(2)}
+                            {Number(item.quantity || 0)} units • ₱
+                            {Number(item.revenue || 0).toFixed(2)}
                           </Text>
                         </View>
                       </View>

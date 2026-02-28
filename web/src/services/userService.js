@@ -5,6 +5,16 @@ axios.defaults.withCredentials = true;
 axios.defaults.baseURL = import.meta.env.VITE_APP_API;
 axios.defaults.headers.post["Content-Type"] = "application/json";
 
+export async function getMe() {
+  try {
+    const result = await axios.post(`api/v1/me`);
+    if (!result) throw new Error("failed to get current user");
+    return result.data.user;
+  } catch (error) {
+    return null;
+  }
+}
+
 export async function getAllUser() {
   try {
     const result = await axios.get(`api/v1/user`, {
@@ -22,19 +32,13 @@ export async function getAllUser() {
     });
     return data;
   } catch (error) {
-    console.log(error);
-    return error;
-  }
-}
-
-export async function getOneUser(id = "") {
+    return error;(id = "") {
   try {
     const result = await axios.get(`api/v1/user/${id}`);
     if (!result) throw new Error("failed to get the user");
     const data = result.data;
     return data;
   } catch (error) {
-    console.log(error);
     return error;
   }
 }
@@ -46,14 +50,12 @@ export async function updateProfile(id = "", data = {}) {
     const data = isUpdated.data.result;
     return data;
   } catch (error) {
-    console.log(error);
     return error;
   }
 }
 
 export async function createUser(userInfo) {
   try {
-    console.log(userInfo);
     const result = await axios.post("api/v1/user", userInfo, {
       headers: {
         "Content-Type": "multipart/form-data",
@@ -62,14 +64,12 @@ export async function createUser(userInfo) {
     if (!result) throw new Error("failed to create User");
     return result.data.result;
   } catch (error) {
-    console.log(error);
-    return error;
+      return error;
   }
 }
 
 export async function editUser(userInfo, userId) {
   try {
-    console.log(userInfo);
     const result = await axios.put(`api/v1/profile/user/${userId}`, userInfo, {
       headers: {
         "Content-Type": "multipart/form-data",
@@ -78,7 +78,6 @@ export async function editUser(userInfo, userId) {
     if (!result) throw new Error("failed to create User");
     return result.data.result;
   } catch (error) {
-    console.log(error);
     return error;
   }
 }
@@ -105,8 +104,7 @@ export async function updateAvatar(file, userId) {
     if (!isUpload) throw new Error("failed to update the avatar");
     // return isUpload;
   } catch (error) {
-    console.log(error);
-    return error;
+      return error;
   }
 }
 
@@ -119,7 +117,6 @@ export async function deleteUser(id) {
 export async function updatePermission(id, data) {
   if (!id) throw new Error("missing id field");
   if (!data) throw new Error("empty fields to update");
-  console.log(data);
   const result = await axios.put(`/api/v1/user/roles/${id}`, data);
   if (!result) throw new Error("something went wrong");
   return result.data.result;
@@ -140,4 +137,36 @@ export async function verificationRequest(userId, data) {
   if (!userId) throw new Error("undefined user Id");
   const isSuccess = await axios.put(`/api/v1/eligible/${userId}`, data);
   return isSuccess.data;
+}
+
+export async function applyEligibility(id, data) {
+  try {
+    if (!id || !data) throw new Error("Missing ID or data");
+    
+    // Convert data to FormData if it isn't already
+    let formData;
+    if (data instanceof FormData) {
+      formData = data;
+    } else {
+      formData = new FormData();
+      // Explicitly append files and fields
+      if (data.idFront) formData.append('idFront', data.idFront);
+      if (data.idBack) formData.append('idBack', data.idBack);
+      if (data.userPhoto) formData.append('userPhoto', data.userPhoto);
+      
+      formData.append('idNumber', data.idNumber);
+      formData.append('idType', data.idType);
+      formData.append('dateIssued', data.dateIssued);
+      if (data.expiryDate) formData.append('expiryDate', data.expiryDate);
+      if (data.typeOfDisability) formData.append('typeOfDisability', data.typeOfDisability);
+    }
+
+    // Pass the ID as a URL parameter, NOT in the body
+    const response = await axios.post(`api/v1/eligible/${id}`, formData);
+
+    if (!response) throw new Error("Failed to send request");
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
 }

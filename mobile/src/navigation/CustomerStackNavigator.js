@@ -5,10 +5,13 @@ import UserProfileScreen from "../screens/customer/UserProfileScreen";
 import EligibilityIntroScreen from "../screens/customer/EligibilityIntroScreen";
 import EligibilityStatusScreen from "../screens/customer/EligibilityStatusScreen";
 import EligibilityApplyScreen from "../screens/customer/EligibilityApplyScreen";
+import CameraScreen from "../screens/customer/CameraScreen";
+import EligibilityFormScreen from "../screens/customer/EligibilityFormScreen";
 import SavedItemsScreen from "../screens/customer/SaveItemsScreen";
 import SharedNavigation from "./SharedNavigation";
-import ExchangeScreen from "../screens/customer/ExchangeScreen";
-import ExchangeScannerScreen from "../screens/customer/ExchangeScannerScreen";
+import ReturnScreen from "../screens/customer/ReturnScreen";
+import ReturnQRScreen from "../screens/customer/ReturnQRScreen";
+import ReturnOptionsScreen from "../screens/customer/ReturnOptionsScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -25,14 +28,20 @@ export default function CustomerStackNavigator() {
         name="EligibilityApply"
         component={EligibilityApplyScreen}
       />
+      <Stack.Screen name="CameraScreen" component={CameraScreen} />
+      <Stack.Screen
+        name="EligibilityFormScreen"
+        component={EligibilityFormScreen}
+      />
       <Stack.Screen
         name="EligibilityStatus"
         component={EligibilityStatusScreen}
       />
       <Stack.Screen name="Saved" component={SavedItemsScreen} />
       <Stack.Screen name="Shared" component={SharedNavigation} />
-      <Stack.Screen name="Exchange" component={ExchangeScreen} />
-      <Stack.Screen name="ExchangeScanner" component={ExchangeScannerScreen} />
+      <Stack.Screen name="Return" component={ReturnScreen} />
+      <Stack.Screen name="ReturnQR" component={ReturnQRScreen} />
+      <Stack.Screen name="ReturnOptions" component={ReturnOptionsScreen} />
     </Stack.Navigator>
   );
 }

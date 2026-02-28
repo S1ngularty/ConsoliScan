@@ -7,7 +7,11 @@ import QRScanValidationScreen from "../screens/cashier/QRScanValidationScreen";
 import PaymentScreen from "../screens/cashier/PaymentScreen";
 import OrderSummaryScreen from "../screens/cashier/OrderSummaryScreen";
 import BarcodeScanningScreen from "../screens/cashier/BarcodeScanningScreen";
-import ExchangeReturnScreen from "../screens/cashier/ExchangeReturnScreen";
+import OfflineCheckoutScreen from "../screens/cashier/OfflineCheckoutScreen";
+import ReturnValidationScreen from "../screens/cashier/ReturnValidationScreen";
+import ReturnInspectionScreen from "../screens/cashier/ReturnInspectionScreen";
+import ReturnFulfillmentScreen from "../screens/cashier/ReturnFulfillmentScreen";
+import ReturnCompleteScreen from "../screens/cashier/ReturnCompleteScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -25,7 +29,20 @@ export default function CashierStackNavigator() {
       />
       <Stack.Screen name="Payment" component={PaymentScreen} />
       <Stack.Screen name="OrderSummary" component={OrderSummaryScreen} />
-      <Stack.Screen name="ExchangeReturn" component={ExchangeReturnScreen} />
+      <Stack.Screen name="OfflineCheckout" component={OfflineCheckoutScreen} />
+      <Stack.Screen
+        name="ReturnValidation"
+        component={ReturnValidationScreen}
+      />
+      <Stack.Screen
+        name="ReturnInspection"
+        component={ReturnInspectionScreen}
+      />
+      <Stack.Screen
+        name="ReturnFulfillment"
+        component={ReturnFulfillmentScreen}
+      />
+      <Stack.Screen name="ReturnComplete" component={ReturnCompleteScreen} />
     </Stack.Navigator>
   );
 }

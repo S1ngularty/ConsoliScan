@@ -5,12 +5,18 @@ import { getToken } from "../utils/authUtil";
 import { File, Directory, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { Alert, Platform } from "react-native";
+import {
+  apiFetch,
+  handleApiError,
+  markServerUp,
+} from "../utils/apiErrorHandler";
 
 const axiosInstance = axios.create({
   baseURL: API_URL,
   headers: {
     "Content-Type": "application/json",
   },
+  timeout: 10000, // 10 seconds timeout
 });
 
 axiosInstance.interceptors.request.use(async (config) => {
@@ -19,21 +25,27 @@ axiosInstance.interceptors.request.use(async (config) => {
   return config;
 });
 
-export const confirmOrder = async (transaction) => {
-  if (!transaction) return;
+axiosInstance.interceptors.response.use(
+  (response) => {
+    markServerUp();
+    return response;
+  },
+  (error) => Promise.reject(handleApiError(error)),
+);
+
+export const confirmOrder = async (orderData) => {
+  if (!orderData) return;
   const token = await getToken();
   if (!token) throw new Error("missing token");
-  const response = await fetch(`${API_URL}api/v1/confirmOrder`, {
+  const response = await apiFetch(`${API_URL}api/v1/confirmOrder`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: JSON.stringify({ transaction }),
+    body: JSON.stringify({ transaction: orderData }),
   });
-
-  if (!response.ok) throw new Error("failed to complete the transaction");
   const result = await response.json();
   return result;
 };
@@ -48,7 +60,7 @@ export const fetchOrders = async () => {
 export const downloadReceipt = async (orderId, checkoutCode) => {
   try {
     // console.log(`Downloading receipt for order: ${orderId}, code: ${checkoutCode}`);
-    
+
     const token = await getToken();
     if (!token) throw new Error("No authentication token found");
 
@@ -69,7 +81,7 @@ export const downloadReceipt = async (orderId, checkoutCode) => {
     // console.log('Downloading from:', url);
 
     // Download using fetch
-    const response = await fetch(url, {
+    const response = await apiFetch(url, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -77,20 +89,13 @@ export const downloadReceipt = async (orderId, checkoutCode) => {
       },
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `Failed to generate receipt: ${response.status} ${errorText}`,
-      );
-    }
-
     // Get the PDF as arrayBuffer (works in React Native)
     const arrayBuffer = await response.arrayBuffer();
     // console.log('Received array buffer size:', arrayBuffer.byteLength);
-    
+
     // Convert ArrayBuffer to Uint8Array for File.write
     const uint8Array = new Uint8Array(arrayBuffer);
-    
+
     // Write to file
     await file.write(uint8Array);
 
@@ -121,7 +126,7 @@ export const downloadReceipt = async (orderId, checkoutCode) => {
 export const downloadReceiptWithBlob = async (orderId, checkoutCode) => {
   try {
     // console.log(`Downloading receipt for order: ${orderId}, code: ${checkoutCode}`);
-    
+
     const token = await getToken();
     if (!token) throw new Error("No authentication token found");
 
@@ -140,7 +145,7 @@ export const downloadReceiptWithBlob = async (orderId, checkoutCode) => {
     const url = `${API_URL}api/v1/receipts/generate/${orderId}`;
 
     // Download using fetch
-    const response = await fetch(url, {
+    const response = await apiFetch(url, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -148,27 +153,23 @@ export const downloadReceiptWithBlob = async (orderId, checkoutCode) => {
       },
     });
 
-    if (!response.ok) {
-      throw new Error(`Failed to generate receipt: ${response.status}`);
-    }
-
     // Get the PDF as blob
     const blob = await response.blob();
-    
+
     // Convert blob to base64 using FileReader
     const base64 = await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
         const result = reader.result;
-        if (result && typeof result === 'string') {
+        if (result && typeof result === "string") {
           // Extract base64 data from data URL
-          if (result.includes(',')) {
-            resolve(result.split(',')[1]);
+          if (result.includes(",")) {
+            resolve(result.split(",")[1]);
           } else {
             resolve(result);
           }
         } else {
-          reject(new Error('Failed to convert blob to base64'));
+          reject(new Error("Failed to convert blob to base64"));
         }
       };
       reader.onerror = () => reject(reader.error);
@@ -176,7 +177,7 @@ export const downloadReceiptWithBlob = async (orderId, checkoutCode) => {
     });
 
     // Write base64 to file
-    await file.write(base64, { encoding: 'base64' });
+    await file.write(base64, { encoding: "base64" });
 
     // console.log('File saved at:', file.uri);
 

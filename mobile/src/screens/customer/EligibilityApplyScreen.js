@@ -1,197 +1,47 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   StyleSheet,
   View,
   Text,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   Alert,
-  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import * as ImagePicker from "expo-image-picker";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { useSelector } from "react-redux";
-import { ApplyEligibility } from "../../api/user.api";
+import * as Haptics from "expo-haptics";
 
 const EligibilityApplyScreen = ({ navigation, route }) => {
   const { type } = route.params || { type: "pwd" }; // pwd or senior
-  const user = useSelector((state) => state.auth.user);
-
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    idNumber: "",
-    idType: type,
-    dateIssued: new Date(),
-    expiryDate: type === "senior" ? null : new Date(),
-    typeOfDisability: type === "pwd" ? "" : null,
-  });
-
   const [images, setImages] = useState({
     idFront: null,
     idBack: null,
     userPhoto: null,
   });
 
-  const [showDateIssuedPicker, setShowDateIssuedPicker] = useState(false);
-  const [showExpiryDatePicker, setShowExpiryDatePicker] = useState(false);
-
-  const disabilityTypes = [
-    { id: "visual", label: "Visual Impairment" },
-    { id: "hearing", label: "Hearing Impairment" },
-    { id: "physical", label: "Physical Disability" },
-    { id: "mental", label: "Mental Disability" },
-    { id: "multiple", label: "Multiple Disabilities" },
-  ];
-
-  useEffect(() => {
-    // Request permissions
-    (async () => {
-      const { status } =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission Required",
-          "Please allow access to photos to upload images.",
-        );
-      }
-    })();
-  }, []);
-
-  const handlePickImage = async (imageType) => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-      });
-
-      if (!result.canceled) {
-        setImages((prev) => ({
-          ...prev,
-          [imageType]: {
-            uri: result.assets[0].uri,
-            name: result.assets[0].fileName,
-            type: "image/jpeg",
-          },
-        }));
-      }
-    } catch (error) {
-      console.error(error);
-      Alert.alert("Error", "Failed to select image");
-    }
-  };
-
-  const handleDateChange = (event, selectedDate, dateType) => {
-    const currentDate =
-      selectedDate ||
-      (dateType === "dateIssued" ? formData.dateIssued : formData.expiryDate);
-
-    if (dateType === "dateIssued") {
-      setShowDateIssuedPicker(false);
-      setFormData({ ...formData, dateIssued: currentDate });
-    } else {
-      setShowExpiryDatePicker(false);
-      setFormData({ ...formData, expiryDate: currentDate });
-    }
-  };
-
-  const formatDate = (date) => {
-    if (!date) return "Not set";
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
+  const handleStartCapture = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Start with ID Front capture
+    navigation.navigate("CameraScreen", {
+      captureType: "idFront",
+      idType: type,
+      images: images,
     });
   };
 
-  const validateForm = () => {
-    if (!formData.idNumber.trim()) {
-      Alert.alert("Error", "Please enter your ID number");
-      return false;
-    }
-
-    if (formData.idType === "pwd" && !formData.typeOfDisability) {
-      Alert.alert("Error", "Please select type of disability");
-      return false;
-    }
-
-    if (!images.idFront || !images.idBack) {
-      Alert.alert("Error", "Please upload both front and back of your ID");
-      return false;
-    }
-
-    if (!images.userPhoto) {
-      Alert.alert("Error", "Please upload your passport-sized photo");
-      return false;
-    }
-
-    return true;
+  const getTypeLabel = () => {
+    return type === "pwd" ? "PWD (Person with Disability)" : "Senior Citizen";
   };
 
-  const handleSubmit = async () => {
-    if (!validateForm()) return;
-
-    setLoading(true);
-    try {
-      const response = await ApplyEligibility(user.userId, {
-        ...formData,
-        ...images,
-      });
-
-      Alert.alert(
-        "Application Submitted",
-        "Your eligibility application has been submitted successfully. Our team will review it within 1-3 business days.",
-        [
-          {
-            text: "OK",
-            onPress: () => navigation.navigate("EligibilityStatus"),
-          },
-        ],
-      );
-    } catch (error) {
-      console.error(error);
-      Alert.alert("Error", "Failed to submit application. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const renderImageUpload = (label, imageType, required = true) => (
-    <View style={styles.uploadSection}>
-      <Text style={styles.uploadLabel}>
-        {label} {required && <Text style={styles.required}>*</Text>}
-      </Text>
-      <TouchableOpacity
-        style={styles.uploadButton}
-        onPress={() => handlePickImage(imageType)}
-        activeOpacity={0.8}
-      >
-        {images[imageType] ? (
-          <View style={styles.uploadedImage}>
-            <MaterialCommunityIcons
-              name="check-circle"
-              size={24}
-              color="#00A86B"
-            />
-            <Text style={styles.uploadedText}>Image Uploaded</Text>
-          </View>
-        ) : (
-          <View style={styles.uploadPlaceholder}>
-            <MaterialCommunityIcons name="camera-plus" size={32} color="#ccc" />
-            <Text style={styles.uploadPlaceholderText}>Tap to upload</Text>
-          </View>
-        )}
-      </TouchableOpacity>
-    </View>
-  );
+  const requirements = [
+    "Valid PWD ID or Senior Citizen ID",
+    "Clear photo of ID (front & back)",
+    "Recent selfie photo",
+    "Be in well-lit area",
+  ];
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -199,169 +49,113 @@ const EligibilityApplyScreen = ({ navigation, route }) => {
         >
           <MaterialCommunityIcons name="chevron-left" size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          Apply for {type === "pwd" ? "PWD" : "Senior Citizen"} Discount
-        </Text>
+        <Text style={styles.headerTitle}>Apply for Discount</Text>
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Form */}
-        <View style={styles.formContainer}>
-          {/* ID Number */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              ID Number <Text style={styles.required}>*</Text>
-            </Text>
-            <TextInput
-              style={styles.input}
-              value={formData.idNumber}
-              onChangeText={(text) =>
-                setFormData({ ...formData, idNumber: text })
-              }
-              placeholder={`Enter ${type === "pwd" ? "PWD" : "Senior Citizen"} ID number`}
-              placeholderTextColor="#999"
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Hero Section */}
+        <View style={styles.heroCard}>
+          <MaterialCommunityIcons
+            name={type === "pwd" ? "wheelchair-accessibility" : "account-clock"}
+            size={64}
+            color="#00A86B"
+          />
+          <Text style={styles.heroTitle}>Apply Now</Text>
+          <Text style={styles.heroSubtitle}>
+            Get verified as a {getTypeLabel()}
+          </Text>
+        </View>
+
+        {/* What to Prepare */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>What You'll Need</Text>
+          <View style={styles.requirementsCard}>
+            {requirements.map((req, index) => (
+              <View key={index} style={styles.requirementItem}>
+                <MaterialCommunityIcons
+                  name="check-circle"
+                  size={20}
+                  color="#00A86B"
+                />
+                <Text style={styles.requirementText}>{req}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* How It Works */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Process</Text>
+          <View style={styles.stepsCard}>
+            <Step number={1} title="Capture ID Front" />
+            <Step number={2} title="Capture ID Back" />
+            <Step number={3} title="Capture Your Face" />
+            <Step number={4} title="Fill Information" />
+            <Step number={5} title="Submit" />
+          </View>
+        </View>
+
+        {/* Benefits */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Benefits</Text>
+          <View style={styles.benefitsCard}>
+            <BenefitItem
+              icon="tag"
+              title="5% Discount"
+              desc="On eligible products"
+            />
+            <BenefitItem
+              icon="star"
+              title="Priority Service"
+              desc="Faster checkout"
+            />
+            <BenefitItem
+              icon="shield-check"
+              title="Verified Badge"
+              desc="On your profile"
             />
           </View>
-
-          {/* Date Issued */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              Date Issued <Text style={styles.required}>*</Text>
-            </Text>
-            <TouchableOpacity
-              style={styles.dateButton}
-              onPress={() => setShowDateIssuedPicker(true)}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons name="calendar" size={20} color="#666" />
-              <Text style={styles.dateText}>
-                {formatDate(formData.dateIssued)}
-              </Text>
-            </TouchableOpacity>
-            {showDateIssuedPicker && (
-              <DateTimePicker
-                value={formData.dateIssued}
-                mode="date"
-                display="default"
-                onChange={(event, date) =>
-                  handleDateChange(event, date, "dateIssued")
-                }
-                maximumDate={new Date()}
-              />
-            )}
-          </View>
-
-          {/* Expiry Date (optional for seniors) */}
-          {type !== "senior" && (
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Expiry Date</Text>
-              <TouchableOpacity
-                style={styles.dateButton}
-                onPress={() => setShowExpiryDatePicker(true)}
-                activeOpacity={0.8}
-              >
-                <MaterialCommunityIcons
-                  name="calendar"
-                  size={20}
-                  color="#666"
-                />
-                <Text style={styles.dateText}>
-                  {formatDate(formData.expiryDate)}
-                </Text>
-              </TouchableOpacity>
-              {showExpiryDatePicker && (
-                <DateTimePicker
-                  value={formData.expiryDate || new Date()}
-                  mode="date"
-                  display="default"
-                  onChange={(event, date) =>
-                    handleDateChange(event, date, "expiryDate")
-                  }
-                  minimumDate={formData.dateIssued}
-                />
-              )}
-            </View>
-          )}
-
-          {/* Disability Type (only for PWD) */}
-          {type === "pwd" && (
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>
-                Type of Disability <Text style={styles.required}>*</Text>
-              </Text>
-              <View style={styles.disabilityGrid}>
-                {disabilityTypes.map((disability) => (
-                  <TouchableOpacity
-                    key={disability.id}
-                    style={[
-                      styles.disabilityButton,
-                      formData.typeOfDisability === disability.id &&
-                        styles.disabilityButtonActive,
-                    ]}
-                    onPress={() =>
-                      setFormData({
-                        ...formData,
-                        typeOfDisability: disability.id,
-                      })
-                    }
-                    activeOpacity={0.8}
-                  >
-                    <Text
-                      style={[
-                        styles.disabilityButtonText,
-                        formData.typeOfDisability === disability.id &&
-                          styles.disabilityButtonTextActive,
-                      ]}
-                    >
-                      {disability.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* Image Uploads */}
-          {renderImageUpload("ID Front Photo", "idFront")}
-          {renderImageUpload("ID Back Photo", "idBack")}
-          {renderImageUpload("Passport-sized Photo", "userPhoto")}
-
-          {/* Terms and Conditions */}
-          <View style={styles.termsContainer}>
-            <MaterialCommunityIcons name="information" size={20} color="#666" />
-            <Text style={styles.termsText}>
-              By submitting this application, you agree that the information
-              provided is accurate and authentic. False information may result
-              in rejection of your application.
-            </Text>
-          </View>
-
-          {/* Submit Button */}
-          <TouchableOpacity
-            style={styles.submitButton}
-            onPress={handleSubmit}
-            disabled={loading}
-            activeOpacity={0.8}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <MaterialCommunityIcons
-                  name="send-check"
-                  size={22}
-                  color="#fff"
-                />
-                <Text style={styles.submitButtonText}>Submit Application</Text>
-              </>
-            )}
-          </TouchableOpacity>
         </View>
+
+        <View style={{ height: 20 }} />
       </ScrollView>
+
+      {/* Start Button */}
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={styles.startButton}
+          onPress={handleStartCapture}
+          activeOpacity={0.8}
+        >
+          <MaterialCommunityIcons name="camera" size={24} color="#fff" />
+          <Text style={styles.startButtonText}>Start Application</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
+
+const Step = ({ number, title }) => (
+  <View style={styles.stepItem}>
+    <View style={styles.stepNumber}>
+      <Text style={styles.stepNumberText}>{number}</Text>
+    </View>
+    <Text style={styles.stepTitle}>{title}</Text>
+  </View>
+);
+
+const BenefitItem = ({ icon, title, desc }) => (
+  <View style={styles.benefitItem}>
+    <View style={styles.benefitIcon}>
+      <MaterialCommunityIcons name={icon} size={24} color="#00A86B" />
+    </View>
+    <View style={styles.benefitContent}>
+      <Text style={styles.benefitTitle}>{title}</Text>
+      <Text style={styles.benefitDesc}>{desc}</Text>
+    </View>
+  </View>
+);
 
 const styles = StyleSheet.create({
   container: {
@@ -391,131 +185,161 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: "#000",
-    textAlign: "center",
     flex: 1,
+    textAlign: "center",
   },
   placeholder: {
     width: 40,
   },
-  formContainer: {
-    padding: 20,
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
   },
-  inputGroup: {
+  heroCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 24,
+    alignItems: "center",
+    marginTop: 20,
     marginBottom: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  label: {
-    fontSize: 16,
-    fontWeight: "600",
+  heroTitle: {
+    fontSize: 24,
+    fontWeight: "800",
     color: "#000",
+    marginTop: 16,
     marginBottom: 8,
   },
-  required: {
-    color: "#f44336",
+  heroSubtitle: {
+    fontSize: 15,
+    color: "#666",
+    textAlign: "center",
   },
-  input: {
-    backgroundColor: "#fff",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 12,
-    fontSize: 16,
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
     color: "#000",
-    borderWidth: 1,
-    borderColor: "#ddd",
+    marginBottom: 12,
   },
-  dateButton: {
+  requirementsCard: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  requirementItem: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#ddd",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
     gap: 12,
   },
-  dateText: {
-    fontSize: 16,
-    color: "#000",
+  requirementText: {
+    fontSize: 14,
+    color: "#333",
+    fontWeight: "500",
     flex: 1,
   },
-  disabilityGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  disabilityButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: "#f8f8f8",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#ddd",
-  },
-  disabilityButtonActive: {
-    backgroundColor: "#00A86B",
-    borderColor: "#00A86B",
-  },
-  disabilityButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#666",
-  },
-  disabilityButtonTextActive: {
-    color: "#fff",
-  },
-  uploadSection: {
-    marginBottom: 24,
-  },
-  uploadLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#000",
-    marginBottom: 8,
-  },
-  uploadButton: {
+  stepsCard: {
     backgroundColor: "#fff",
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderStyle: "dashed",
-    height: 120,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  stepItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+    gap: 12,
+  },
+  stepNumber: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#00A86B",
     justifyContent: "center",
     alignItems: "center",
   },
-  uploadPlaceholder: {
-    alignItems: "center",
+  stepNumberText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
   },
-  uploadPlaceholderText: {
-    color: "#999",
-    marginTop: 8,
-    fontSize: 14,
-  },
-  uploadedImage: {
-    alignItems: "center",
-  },
-  uploadedText: {
-    color: "#00A86B",
+  stepTitle: {
     fontSize: 14,
     fontWeight: "600",
-    marginTop: 8,
+    color: "#333",
   },
-  termsContainer: {
-    flexDirection: "row",
+  benefitsCard: {
     backgroundColor: "#fff",
-    padding: 16,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-    marginBottom: 24,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  benefitItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
     gap: 12,
   },
-  termsText: {
-    fontSize: 14,
-    color: "#666",
-    flex: 1,
-    lineHeight: 20,
+  benefitIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#E8F5E9",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  submitButton: {
+  benefitContent: {
+    flex: 1,
+  },
+  benefitTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#000",
+  },
+  benefitDesc: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 2,
+  },
+  footer: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    paddingTop: 12,
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: "#f0f0f0",
+  },
+  startButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -524,7 +348,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 10,
   },
-  submitButtonText: {
+  startButtonText: {
     color: "#fff",
     fontSize: 18,
     fontWeight: "700",

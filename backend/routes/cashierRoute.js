@@ -31,11 +31,6 @@ router
   .route("/cashier/pending-queues")
   .get(authMiddleware.verifyToken, cashierController.getPendingQueues);
 
-// Get recent exchanges
-router
-  .route("/cashier/recent-exchanges")
-  .get(authMiddleware.verifyToken, cashierController.getRecentExchanges);
-
 // Get inventory with search, filters, and pagination
 router
   .route("/cashier/inventory")

@@ -16,8 +16,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import { useSelector, useDispatch } from "react-redux";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getCartFromServer } from "../../features/slices/cart/cartThunks";
 import { fetchHomeData } from "../../api/user.api";
+import OfflineIndicator from "../../components/Common/OfflineIndicator";
+import SessionModal from "../../components/Customer/SessionModal";
+import { startSession } from "../../features/slices/cart/cartSlice";
+import { saveLocally } from "../../features/slices/cart/cartThunks";
 
 // ─── Reusable animated counter hook ─────────────────────────────────────────
 // Returns a display string that counts from 0 → target over `duration` ms
@@ -503,29 +506,23 @@ const QuickTips = () => (
 );
 
 // ─── Empty states ────────────────────────────────────────────────────────────
-const EmptyRecentScans = ({ navigation }) => (
+const EmptyRecentScans = ({ onNavigateToScan }) => (
   <FadeSlideCard delay={200} style={styles.emptyScansCard}>
     <MaterialCommunityIcons name="barcode-off" size={48} color="#cbd5e1" />
     <Text style={styles.emptyScansTitle}>No Recent Scans</Text>
     <Text style={styles.emptyScansText}>
       Start scanning products to build your history
     </Text>
-    <TouchableOpacity
-      style={styles.emptyScanButton}
-      onPress={() => navigation.navigate("Shared", { screen: "Scan" })}
-    >
+    <TouchableOpacity style={styles.emptyScanButton} onPress={onNavigateToScan}>
       <MaterialCommunityIcons name="qrcode-scan" size={16} color="#fff" />
       <Text style={styles.emptyScanButtonText}>Scan Your First Product</Text>
     </TouchableOpacity>
   </FadeSlideCard>
 );
 
-const EmptyCartPrompt = ({ navigation }) => (
+const EmptyCartPrompt = ({ onNavigateToScan }) => (
   <FadeSlideCard delay={140} style={{ marginHorizontal: 24, marginBottom: 16 }}>
-    <TouchableOpacity
-      style={styles.emptyCartCard}
-      onPress={() => navigation.navigate("Shared", { screen: "Scan" })}
-    >
+    <TouchableOpacity style={styles.emptyCartCard} onPress={onNavigateToScan}>
       <MaterialCommunityIcons name="cart-outline" size={28} color="#94a3b8" />
       <View style={styles.emptyCartContent}>
         <Text style={styles.emptyCartTitle}>Your cart is empty</Text>
@@ -555,15 +552,29 @@ const HomeScreen = ({ navigation }) => {
     loyaltyPoints: 0,
     orderCount: 0,
   });
+  const [showSessionModal, setShowSessionModal] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState(null);
 
   const userState = useSelector((state) => state.auth);
+  const networkState = useSelector((state) => state.network);
+  const cartState = useSelector((state) => state.cart);
   const dispatch = useDispatch();
+
+  // Local state to trigger re-renders when network state changes
+  const [isOffline, setIsOffline] = useState(false);
+  const [isServerDown, setIsServerDown] = useState(false);
+
+  // Sync with Redux network state
+  useEffect(() => {
+    setIsOffline(networkState.isOffline);
+    setIsServerDown(networkState.isServerDown);
+  }, [networkState.isOffline, networkState.isServerDown]);
 
   const loadHomeData = useCallback(async () => {
     setLoading(true);
     try {
       if (userState.isLoggedIn) {
-        await dispatch(getCartFromServer());
+        // await dispatch(getCartFromServer());
         const response = await fetchHomeData();
         setHomeData(response);
 
@@ -587,14 +598,74 @@ const HomeScreen = ({ navigation }) => {
     setRefreshing(false);
   };
 
+  // Session-aware navigation handlers
+  const handleNavigateToScan = () => {
+    if (cartState.sessionActive) {
+      navigation.navigate("Shared", { screen: "Scan" });
+    } else {
+      setPendingNavigation({ screen: "Shared", params: { screen: "Scan" } });
+      setShowSessionModal(true);
+    }
+  };
+
+  const handleNavigateToCart = () => {
+    if (cartState.sessionActive) {
+      navigation.navigate("HomeTabs", { screen: "Cart" });
+    } else {
+      setPendingNavigation({ screen: "HomeTabs", params: { screen: "Cart" } });
+      setShowSessionModal(true);
+    }
+  };
+
+  const handleStartSession = async () => {
+    dispatch(startSession());
+    await dispatch(saveLocally());
+    setShowSessionModal(false);
+    console.log("🎬 [HOME SCREEN] Shopping session started");
+
+    // Navigate to pending destination
+    if (pendingNavigation) {
+      navigation.navigate(pendingNavigation.screen, pendingNavigation.params);
+      setPendingNavigation(null);
+    }
+  };
+
+  const handleCancelSession = () => {
+    setShowSessionModal(false);
+    setPendingNavigation(null);
+  };
+
+  // Show offline indicator during initial load
+  console.log(
+    "Render HomeScreen - loading:",
+    loading,
+    "isOffline:",
+    isOffline,
+    "isServerDown:",
+    isServerDown,
+  );
   if (loading && !refreshing) {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00A86B" />
-          <Text style={styles.loadingText}>Loading your dashboard…</Text>
-        </View>
+        {isOffline || isServerDown ? (
+          <OfflineIndicator message="Cannot load dashboard" />
+        ) : (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#00A86B" />
+            <Text style={styles.loadingText}>Loading your dashboard…</Text>
+          </View>
+        )}
+      </SafeAreaView>
+    );
+  }
+
+  // Show offline indicator if server is down (even after loading failed)
+  if ((isOffline || isServerDown) && !refreshing) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
+        <OfflineIndicator message="Cannot load dashboard" />
       </SafeAreaView>
     );
   }
@@ -670,8 +741,7 @@ const HomeScreen = ({ navigation }) => {
             {
               title: "My Cart",
               icon: "basket-outline",
-              onPress: () =>
-                navigation.navigate("HomeTabs", { screen: "Cart" }),
+              onPress: handleNavigateToCart,
               badge:
                 homeData.cartItemCount > 0
                   ? homeData.cartItemCount.toString()
@@ -709,7 +779,7 @@ const HomeScreen = ({ navigation }) => {
         </View>
 
         {homeData.cartItemCount === 0 && (
-          <EmptyCartPrompt navigation={navigation} />
+          <EmptyCartPrompt onNavigateToScan={handleNavigateToScan} />
         )}
 
         {/* ── Discount cap with animated progress + count-up ── */}
@@ -754,7 +824,7 @@ const HomeScreen = ({ navigation }) => {
             description="Track all your grocery scans"
             icon="qrcode-scan"
             color="#0f172a"
-            onPress={() => navigation.navigate("Shared", { screen: "Scan" })}
+            onPress={handleNavigateToScan}
           />
           <OfferCard
             title="Weekly Cap Alert"
@@ -789,7 +859,7 @@ const HomeScreen = ({ navigation }) => {
             />
           ))
         ) : (
-          <EmptyRecentScans navigation={navigation} />
+          <EmptyRecentScans onNavigateToScan={handleNavigateToScan} />
         )}
 
         {/* ── Help card ── */}
@@ -818,6 +888,12 @@ const HomeScreen = ({ navigation }) => {
           </TouchableOpacity>
         </FadeSlideCard>
       </ScrollView>
+
+      <SessionModal
+        visible={showSessionModal}
+        onStartSession={handleStartSession}
+        onCancel={handleCancelSession}
+      />
     </SafeAreaView>
   );
 };

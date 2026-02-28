@@ -35,7 +35,7 @@ export const loyaltyService = {
       // If 404, return default config
       if (error.response?.status === 404) {
         return {
-          pointsToCurrencyRate: 100,
+          pointsToCurrencyRate: 1, // Default: 1 point = 1 Peso (Aligned with mobile)
           maxRedeemPercent: 20,
           earnRate: 1,
           enabled: true,
@@ -70,7 +70,8 @@ export const loyaltyService = {
 
   updateLoyaltyProgramStatus: async (status) => {
     try {
-      const response = await axios.put("/api/v1/loyalty/config/status", {
+      // Fixed: Use axiosInstance to ensure correct baseURL
+      const response = await axiosInstance.put("/api/v1/loyalty/config/status", {
         enabled: status,
       });
 

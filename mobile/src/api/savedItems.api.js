@@ -1,29 +1,38 @@
 import axios from "axios";
 import { API_URL } from "../constants/config";
-import {getToken} from "../utils/authUtil";
+import { getToken } from "../utils/authUtil";
+import { handleApiError, markServerUp } from "../utils/apiErrorHandler";
 /**
  * Get all saved items for the authenticated user
  */
 
 const axiosInstance = axios.create({
   baseURL: API_URL,
-    headers: {
-        "Content-Type": "application/json",
-    },
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
 axiosInstance.interceptors.request.use(async (config) => {
-    const token = await getToken();
-    config.headers.Authorization = `Bearer ${token}`;
-    return config;
+  const token = await getToken();
+  config.headers.Authorization = `Bearer ${token}`;
+  return config;
 });
+
+axiosInstance.interceptors.response.use(
+  (response) => {
+    markServerUp();
+    return response;
+  },
+  (error) => Promise.reject(handleApiError(error)),
+);
 
 export const getSavedItems = async () => {
   try {
     const response = await axiosInstance.get(`api/v1/saved-items`);
     return response.data.result;
   } catch (error) {
-    throw error.response?.data || error.message;
+    throw handleApiError(error);
   }
 };
 
@@ -38,7 +47,7 @@ export const addToSaved = async (productId) => {
     });
     return response.data.result;
   } catch (error) {
-    throw error.response?.data || error.message;
+    throw handleApiError(error);
   }
 };
 
@@ -53,7 +62,7 @@ export const removeFromSaved = async (productId) => {
     });
     return response.data.result;
   } catch (error) {
-    throw error.response?.data || error.message;
+    throw handleApiError(error);
   }
 };
 
@@ -63,9 +72,11 @@ export const removeFromSaved = async (productId) => {
  */
 export const checkIsSaved = async (productId) => {
   try {
-    const response = await axiosInstance.get(`api/v1/saved-items/check/${productId}`);
+    const response = await axiosInstance.get(
+      `api/v1/saved-items/check/${productId}`,
+    );
     return response.data.result;
   } catch (error) {
-    throw error.response?.data || error.message;
+    throw handleApiError(error);
   }
 };

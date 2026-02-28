@@ -18,11 +18,17 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useSelector } from "react-redux";
 import { debounce } from "lodash";
 import { getSavedItems, removeFromSaved } from "../../api/savedItems.api";
+import OfflineIndicator from "../../components/Common/OfflineIndicator";
 
 // Enable LayoutAnimation for Android
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+if (
+  Platform.OS === "android" &&
+  UIManager.setLayoutAnimationEnabledExperimental &&
+  !global?.nativeFabricUIManager
+) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
@@ -35,6 +41,17 @@ const SavedItemsScreen = ({ navigation }) => {
   const [searchLoading, setSearchLoading] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [expandedItems, setExpandedItems] = useState({});
+  const networkState = useSelector((state) => state.network);
+
+  // Local state to trigger re-renders when network state changes
+  const [isOffline, setIsOffline] = useState(false);
+  const [isServerDown, setIsServerDown] = useState(false);
+
+  // Sync with Redux network state
+  useEffect(() => {
+    setIsOffline(networkState.isOffline);
+    setIsServerDown(networkState.isServerDown);
+  }, [networkState.isOffline, networkState.isServerDown]);
 
   const filters = [
     { id: "all", label: "All", icon: "view-grid" },
@@ -65,37 +82,37 @@ const SavedItemsScreen = ({ navigation }) => {
   };
 
   const handleRemoveFromSaved = async (productId, productName) => {
-    Alert.alert(
-      "Remove Item",
-      `Remove "${productName}" from saved items?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await removeFromSaved(productId);
-              const updatedItems = savedItems.filter((item) => item._id !== productId);
-              setSavedItems(updatedItems);
-              applyFilters(updatedItems, selectedFilter);
-              // Animate removal
-              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-            } catch (error) {
-              console.error("Error removing item:", error);
-              Alert.alert("Error", "Failed to remove item");
-            }
-          },
+    Alert.alert("Remove Item", `Remove "${productName}" from saved items?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await removeFromSaved(productId);
+            const updatedItems = savedItems.filter(
+              (item) => item._id !== productId,
+            );
+            setSavedItems(updatedItems);
+            applyFilters(updatedItems, selectedFilter);
+            // Animate removal
+            LayoutAnimation.configureNext(
+              LayoutAnimation.Presets.easeInEaseOut,
+            );
+          } catch (error) {
+            console.error("Error removing item:", error);
+            Alert.alert("Error", "Failed to remove item");
+          }
         },
-      ],
-    );
+      },
+    ]);
   };
 
   const toggleItemExpansion = (itemId) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpandedItems(prev => ({
+    setExpandedItems((prev) => ({
       ...prev,
-      [itemId]: !prev[itemId]
+      [itemId]: !prev[itemId],
     }));
   };
 
@@ -151,13 +168,15 @@ const SavedItemsScreen = ({ navigation }) => {
   }, [selectedFilter, savedItems]);
 
   const formatPrice = (amount) => {
-    return `₱${amount?.toFixed(2) || '0.00'}`;
+    return `₱${amount?.toFixed(2) || "0.00"}`;
   };
 
   const getStockStatus = (quantity) => {
-    if (quantity === 0) return { label: 'Out of Stock', color: '#EF4444', icon: 'alert-circle' };
-    if (quantity < 10) return { label: 'Low Stock', color: '#F59E0B', icon: 'alert' };
-    return { label: 'In Stock', color: '#10B981', icon: 'check-circle' };
+    if (quantity === 0)
+      return { label: "Out of Stock", color: "#EF4444", icon: "alert-circle" };
+    if (quantity < 10)
+      return { label: "Low Stock", color: "#F59E0B", icon: "alert" };
+    return { label: "In Stock", color: "#10B981", icon: "check-circle" };
   };
 
   const FilterChip = ({ label, icon, isActive, onPress }) => {
@@ -192,7 +211,10 @@ const SavedItemsScreen = ({ navigation }) => {
             color={isActive ? "#fff" : "#64748b"}
           />
           <Text
-            style={[styles.filterChipText, isActive && styles.activeFilterChipText]}
+            style={[
+              styles.filterChipText,
+              isActive && styles.activeFilterChipText,
+            ]}
           >
             {label}
           </Text>
@@ -207,12 +229,12 @@ const SavedItemsScreen = ({ navigation }) => {
   // Initialize fade animations when items change
   useEffect(() => {
     const newAnims = {};
-    filteredItems.forEach(item => {
+    filteredItems.forEach((item) => {
       if (!itemFadeAnims[item._id]) {
         newAnims[item._id] = new Animated.Value(1);
       }
     });
-    setItemFadeAnims(prev => ({ ...prev, ...newAnims }));
+    setItemFadeAnims((prev) => ({ ...prev, ...newAnims }));
   }, [filteredItems]);
 
   const handleRemovePress = (itemId, itemName) => {
@@ -256,12 +278,20 @@ const SavedItemsScreen = ({ navigation }) => {
               </Text>
               <View style={styles.productMeta}>
                 <View style={styles.skuBadge}>
-                  <MaterialCommunityIcons name="tag-outline" size={12} color="#64748b" />
-                  <Text style={styles.productSku}>{item.sku || 'N/A'}</Text>
+                  <MaterialCommunityIcons
+                    name="tag-outline"
+                    size={12}
+                    color="#64748b"
+                  />
+                  <Text style={styles.productSku}>{item.sku || "N/A"}</Text>
                 </View>
                 {item.isBNPC && (
                   <View style={[styles.badge, styles.bnpcBadge]}>
-                    <MaterialCommunityIcons name="shield-check" size={12} color="#00A86B" />
+                    <MaterialCommunityIcons
+                      name="shield-check"
+                      size={12}
+                      color="#00A86B"
+                    />
                     <Text style={styles.bnpcBadgeText}>BNPC</Text>
                   </View>
                 )}
@@ -269,13 +299,23 @@ const SavedItemsScreen = ({ navigation }) => {
             </View>
             <View style={styles.priceContainer}>
               <Text style={styles.productPrice}>{formatPrice(item.price)}</Text>
-              <View style={[styles.stockIndicator, { backgroundColor: stockStatus.color + '20' }]}>
-                <MaterialCommunityIcons 
-                  name={stockStatus.icon} 
-                  size={10} 
-                  color={stockStatus.color} 
+              <View
+                style={[
+                  styles.stockIndicator,
+                  { backgroundColor: stockStatus.color + "20" },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name={stockStatus.icon}
+                  size={10}
+                  color={stockStatus.color}
                 />
-                <Text style={[styles.stockIndicatorText, { color: stockStatus.color }]}>
+                <Text
+                  style={[
+                    styles.stockIndicatorText,
+                    { color: stockStatus.color },
+                  ]}
+                >
                   {item.stockQuantity} {item.unit}
                 </Text>
               </View>
@@ -287,34 +327,56 @@ const SavedItemsScreen = ({ navigation }) => {
             <Animated.View style={styles.expandedDetails}>
               <View style={styles.detailsGrid}>
                 <View style={styles.detailItem}>
-                  <MaterialCommunityIcons name="barcode" size={16} color="#64748b" />
+                  <MaterialCommunityIcons
+                    name="barcode-scan"
+                    size={16}
+                    color="#64748b"
+                  />
                   <View style={styles.detailTextContainer}>
                     <Text style={styles.detailLabel}>Barcode</Text>
-                    <Text style={styles.detailValue}>{item.barcode || 'N/A'}</Text>
+                    <Text style={styles.detailValue}>
+                      {item.barcode || "N/A"}
+                    </Text>
                   </View>
                 </View>
-                
+
                 <View style={styles.detailItem}>
-                  <MaterialCommunityIcons name="folder" size={16} color="#64748b" />
+                  <MaterialCommunityIcons
+                    name="folder"
+                    size={16}
+                    color="#64748b"
+                  />
                   <View style={styles.detailTextContainer}>
                     <Text style={styles.detailLabel}>Category</Text>
-                    <Text style={styles.detailValue}>{item.category?.categoryName || 'Uncategorized'}</Text>
+                    <Text style={styles.detailValue}>
+                      {item.category?.categoryName || "Uncategorized"}
+                    </Text>
                   </View>
                 </View>
 
                 <View style={styles.detailItem}>
-                  <MaterialCommunityIcons name="currency-php" size={16} color="#64748b" />
+                  <MaterialCommunityIcons
+                    name="currency-php"
+                    size={16}
+                    color="#64748b"
+                  />
                   <View style={styles.detailTextContainer}>
                     <Text style={styles.detailLabel}>SRP</Text>
-                    <Text style={styles.detailValue}>{formatPrice(item.srp)}</Text>
+                    <Text style={styles.detailValue}>
+                      {formatPrice(item.srp)}
+                    </Text>
                   </View>
                 </View>
 
                 <View style={styles.detailItem}>
-                  <MaterialCommunityIcons name="package-variant" size={16} color="#64748b" />
+                  <MaterialCommunityIcons
+                    name="package-variant"
+                    size={16}
+                    color="#64748b"
+                  />
                   <View style={styles.detailTextContainer}>
                     <Text style={styles.detailLabel}>Unit</Text>
-                    <Text style={styles.detailValue}>{item.unit || 'pc'}</Text>
+                    <Text style={styles.detailValue}>{item.unit || "pc"}</Text>
                   </View>
                 </View>
               </View>
@@ -329,7 +391,11 @@ const SavedItemsScreen = ({ navigation }) => {
             onPress={() => handleRemovePress(item._id, item.name)}
             activeOpacity={0.7}
           >
-            <MaterialCommunityIcons name="heart-off-outline" size={20} color="#EF4444" />
+            <MaterialCommunityIcons
+              name="heart-off-outline"
+              size={20}
+              color="#EF4444"
+            />
             <Text style={styles.removeButtonText}>Remove</Text>
           </TouchableOpacity>
         </View>
@@ -340,7 +406,11 @@ const SavedItemsScreen = ({ navigation }) => {
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyIconContainer}>
-        <MaterialCommunityIcons name="heart-outline" size={48} color="#CBD5E1" />
+        <MaterialCommunityIcons
+          name="heart-outline"
+          size={48}
+          color="#CBD5E1"
+        />
       </View>
       <Text style={styles.emptyTitle}>
         {searchQuery.trim() ? "No items found" : "No saved items yet"}
@@ -366,10 +436,24 @@ const SavedItemsScreen = ({ navigation }) => {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00A86B" />
-          <Text style={styles.loadingText}>Loading your saved items...</Text>
-        </View>
+        {isOffline || isServerDown ? (
+          <OfflineIndicator message="Cannot load saved items" />
+        ) : (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#00A86B" />
+            <Text style={styles.loadingText}>Loading your saved items...</Text>
+          </View>
+        )}
+      </SafeAreaView>
+    );
+  }
+
+  // Show offline indicator if server is down (even after loading failed)
+  if ((isOffline || isServerDown) && !refreshing) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
+        <OfflineIndicator message="Cannot load saved items" />
       </SafeAreaView>
     );
   }
@@ -383,7 +467,8 @@ const SavedItemsScreen = ({ navigation }) => {
         <View>
           <Text style={styles.headerTitle}>Saved Items</Text>
           <Text style={styles.headerSubtitle}>
-            {filteredItems.length} {filteredItems.length === 1 ? 'item' : 'items'}
+            {filteredItems.length}{" "}
+            {filteredItems.length === 1 ? "item" : "items"}
           </Text>
         </View>
         <TouchableOpacity style={styles.statsButton}>
@@ -406,7 +491,11 @@ const SavedItemsScreen = ({ navigation }) => {
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery("")}>
-              <MaterialCommunityIcons name="close-circle" size={18} color="#94A3B8" />
+              <MaterialCommunityIcons
+                name="close-circle"
+                size={18}
+                color="#94A3B8"
+              />
             </TouchableOpacity>
           )}
         </View>
@@ -462,8 +551,8 @@ const SavedItemsScreen = ({ navigation }) => {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
+          <RefreshControl
+            refreshing={refreshing}
             onRefresh={onRefresh}
             colors={["#00A86B"]}
             tintColor="#00A86B"

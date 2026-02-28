@@ -15,7 +15,7 @@ const OrderSummaryScreen = ({ route, navigation }) => {
   const { transactionData, orderDetails } = route.params;
   console.log("OrderSummary - transactionData:", transactionData);
   console.log("OrderSummary - orderDetails:", orderDetails);
-  
+
   // Format date for display
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -29,17 +29,24 @@ const OrderSummaryScreen = ({ route, navigation }) => {
   };
 
   // Calculate item count and total quantity
-  const { itemCount, totalQuantity, bnpcEligibleCount, bnpcEligibleQuantity } = useMemo(() => {
-    const items = orderDetails?.items || transactionData?.items || [];
-    const bnpcEligible = items.filter((item) => item.isBNPCEligible || false);
-    
-    return {
-      itemCount: items.length,
-      totalQuantity: items.reduce((sum, item) => sum + (item.quantity || 0), 0),
-      bnpcEligibleCount: bnpcEligible.length,
-      bnpcEligibleQuantity: bnpcEligible.reduce((sum, item) => sum + (item.quantity || 0), 0),
-    };
-  }, [orderDetails, transactionData]);
+  const { itemCount, totalQuantity, bnpcEligibleCount, bnpcEligibleQuantity } =
+    useMemo(() => {
+      const items = orderDetails?.items || transactionData?.items || [];
+      const bnpcEligible = items.filter((item) => item.isBNPCEligible || false);
+
+      return {
+        itemCount: items.length,
+        totalQuantity: items.reduce(
+          (sum, item) => sum + (item.quantity || 0),
+          0,
+        ),
+        bnpcEligibleCount: bnpcEligible.length,
+        bnpcEligibleQuantity: bnpcEligible.reduce(
+          (sum, item) => sum + (item.quantity || 0),
+          0,
+        ),
+      };
+    }, [orderDetails, transactionData]);
 
   // Get customer display name
   const getCustomerDisplay = () => {
@@ -63,39 +70,54 @@ const OrderSummaryScreen = ({ route, navigation }) => {
       const orderData = {
         // Core relationships
         user: orderDetails?.user || transactionData?.user || null,
-        cashier: transactionData.cashier?.cashierId || orderDetails?.cashier?.cashierId || null,
+        cashier:
+          transactionData.cashier?.cashierId ||
+          orderDetails?.cashier?.cashierId ||
+          null,
         appUser: transactionData.appUser || false,
-        
+
         // Order metadata
         checkoutCode: transactionData.checkoutCode,
-        customerType: transactionData.customerType || 'regular',
+        customerType: transactionData.customerType || "regular",
         customerScope: transactionData.customerScope || null,
-        verificationSource: transactionData.verificationSource || 'manual',
+        verificationSource: transactionData.verificationSource || "manual",
         systemVerified: transactionData.systemVerified || false,
-        systemVerificationType: (transactionData.systemVerificationType && typeof transactionData.systemVerificationType === 'string') ? transactionData.systemVerificationType.toLowerCase() : null,
+        systemVerificationType:
+          transactionData.systemVerificationType &&
+          typeof transactionData.systemVerificationType === "string"
+            ? transactionData.systemVerificationType.toLowerCase()
+            : null,
         manualOverride: transactionData.manualOverride || false,
 
         // Items with full details
-        items: (orderDetails?.items || transactionData?.items || []).map((item) => ({
-          product: item.product?._id || item.product || null,
-          name: item.name || item.product?.name || "Product",
-          sku: item.sku || item.product?.sku || `PROD-${item.product?._id?.slice(-6)}`,
-          quantity: item.quantity || 1,
-          unitPrice: item.unitPrice || item.price || 0,
-          salePrice: item.salePrice || null,
-          saleActive: item.saleActive || false,
-          categoryType: item.categoryType || item.bnpcCategory || null,
-          isBNPCEligible: item.isBNPCEligible || false,
-          isBNPCProduct: item.isBNPCProduct || false,
-          excludedFromDiscount: item.excludedFromDiscount || false,
-          category: item.category || null,
-          unit: item.unit || "pc",
-          itemTotal: item.itemTotal || (item.quantity * (item.unitPrice || item.price || 0)),
-        })),
+        items: (orderDetails?.items || transactionData?.items || []).map(
+          (item) => ({
+            product: item.product?._id || item.product || null,
+            name: item.name || item.product?.name || "Product",
+            sku:
+              item.sku ||
+              item.product?.sku ||
+              `PROD-${item.product?._id?.slice(-6)}`,
+            quantity: item.quantity || 1,
+            unitPrice: item.unitPrice || item.price || 0,
+            salePrice: item.salePrice || null,
+            saleActive: item.saleActive || false,
+            categoryType: item.categoryType || item.bnpcCategory || null,
+            isBNPCEligible: item.isBNPCEligible || false,
+            isBNPCProduct: item.isBNPCProduct || false,
+            excludedFromDiscount: item.excludedFromDiscount || false,
+            category: item.category || null,
+            unit: item.unit || "pc",
+            itemTotal:
+              item.itemTotal ||
+              item.quantity * (item.unitPrice || item.price || 0),
+          }),
+        ),
 
         // Amounts & discounts
         baseAmount: transactionData.amounts?.subtotal || 0,
-        bnpcEligibleSubtotal: transactionData.amounts?.bnpcEligibleSubtotal || 0,
+        bnpcEligibleSubtotal:
+          transactionData.amounts?.bnpcEligibleSubtotal || 0,
 
         // BNPC discount breakdown
         bnpcDiscount: {
@@ -134,9 +156,17 @@ const OrderSummaryScreen = ({ route, navigation }) => {
           total: transactionData.amounts?.totalDiscount || 0,
         },
 
-        finalAmountPaid: transactionData.amounts?.finalTotal || 0,
-        pointsEarned: transactionData.loyalty?.pointsEarned || 
-          Math.floor((transactionData.amounts?.finalTotal || 0) / 10),
+        finalAmountPaid:
+          transactionData.amounts?.finalAmountPaid ||
+          transactionData.amounts?.finalTotal ||
+          0,
+        pointsEarned:
+          transactionData.loyalty?.pointsEarned ||
+          Math.floor(
+            (transactionData.amounts?.finalAmountPaid ||
+              transactionData.amounts?.finalTotal ||
+              0) / 10,
+          ),
 
         // Cash transaction
         cashTransaction: {
@@ -149,29 +179,34 @@ const OrderSummaryScreen = ({ route, navigation }) => {
           discountCap: {
             weeklyCap: 125,
             usedBefore: transactionData.caps?.bookletUsedBefore || 0,
-            remainingAtCheckout: transactionData.caps?.remainingDiscountCap || 125,
-            usedAfter: transactionData.caps?.bookletUsedAfter || 
-                      (transactionData.caps?.bookletUsedBefore || 0) + 
-                      (transactionData.amounts?.bnpcDiscount || 0),
+            remainingAtCheckout:
+              transactionData.caps?.remainingDiscountCap || 125,
+            usedAfter:
+              transactionData.caps?.bookletUsedAfter ||
+              (transactionData.caps?.bookletUsedBefore || 0) +
+                (transactionData.amounts?.bnpcDiscount || 0),
           },
           purchaseCap: {
             weeklyCap: 2500,
             usedBefore: transactionData.caps?.purchaseUsedBefore || 0,
-            remainingAtCheckout: transactionData.caps?.remainingPurchaseCap || 2500,
-            usedAfter: transactionData.caps?.purchaseUsedAfter || 
-                      (transactionData.caps?.purchaseUsedBefore || 0) + 
-                      (transactionData.amounts?.bnpcEligibleSubtotal || 0),
+            remainingAtCheckout:
+              transactionData.caps?.remainingPurchaseCap || 2500,
+            usedAfter:
+              transactionData.caps?.purchaseUsedAfter ||
+              (transactionData.caps?.purchaseUsedBefore || 0) +
+                (transactionData.amounts?.bnpcEligibleSubtotal || 0),
           },
           weekStart: transactionData.caps?.weekStart,
           weekEnd: transactionData.caps?.weekEnd,
-          weeklyCapRemainingAtCheckout: transactionData.caps?.remainingDiscountCap || 125,
+          weeklyCapRemainingAtCheckout:
+            transactionData.caps?.remainingDiscountCap || 125,
         },
 
         // Server calculations snapshot
         serverCalculations: transactionData.serverCalculations || null,
 
         // BNPC products
-        bnpcProducts: (transactionData.bnpcProducts || []).map(p => ({
+        bnpcProducts: (transactionData.bnpcProducts || []).map((p) => ({
           productId: p.productId,
           name: p.name,
           quantity: p.quantity,
@@ -193,10 +228,14 @@ const OrderSummaryScreen = ({ route, navigation }) => {
 
         // Booklet compliance
         bookletUpdated: true,
-        bookletUpdateReminder: "Physical booklet must be updated with new total",
+        bookletUpdateReminder:
+          "Physical booklet must be updated with new total",
       };
 
-      console.log("Submitting complete order data:", JSON.stringify(orderData, null, 2));
+      console.log(
+        "Submitting complete order data:",
+        JSON.stringify(orderData, null, 2),
+      );
 
       const result = await confirmOrder(orderData);
 
@@ -265,15 +304,18 @@ const OrderSummaryScreen = ({ route, navigation }) => {
             <View style={styles.infoItem}>
               <Text style={styles.infoLabel}>Customer</Text>
               <View style={styles.customerTypeRow}>
-                <Text style={styles.infoValue}>
-                  {getCustomerDisplay()}
-                </Text>
-                {transactionData.systemVerified && !transactionData.manualOverride && (
-                  <View style={styles.appVerifiedChip}>
-                    <Ionicons name="checkmark-circle" size={12} color="#10B981" />
-                    <Text style={styles.appVerifiedChipText}>App</Text>
-                  </View>
-                )}
+                <Text style={styles.infoValue}>{getCustomerDisplay()}</Text>
+                {transactionData.systemVerified &&
+                  !transactionData.manualOverride && (
+                    <View style={styles.appVerifiedChip}>
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={12}
+                        color="#10B981"
+                      />
+                      <Text style={styles.appVerifiedChipText}>App</Text>
+                    </View>
+                  )}
                 {transactionData.manualOverride && (
                   <View style={styles.manualChip}>
                     <Ionicons name="person" size={12} color="#F59E0B" />
@@ -286,7 +328,9 @@ const OrderSummaryScreen = ({ route, navigation }) => {
             <View style={styles.infoItem}>
               <Text style={styles.infoLabel}>Cashier</Text>
               <Text style={styles.infoValue}>
-                {transactionData.cashier?.name || orderDetails?.cashier?.name || "Cashier"}
+                {transactionData.cashier?.name ||
+                  orderDetails?.cashier?.name ||
+                  "Cashier"}
               </Text>
             </View>
           </View>
@@ -318,24 +362,31 @@ const OrderSummaryScreen = ({ route, navigation }) => {
 
           {/* Items List */}
           <View style={styles.itemsList}>
-            {(orderDetails?.items || transactionData?.items || []).map((item, index) => (
-              <View key={index} style={styles.itemRow}>
-                <View style={styles.itemInfo}>
-                  <Text style={styles.itemName} numberOfLines={1}>
-                    {item.name || item.product?.name || "Product"}
-                  </Text>
-                  <Text style={styles.itemDetails}>
-                    {item.quantity} × ₱{(item.unitPrice || item.price || 0).toFixed(2)}
-                    {item.isBNPCEligible && (
-                      <Text style={styles.bnpcBadge}> • BNPC</Text>
-                    )}
+            {(orderDetails?.items || transactionData?.items || []).map(
+              (item, index) => (
+                <View key={index} style={styles.itemRow}>
+                  <View style={styles.itemInfo}>
+                    <Text style={styles.itemName} numberOfLines={1}>
+                      {item.name || item.product?.name || "Product"}
+                    </Text>
+                    <Text style={styles.itemDetails}>
+                      {item.quantity} × ₱
+                      {(item.unitPrice || item.price || 0).toFixed(2)}
+                      {item.isBNPCEligible && (
+                        <Text style={styles.bnpcBadge}> • BNPC</Text>
+                      )}
+                    </Text>
+                  </View>
+                  <Text style={styles.itemTotal}>
+                    ₱
+                    {(
+                      item.itemTotal ||
+                      item.quantity * (item.unitPrice || item.price || 0)
+                    ).toFixed(2)}
                   </Text>
                 </View>
-                <Text style={styles.itemTotal}>
-                  ₱{(item.itemTotal || (item.quantity * (item.unitPrice || item.price || 0))).toFixed(2)}
-                </Text>
-              </View>
-            ))}
+              ),
+            )}
           </View>
         </View>
 
@@ -350,103 +401,114 @@ const OrderSummaryScreen = ({ route, navigation }) => {
             <View style={styles.amountRow}>
               <Text style={styles.amountLabel}>Subtotal</Text>
               <Text style={styles.amountValue}>
-                ₱{transactionData.amounts.subtotal.toFixed(2)}
+                ₱{(transactionData.amounts?.subtotal || 0).toFixed(2)}
               </Text>
             </View>
 
             {/* BNPC Eligible Subtotal (if different from regular) */}
-            {transactionData.amounts.bnpcEligibleSubtotal > 0 && 
-             transactionData.amounts.bnpcEligibleSubtotal !== transactionData.amounts.subtotal && (
-              <View style={styles.amountRow}>
-                <Text style={styles.amountLabel}>BNPC Eligible</Text>
-                <Text style={styles.amountValue}>
-                  ₱{transactionData.amounts.bnpcEligibleSubtotal.toFixed(2)}
-                </Text>
-              </View>
-            )}
+            {(transactionData.amounts?.bnpcEligibleSubtotal || 0) > 0 &&
+              (transactionData.amounts?.bnpcEligibleSubtotal || 0) !==
+                (transactionData.amounts?.subtotal || 0) && (
+                <View style={styles.amountRow}>
+                  <Text style={styles.amountLabel}>BNPC Eligible</Text>
+                  <Text style={styles.amountValue}>
+                    ₱
+                    {(
+                      transactionData.amounts?.bnpcEligibleSubtotal || 0
+                    ).toFixed(2)}
+                  </Text>
+                </View>
+              )}
 
             {/* BNPC Discount */}
-            {transactionData.amounts.bnpcDiscount > 0 && (
+            {(transactionData.amounts?.bnpcDiscount || 0) > 0 && (
               <View style={styles.amountRow}>
                 <View style={styles.discountRow}>
                   <Ionicons name="pricetag" size={14} color="#059669" />
-                  <Text style={styles.amountLabel}>
-                    BNPC Discount (5%)
-                  </Text>
+                  <Text style={styles.amountLabel}>BNPC Discount (5%)</Text>
                 </View>
                 <Text style={[styles.amountValue, styles.discountValue]}>
-                  -₱{transactionData.amounts.bnpcDiscount.toFixed(2)}
+                  -₱{(transactionData.amounts?.bnpcDiscount || 0).toFixed(2)}
                 </Text>
               </View>
             )}
 
             {/* Promo Discount */}
-            {transactionData.amounts.promoDiscount > 0 && (
+            {(transactionData.amounts?.promoDiscount || 0) > 0 && (
               <View style={styles.amountRow}>
                 <View style={styles.discountRow}>
                   <Ionicons name="pricetag" size={14} color="#FF9800" />
                   <Text style={styles.amountLabel}>
-                    Promo {transactionData.promo?.code || ''}
+                    Promo {transactionData.promo?.code || ""}
                   </Text>
                 </View>
                 <Text style={[styles.amountValue, styles.promoValue]}>
-                  -₱{transactionData.amounts.promoDiscount.toFixed(2)}
+                  -₱{(transactionData.amounts?.promoDiscount || 0).toFixed(2)}
                 </Text>
               </View>
             )}
 
             {/* Loyalty Discount */}
-            {transactionData.amounts.loyaltyDiscount > 0 && (
+            {(transactionData.amounts?.loyaltyDiscount || 0) > 0 && (
               <View style={styles.amountRow}>
                 <View style={styles.discountRow}>
                   <Ionicons name="star" size={14} color="#FFD700" />
                   <Text style={styles.amountLabel}>
-                    Loyalty Points ({transactionData.loyalty?.pointsUsed || 0} pts)
+                    Loyalty Points ({transactionData.loyalty?.pointsUsed || 0}{" "}
+                    pts)
                   </Text>
                 </View>
                 <Text style={[styles.amountValue, styles.loyaltyValue]}>
-                  -₱{transactionData.amounts.loyaltyDiscount.toFixed(2)}
+                  -₱{(transactionData.amounts?.loyaltyDiscount || 0).toFixed(2)}
                 </Text>
               </View>
             )}
 
             {/* Voucher Discount */}
-            {transactionData.amounts.voucherDiscount > 0 && (
+            {(transactionData.amounts?.voucherDiscount || 0) > 0 && (
               <View style={styles.amountRow}>
                 <Text style={styles.amountLabel}>Voucher Discount</Text>
                 <Text style={[styles.amountValue, styles.discountValue]}>
-                  -₱{transactionData.amounts.voucherDiscount.toFixed(2)}
+                  -₱{(transactionData.amounts?.voucherDiscount || 0).toFixed(2)}
                 </Text>
               </View>
             )}
 
             {/* Server Calculated Reference (if different) */}
-            {transactionData.amounts.serverBnpcDiscount > 0 && 
-             transactionData.amounts.serverBnpcDiscount !== transactionData.amounts.bnpcDiscount && (
-              <View style={styles.referenceRow}>
-                <Text style={styles.referenceText}>
-                  System calculated: ₱{transactionData.amounts.serverBnpcDiscount.toFixed(2)}
-                </Text>
-              </View>
-            )}
+            {(transactionData.amounts?.serverBnpcDiscount || 0) > 0 &&
+              (transactionData.amounts?.serverBnpcDiscount || 0) !==
+                (transactionData.amounts?.bnpcDiscount || 0) && (
+                <View style={styles.referenceRow}>
+                  <Text style={styles.referenceText}>
+                    System calculated: ₱
+                    {(transactionData.amounts?.serverBnpcDiscount || 0).toFixed(
+                      2,
+                    )}
+                  </Text>
+                </View>
+              )}
 
             <View style={styles.divider} />
 
             {/* Total Discount */}
-            {transactionData.amounts.totalDiscount > 0 && (
+            {(transactionData.amounts?.totalDiscount || 0) > 0 && (
               <View style={styles.totalDiscountRow}>
                 <Text style={styles.totalDiscountLabel}>Total Discount</Text>
                 <Text style={styles.totalDiscountValue}>
-                  -₱{transactionData.amounts.totalDiscount.toFixed(2)}
+                  -₱{(transactionData.amounts?.totalDiscount || 0).toFixed(2)}
                 </Text>
               </View>
             )}
-
             {/* Final Total */}
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Total Amount</Text>
               <Text style={styles.totalValue}>
-                ₱{transactionData.amounts.finalTotal.toFixed(2)}
+                ₱
+                {(
+                  transactionData.amounts?.finalAmountPaid ||
+                  transactionData.amounts?.finalTotal ||
+                  0
+                ).toFixed(2)}
               </Text>
             </View>
 
@@ -455,13 +517,13 @@ const OrderSummaryScreen = ({ route, navigation }) => {
               <View style={styles.cashRow}>
                 <Text style={styles.cashLabel}>Cash Received</Text>
                 <Text style={styles.cashValue}>
-                  ₱{transactionData.amounts.cashReceived.toFixed(2)}
+                  ₱{(transactionData.amounts?.cashReceived || 0).toFixed(2)}
                 </Text>
               </View>
               <View style={styles.cashRow}>
                 <Text style={styles.cashLabel}>Change Due</Text>
                 <Text style={[styles.cashValue, styles.changeValue]}>
-                  ₱{transactionData.amounts.changeDue.toFixed(2)}
+                  ₱{(transactionData.amounts?.changeDue || 0).toFixed(2)}
                 </Text>
               </View>
             </View>
@@ -469,7 +531,7 @@ const OrderSummaryScreen = ({ route, navigation }) => {
         </View>
 
         {/* BNPC Caps Summary */}
-        {transactionData.amounts.bnpcDiscount > 0 && (
+        {(transactionData.amounts?.bnpcDiscount || 0) > 0 && (
           <View style={styles.card}>
             <View style={styles.sectionHeader}>
               <Ionicons name="document-text" size={18} color="#374151" />
@@ -480,13 +542,13 @@ const OrderSummaryScreen = ({ route, navigation }) => {
               <View style={styles.capRow}>
                 <Text style={styles.capLabel}>Used Before</Text>
                 <Text style={styles.capValue}>
-                  ₱{transactionData.caps.bookletUsedBefore.toFixed(2)}
+                  ₱{(transactionData.caps?.bookletUsedBefore || 0).toFixed(2)}
                 </Text>
               </View>
               <View style={styles.capRow}>
                 <Text style={styles.capLabel}>Discount Applied</Text>
                 <Text style={styles.capValue}>
-                  ₱{transactionData.amounts.bnpcDiscount.toFixed(2)}
+                  ₱{(transactionData.amounts?.bnpcDiscount || 0).toFixed(2)}
                 </Text>
               </View>
               <View style={styles.capDividerFull} />
@@ -495,8 +557,12 @@ const OrderSummaryScreen = ({ route, navigation }) => {
                   New Booklet Total
                 </Text>
                 <Text style={[styles.capValue, styles.capValueBold]}>
-                  ₱{(transactionData.caps.bookletUsedAfter || 
-                     (transactionData.caps.bookletUsedBefore + transactionData.amounts.bnpcDiscount)).toFixed(2)}
+                  ₱
+                  {(
+                    transactionData.caps?.bookletUsedAfter ||
+                    (transactionData.caps?.bookletUsedBefore || 0) +
+                      (transactionData.amounts?.bnpcDiscount || 0)
+                  ).toFixed(2)}
                 </Text>
               </View>
               <View style={styles.capNote}>
@@ -505,14 +571,25 @@ const OrderSummaryScreen = ({ route, navigation }) => {
                   Update physical booklet with new total
                 </Text>
               </View>
-              
+
               {/* Week Range */}
-              {(transactionData.caps.weekStart || transactionData.caps.weekEnd) && (
+              {(transactionData.caps.weekStart ||
+                transactionData.caps.weekEnd) && (
                 <View style={styles.weekRangeContainer}>
                   <Ionicons name="calendar" size={12} color="#6B7280" />
                   <Text style={styles.weekRangeText}>
-                    Week: {transactionData.caps.weekStart ? new Date(transactionData.caps.weekStart).toLocaleDateString() : ''} - 
-                    {transactionData.caps.weekEnd ? new Date(transactionData.caps.weekEnd).toLocaleDateString() : ''}
+                    Week:{" "}
+                    {transactionData.caps.weekStart
+                      ? new Date(
+                          transactionData.caps.weekStart,
+                        ).toLocaleDateString()
+                      : ""}{" "}
+                    -
+                    {transactionData.caps.weekEnd
+                      ? new Date(
+                          transactionData.caps.weekEnd,
+                        ).toLocaleDateString()
+                      : ""}
                   </Text>
                 </View>
               )}
@@ -539,35 +616,41 @@ const OrderSummaryScreen = ({ route, navigation }) => {
             <View style={styles.pointRow}>
               <Text style={styles.pointLabel}>Points Earned</Text>
               <Text style={styles.pointValue}>
-                +{transactionData.loyalty?.pointsEarned || 
-                   Math.floor(transactionData.amounts.finalTotal / 10)}
+                +
+                {transactionData.loyalty?.pointsEarned ||
+                  Math.floor(
+                    (transactionData.amounts?.finalAmountPaid ||
+                      transactionData.amounts?.finalTotal ||
+                      0) / 10,
+                  )}
               </Text>
             </View>
           </View>
         </View>
 
         {/* BNPC Products List (if any) */}
-        {transactionData.bnpcProducts && transactionData.bnpcProducts.length > 0 && (
-          <View style={styles.card}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="cube" size={18} color="#374151" />
-              <Text style={styles.sectionTitle}>BNPC Products</Text>
-            </View>
+        {transactionData.bnpcProducts &&
+          transactionData.bnpcProducts.length > 0 && (
+            <View style={styles.card}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="cube" size={18} color="#374151" />
+                <Text style={styles.sectionTitle}>BNPC Products</Text>
+              </View>
 
-            <View style={styles.bnpcList}>
-              {transactionData.bnpcProducts.map((product, index) => (
-                <View key={index} style={styles.bnpcItem}>
-                  <Text style={styles.bnpcItemName} numberOfLines={1}>
-                    {product.name}
-                  </Text>
-                  <Text style={styles.bnpcItemDetails}>
-                    {product.quantity} × ₱{product.price?.toFixed(2)}
-                  </Text>
-                </View>
-              ))}
+              <View style={styles.bnpcList}>
+                {transactionData.bnpcProducts.map((product, index) => (
+                  <View key={index} style={styles.bnpcItem}>
+                    <Text style={styles.bnpcItemName} numberOfLines={1}>
+                      {product.name}
+                    </Text>
+                    <Text style={styles.bnpcItemDetails}>
+                      {product.quantity} × ₱{product.price?.toFixed(2)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
             </View>
-          </View>
-        )}
+          )}
 
         {/* Verification Source */}
         <View style={styles.card}>
@@ -586,13 +669,24 @@ const OrderSummaryScreen = ({ route, navigation }) => {
               {transactionData.verificationSource === "system"
                 ? "System"
                 : transactionData.verificationSource === "manual"
-                ? "Manual"
-                : "System"}
+                  ? "Manual"
+                  : "System"}
             </Text>
             {transactionData.systemVerified && (
-              <View style={[styles.verificationBadge, { backgroundColor: getVerificationColor() + '20' }]}>
-                <Text style={[styles.verificationBadgeText, { color: getVerificationColor() }]}>
-                  {transactionData.systemVerificationType?.toUpperCase() || 'VERIFIED'}
+              <View
+                style={[
+                  styles.verificationBadge,
+                  { backgroundColor: getVerificationColor() + "20" },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.verificationBadgeText,
+                    { color: getVerificationColor() },
+                  ]}
+                >
+                  {transactionData.systemVerificationType?.toUpperCase() ||
+                    "VERIFIED"}
                 </Text>
               </View>
             )}

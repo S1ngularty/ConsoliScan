@@ -22,6 +22,17 @@ async function confirmOrder(request) {
 
   let orderData = { ...request.body.transaction, cashier: userId };
 
+  if (!orderData.checkoutCode) {
+    throw new Error("checkoutCode is required for idempotency");
+  }
+
+  const existingOrder = await Order.findOne({
+    checkoutCode: orderData.checkoutCode,
+  });
+  if (existingOrder) {
+    return existingOrder;
+  }
+
   // Validate booklet update for eligible customers
   if (
     ["senior", "pwd"].includes(orderData.customerType) &&
@@ -39,7 +50,18 @@ async function confirmOrder(request) {
   await promoUpdateUsage(orderData);
 
   // Create order
-  const order = await Order.create(orderData);
+  let order;
+  try {
+    order = await Order.create(orderData);
+  } catch (error) {
+    if (
+      error?.code === 11000 &&
+      (error?.keyPattern?.checkoutCode || error?.keyValue?.checkoutCode)
+    ) {
+      return Order.findOne({ checkoutCode: orderData.checkoutCode });
+    }
+    throw error;
+  }
 
   // Blockchain logging
   const blockchainResult = await blockchainService.logConfirmedOrder(order);
@@ -83,7 +105,7 @@ async function getOrders(request) {
   const orderList = orders.map((order) => ({
     ...order,
     items: order.items.map((item) => ({
-      product:item.product,
+      product: item.product,
       name: item.name,
       quantity: item.quantity,
       unitPrice: item.unitPrice,

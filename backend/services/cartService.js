@@ -1,3 +1,7 @@
+// ⚠️ DEPRECATED: Cart service no longer used (session-based architecture)
+// Cart is now stored client-side in AsyncStorage and passed to backend for validation
+// These functions are kept for legacy reference only
+
 const Cart = require("../models/cartModel");
 const mongoose = require("mongoose");
 const PromoEngine = require("../services/promoServiceEngine");
@@ -7,7 +11,10 @@ exports.updateCart = async (request) => {
   if (!request.body) throw new Error("request content is empty");
   const updatedCart = request.body;
   const { userId } = request.user;
-  // console.log(updatedCart, userId);
+  // ⚠️ DEPRECATED: No longer used
+  console.warn(
+    "⚠️ [CART SERVICE] updateCart is deprecated (session-based cart)",
+  );
   const cart = await Cart.findOneAndUpdate({ user: userId }, updatedCart, {
     new: true,
     upsert: true,
@@ -20,7 +27,9 @@ exports.updateCart = async (request) => {
 
 exports.getById = async (request) => {
   const { userId } = request.user;
-  const now = Date.now()
+  // ⚠️ DEPRECATED: No longer used
+  console.warn("⚠️ [CART SERVICE] getById is deprecated (session-based cart)");
+  const now = Date.now();
   const [cart, promos] = await Promise.all([
     Cart.findOne({ user: userId }).populate({
       path: "items.product",
@@ -55,6 +64,10 @@ exports.getById = async (request) => {
 
 exports.clearCart = async (request) => {
   const { userId } = request.user;
+  // ⚠️ DEPRECATED: No longer used
+  console.warn(
+    "⚠️ [CART SERVICE] clearCart is deprecated (session-based cart)",
+  );
   const result = await Cart.findOneAndDelete({ user: userId }, { new: true });
   return result;
 };

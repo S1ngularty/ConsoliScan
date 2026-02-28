@@ -32,7 +32,7 @@ exports.register = async (request) => {
   return { ...user, token };
 };
 
-exports.login = async (request) => {
+exports.login = async (request, response) => {
   const { email, password } = request.body;
   let userData = await User.findOne({ email }).select(
     "+password role email name status",
@@ -59,6 +59,15 @@ exports.login = async (request) => {
     status: userData.status,
   };
   // console.log(user);
+
+  response.cookie("token", jwtToken, {
+    httpOnly: true,
+    maxAge: 1000 * 60 * 60 * 24 * 365 * 10,
+    secure: true,
+    sameSite: "none",
+    path: "/",
+  });
+
   return { user, eligibilityStatus, token: jwtToken };
 };
 

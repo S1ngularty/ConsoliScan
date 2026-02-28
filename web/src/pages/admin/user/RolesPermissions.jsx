@@ -95,7 +95,7 @@ function RolePermissions() {
       const result = await getAllUser();
       setUsers(result);
     } catch (error) {
-      console.log(error);
+      console.error(error);
       showToast("failed to fetch the data", "error");
     }
   };
@@ -104,11 +104,11 @@ function RolePermissions() {
     setFilters((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleRefresh =async () => {
+  const handleRefresh = async () => {
     setLoading(true);
-      await fetchData()
-      setLoading(false);
-      showToast("Data refreshed", "info");
+    await fetchData();
+    setLoading(false);
+    showToast("Data refreshed", "info");
   };
 
   const handleClearFilters = () => {
@@ -149,7 +149,7 @@ function RolePermissions() {
       setSelectedUser(null);
       setEditData({ role: "", status: "" });
     } catch (error) {
-      console.log(error);
+      console.error(error);
       showToast(`Something went wrong! Please try again.`, "error");
     }
   };
@@ -509,9 +509,7 @@ function RolePermissions() {
             Refresh
           </Button>
 
-          <ExcelExportButton data={
-            [...users] 
-          } />
+          <ExcelExportButton data={[...users]} />
         </Box>
       </Box>
 

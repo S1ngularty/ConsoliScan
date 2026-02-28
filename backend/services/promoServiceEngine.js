@@ -13,18 +13,36 @@ const buildCartContext = (cart) => {
 
   for (let itemObj of cart.items) {
     const item = itemObj.product;
-    // console.log(itemObj)
-    subtotal = item.price * itemObj.qty;
-    // console.log(itemObj.price,itemObj.qty)
+
+    // Validate item and product properties exist
+    if (!item || !item._id) {
+      console.warn("⚠️ [PROMO ENGINE] Invalid item structure:", itemObj);
+      continue;
+    }
+
+    // Calculate subtotal
+    const qty = itemObj.qty || 1;
+    const price = item.price || 0;
+    subtotal += price * qty;
+
+    // Add product ID
     products.push(item._id.toString());
-    categories.push(item.category._id.toString());
+
+    // Add category ID - handle both object and string formats
+    if (item.category) {
+      const categoryId =
+        typeof item.category === "string" ? item.category : item.category._id;
+      if (categoryId) {
+        categories.push(categoryId.toString());
+      }
+    }
   }
 
   return {
     subtotal,
     products,
     categories,
-    items:cart
+    items: cart,
   };
 };
 
@@ -76,17 +94,27 @@ const promoMatchesCart = (cart, promo) => {
 
 function calculateDiscount(cart, promo) {
   let baseAmount = cart.subtotal;
-  console.log(cart);
+
   if (promo.scope === "product") {
     baseAmount = cart.items.items
-      .filter((i) => promo.targetIds.includes(i.product._id))
-      .reduce((sum, i) => sum + i.product.price * i.qty, 0);
+      .filter((i) => {
+        if (!i?.product?._id) return false;
+        return promo.targetIds.includes(i.product._id.toString());
+      })
+      .reduce((sum, i) => sum + (i.product.price || 0) * (i.qty || 1), 0);
   }
 
   if (promo.scope === "category") {
     baseAmount = cart.items.items
-      .filter((i) => promo.targetIds.includes(i.product.category._id))
-      .reduce((sum, i) => sum + i.product.price * i.qty, 0);
+      .filter((i) => {
+        if (!i?.product?.category) return false;
+        const categoryId =
+          typeof i.product.category === "string"
+            ? i.product.category
+            : i.product.category._id;
+        return categoryId && promo.targetIds.includes(categoryId.toString());
+      })
+      .reduce((sum, i) => sum + (i.product.price || 0) * (i.qty || 1), 0);
   }
 
   if (promo.type === "percentage") return baseAmount * (promo.value / 100);
@@ -96,17 +124,33 @@ function calculateDiscount(cart, promo) {
 
 exports.PromoSuggestion = (cart, promos) => {
   const cartContext = buildCartContext(cart);
+  console.log("🔖 [PROMO SUGGESTION] Cart Context:", {
+    subtotal: cartContext.subtotal,
+    products: cartContext.products.length,
+    categories: cartContext.categories.length,
+  });
+
   const usablePromos = promos.filter((p) => {
-    return !p.usageLimit || p.usedCount < p.usageLimit;
+    const isUsable = !p.usageLimit || p.usedCount < p.usageLimit;
+    return isUsable;
   });
 
   const minPurchaseFiltered = usablePromos.filter((p) => {
-    return !p.minPurchase || cart.subtotal >= p.minPurchase;
+    const meetsMinPurchase =
+      !p.minPurchase || cartContext.subtotal >= p.minPurchase;
+    return meetsMinPurchase;
   });
 
   const eligiblePromos = minPurchaseFiltered.filter((p) =>
     promoMatchesCart(cartContext, p),
   );
+
+  console.log("🔖 [PROMO SUGGESTION] Filtered results:", {
+    totalPromos: promos.length,
+    usable: usablePromos.length,
+    minPurchase: minPurchaseFiltered.length,
+    eligible: eligiblePromos.length,
+  });
 
   return eligiblePromos;
 };

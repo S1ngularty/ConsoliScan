@@ -132,7 +132,7 @@ function CategoryPage() {
 
   const fetchData = async () => {
     const result = await fetchCategories();
-    console.log(result)
+    // console.log(result)
     setCategories(result);
     return;
   };
@@ -147,7 +147,7 @@ function CategoryPage() {
       setDeleteCategoryId("");
       fetchData();
     } catch (error) {
-      console.log(error);
+      console.error(error);
       showToast("Sorry, something went wrong, please try again.", "error");
     } finally {
       setIsLoading(false);
@@ -166,7 +166,7 @@ function CategoryPage() {
           data={editCategory}
           onClose={() => {
             setIsModalOpen(false);
-            setEditCategory("")
+            setEditCategory("");
           }}
           onSave={() => {
             setIsModalOpen(false);

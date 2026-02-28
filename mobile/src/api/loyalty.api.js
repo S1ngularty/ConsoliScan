@@ -1,6 +1,7 @@
 import axios from "axios";
 import { API_URL } from "../constants/config";
 import { getToken } from "../utils/authUtil";
+import { handleApiError, markServerUp } from "../utils/apiErrorHandler";
 
 const axiosInstance = axios.create({
   baseURL: API_URL,
@@ -12,13 +13,19 @@ const axiosInstance = axios.create({
 const loyaltyApi = {
   getConfig: async () => {
     const token = await getToken();
-    const response = await axiosInstance.get("api/v1/loyalty/config", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    console.log(response.data.result);
-    return response.data.result;
+    try {
+      const response = await axiosInstance.get("api/v1/loyalty/config", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        timeout: 10000, // 10 second timeout
+      });
+      console.log(response.data.result);
+      markServerUp();
+      return response.data.result;
+    } catch (error) {
+      throw handleApiError(error);
+    }
   },
 };
 
