@@ -42,7 +42,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
           description: "",
           excludedFromDiscount: false,
           images: [],
-        }
+        },
   );
   const [uploading, setUploading] = React.useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = React.useState(0);
@@ -84,7 +84,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
   // Reset form when opening with new data
   useEffect(() => {
     if (isOpen && data) {
-      setProductInfo({ 
+      setProductInfo({
         ...data,
         salePrice: data.salePrice || "",
         saleActive: data.saleActive || false,
@@ -169,13 +169,18 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
 
       case "srp":
         if (value && isNaN(value)) error = "SRP must be a number";
-        else if (value && parseFloat(value) < 0) error = "SRP cannot be negative";
+        else if (value && parseFloat(value) < 0)
+          error = "SRP cannot be negative";
         break;
 
       case "salePrice":
         if (value && isNaN(value)) error = "Sale price must be a number";
-        else if (value && parseFloat(value) < 0) error = "Sale price cannot be negative";
-        else if (value && parseFloat(value) > parseFloat(productInfo.price || 0)) 
+        else if (value && parseFloat(value) < 0)
+          error = "Sale price cannot be negative";
+        else if (
+          value &&
+          parseFloat(value) > parseFloat(productInfo.price || 0)
+        )
           error = "Sale price cannot be higher than regular price";
         break;
 
@@ -216,7 +221,10 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
     newErrors.name = validateField("name", productInfo.name);
     newErrors.sku = validateField("sku", productInfo.sku);
     newErrors.price = validateField("price", productInfo.price);
-    newErrors.stockQuantity = validateField("stockQuantity", productInfo.stockQuantity);
+    newErrors.stockQuantity = validateField(
+      "stockQuantity",
+      productInfo.stockQuantity,
+    );
     newErrors.barcode = validateField("barcode", productInfo.barcode);
     newErrors.category = validateField("category", productInfo.category);
     newErrors.unit = validateField("unit", productInfo.unit);
@@ -379,7 +387,15 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
   const handleSave = async () => {
     // Mark all fields as touched
     setIsLoading(true);
-    const allFields = ["name", "sku", "price", "stockQuantity", "category", "barcode", "unit"];
+    const allFields = [
+      "name",
+      "sku",
+      "price",
+      "stockQuantity",
+      "category",
+      "barcode",
+      "unit",
+    ];
     const newTouched = {};
     allFields.forEach((field) => {
       newTouched[field] = true;
@@ -633,9 +649,7 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
                       onChange={() => handleCheckbox("saleActive")}
                     />
                     <span className="checkmark"></span>
-                    <span className="checkbox-text">
-                      Activate Sale Price
-                    </span>
+                    <span className="checkbox-text">Activate Sale Price</span>
                   </label>
                 </div>
 
@@ -650,7 +664,9 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
                         placeholder="0.00"
                         step="0.01"
                         min="0"
-                        onChange={(e) => handleInput("salePrice", e.target.value)}
+                        onChange={(e) =>
+                          handleInput("salePrice", e.target.value)
+                        }
                         onBlur={() => handleBlur("salePrice")}
                         className={errors.salePrice ? "input-error" : ""}
                       />
@@ -661,11 +677,14 @@ function ProductModal({ isOpen, data, onClose, onSave }) {
                         <span>{errors.salePrice}</span>
                       </div>
                     )}
-                    {productInfo.salePrice && productInfo.price && parseFloat(productInfo.salePrice) < parseFloat(productInfo.price) && (
-                      <div className="discount-badge">
-                        <span>{calculateDiscountPercentage()}% OFF</span>
-                      </div>
-                    )}
+                    {productInfo.salePrice &&
+                      productInfo.price &&
+                      parseFloat(productInfo.salePrice) <
+                        parseFloat(productInfo.price) && (
+                        <div className="discount-badge">
+                          <span>{calculateDiscountPercentage()}% OFF</span>
+                        </div>
+                      )}
                   </div>
                 )}
               </div>
