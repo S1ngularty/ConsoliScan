@@ -1,5 +1,8 @@
 const adminDashboardService = require("../services/adminDashboardService");
 const controllerWrapper = require("../utils/controllerWrapper");
+const {
+  generateComprehensiveReportPDF,
+} = require("../utils/comprehensiveReportGenerator");
 
 // Dashboard Summary
 exports.getDashboardSummary = controllerWrapper(
@@ -87,3 +90,6 @@ exports.getComprehensiveReport = controllerWrapper((request) => {
     endDate,
   });
 });
+
+// Generate Comprehensive Report PDF
+exports.generateComprehensiveReportPDF = generateComprehensiveReportPDF;

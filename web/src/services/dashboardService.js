@@ -216,3 +216,26 @@ export async function getReturnsReport(params = {}) {
     throw error;
   }
 }
+
+/**
+ * Download comprehensive report as PDF
+ * @param {string} timeRange - Number of days for the report (e.g., "30", "90", "365")
+ * @returns {Promise<Blob>} PDF blob
+ */
+export async function downloadComprehensiveReportPDF(timeRange = "30") {
+  try {
+    const response = await axios.get(
+      "/api/v1/admin/reports/comprehensive/pdf",
+      {
+        params: {
+          timeRange,
+        },
+        responseType: "blob",
+      },
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error downloading comprehensive report:", error);
+    throw error;
+  }
+}

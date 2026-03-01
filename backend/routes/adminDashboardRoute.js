@@ -85,4 +85,11 @@ router.get(
   adminDashboardController.getComprehensiveReport,
 );
 
+// Generate comprehensive report PDF
+// Query params: timeRange (days, default: 30)
+router.get(
+  "/reports/comprehensive/pdf",
+  adminDashboardController.generateComprehensiveReportPDF,
+);
+
 module.exports = router;

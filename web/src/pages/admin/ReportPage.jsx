@@ -33,6 +33,7 @@ import {
   getInventoryAnalytics,
   getPromotionAnalytics,
   getReturnsReport,
+  downloadComprehensiveReportPDF,
 } from "../../services/dashboardService";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -396,26 +397,22 @@ const ReportPage = () => {
     fetchReportData();
   }, [fetchReportData]);
 
-  // ── Export CSV ──────────────────────────────────────────────────────────────
-  const handleExport = () => {
-    const rows = [
-      ["Date", "Orders", "Revenue", "Avg. Order Value"],
-      ...(data.salesData || []).map((i) => [
-        i._id?.date || i.date || "—",
-        i.orderCount || 0,
-        i.totalSales || 0,
-        Math.round((i.totalSales || 0) / Math.max(i.orderCount || 1, 1)),
-      ]),
-    ];
-    const csv = rows.map((r) => r.join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = Object.assign(document.createElement("a"), {
-      href: url,
-      download: `report-${activeTab}-${timeRange}d.csv`,
-    });
-    a.click();
-    URL.revokeObjectURL(url);
+  // ── Export PDF ──────────────────────────────────────────────────────────────
+  const handleExport = async () => {
+    try {
+      const blob = await downloadComprehensiveReportPDF(timeRange);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `report-${timeRange}d-${new Date().getTime()}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading report:", error);
+      setError("Failed to download report. Please try again.");
+    }
   };
 
   // ── Derived ─────────────────────────────────────────────────────────────────
@@ -1522,7 +1519,7 @@ const ReportPage = () => {
           </button>
           <button className="export-btn" onClick={handleExport}>
             <Download size={18} />
-            Export CSV
+            Download Report
           </button>
         </div>
       </div>

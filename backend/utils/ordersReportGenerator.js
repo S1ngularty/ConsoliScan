@@ -240,7 +240,7 @@ exports.generateOrdersReportPDF = async (req, res) => {
 
     y += 64;
 
-    // ── ORDER TYPE DISTRIBUTION ────────────────
+    // ── ORDER TYPE DISTRIBUTION WITH CHART ─────
     if (Object.keys(stats.byCustomerType).length > 0) {
       rule(doc, y);
       y += 12;
@@ -253,55 +253,59 @@ exports.generateOrdersReportPDF = async (req, res) => {
 
       y += 14;
 
-      const typesPerRow = 4;
-      const typeW = CONTENT_W / typesPerRow - 6;
-      let typeCol = 0;
+      // Visual bar chart
+      const chartW = CONTENT_W;
+      const barH = 20;
+      const barSpacing = 8;
 
-      Object.entries(stats.byCustomerType).forEach(([type, count], idx) => {
-        const xPos = PAGE_MARGIN + typeCol * (typeW + 8);
+      Object.entries(stats.byCustomerType).forEach(([type, count]) => {
         const label = type.charAt(0).toUpperCase() + type.slice(1);
         const pct =
-          stats.totalOrders > 0
-            ? ((count / stats.totalOrders) * 100).toFixed(1)
-            : 0;
+          stats.totalOrders > 0 ? (count / stats.totalOrders) * 100 : 0;
+        const barW = (chartW * pct) / 100;
 
+        // Bar background
         doc
           .save()
-          .rect(xPos, y, typeW, 44)
-          .strokeColor(C.border)
-          .lineWidth(0.5)
-          .stroke()
+          .rect(PAGE_MARGIN + 80, y, chartW - 80, barH)
+          .fillColor(C.grayLight)
+          .fill()
           .restore();
 
+        // Bar fill
+        doc
+          .save()
+          .rect(PAGE_MARGIN + 80, y, Math.max(barW - 80, 0), barH)
+          .fillColor(C.teal)
+          .fill()
+          .restore();
+
+        // Label
         doc
           .font("Helvetica-Bold")
           .fontSize(8)
           .fillColor(C.dark)
-          .text(label, xPos + 6, y + 6, { width: typeW - 12 });
+          .text(label, PAGE_MARGIN, y + 6, { width: 75, lineBreak: false });
 
-        doc
-          .font("Helvetica-Bold")
-          .fontSize(11)
-          .fillColor(C.teal)
-          .text(count.toString(), xPos + 6, y + 16, { width: typeW - 12 });
-
+        // Value inside/outside bar
+        const valueText = `${count} (${pct.toFixed(1)}%)`;
         doc
           .font("Helvetica")
-          .fontSize(7)
-          .fillColor(C.gray)
-          .text(`${pct}%`, xPos + 6, y + 28, { width: typeW - 12 });
+          .fontSize(7.5)
+          .fillColor(barW > 100 ? C.white : C.dark)
+          .text(valueText, PAGE_MARGIN + 85, y + 6, {
+            width: chartW - 90,
+            lineBreak: false,
+          });
 
-        typeCol++;
-        if (typeCol >= typesPerRow) {
-          typeCol = 0;
-          y += 50;
-        }
+        y += barH + barSpacing;
       });
 
-      if (typeCol !== 0) y += 50;
+      y += 4;
     }
 
     // ── ORDERS TABLE ───────────────────────────
+    y += 8; // Extra spacing before table
     rule(doc, y);
     y += 14;
 
@@ -467,7 +471,7 @@ exports.generateOrdersReportPDF = async (req, res) => {
       rowCount++;
     });
 
-    y += 6;
+    y += 12; // Spacing after table
     rule(doc, y);
     y += 16;
 
@@ -510,35 +514,42 @@ exports.generateOrdersReportPDF = async (req, res) => {
         lineBreak: false,
       });
 
-    // ── FOOTER ─────────────────────────────────
-    doc.addPage();
-    let footerY = PAGE_MARGIN;
+    y += 30;
+
+    // ── FOOTER (SAME PAGE) ─────────────────────
+    // Only add new page if we're near the bottom
+    if (y > 700) {
+      doc.addPage();
+      y = PAGE_MARGIN + 200; // Center it vertically
+    }
+
+    y += 20;
+    rule(doc, y, C.green, 1);
+    y += 16;
 
     doc
       .font("Helvetica")
-      .fontSize(9)
+      .fontSize(8)
       .fillColor(C.gray)
       .text(
         "This report contains a summary of all sales transactions for the selected period. For detailed audit trails, please refer to activity logs.",
         PAGE_MARGIN,
-        footerY,
+        y,
         { width: CONTENT_W, align: "center" },
       );
 
-    footerY += 40;
-    rule(doc, footerY, C.green, 1);
-    footerY += 16;
+    y += 24;
 
     doc
       .font("Helvetica-Bold")
-      .fontSize(11)
+      .fontSize(10)
       .fillColor(C.green)
-      .text("Consoli Scan", PAGE_MARGIN, footerY, {
+      .text("Consoli Scan", PAGE_MARGIN, y, {
         width: CONTENT_W,
         align: "center",
       });
 
-    footerY += 16;
+    y += 14;
 
     doc
       .font("Helvetica")
@@ -547,7 +558,7 @@ exports.generateOrdersReportPDF = async (req, res) => {
       .text(
         "System-generated report. Valid for audit and record-keeping purposes.",
         PAGE_MARGIN,
-        footerY,
+        y,
         { width: CONTENT_W, align: "center" },
       );
 
