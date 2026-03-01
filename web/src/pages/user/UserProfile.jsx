@@ -61,12 +61,17 @@ const UserProfile = () => {
       ]);
 
       if (userData) {
+        // Split name into first and last
+        const nameParts = (userData.name || '').split(' ');
+        const lastName = nameParts.length > 1 ? nameParts.pop() : '';
+        const firstName = nameParts.join(' ');
+
         setUser({
           _id: userData._id,
-          firstName: userData.firstName || '',
-          lastName: userData.lastName || '',
+          firstName: firstName,
+          lastName: lastName,
           email: userData.email || '',
-          phoneNumber: userData.phoneNumber || '',
+          phoneNumber: userData.contactNumber || '',
           avatar: userData.avatar?.url || 'https://via.placeholder.com/150',
           role: userData.role
         });
@@ -100,9 +105,8 @@ const UserProfile = () => {
     try {
       setSaving(true);
       const updateData = {
-        firstName: user.firstName,
-        lastName: user.lastName,
-        phoneNumber: user.phoneNumber
+        name: `${user.firstName} ${user.lastName}`.trim(),
+        contactNumber: user.phoneNumber
       };
       
       await updateProfile(user._id, updateData);

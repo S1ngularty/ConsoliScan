@@ -72,13 +72,31 @@ exports.login = async (request, response) => {
 };
 
 exports.verifyToken = async (request) => {
-  const { user } = request;
+  const { userId } = request.user;
+  
+  const user = await User.findById(userId);
+  if (!user) throw new Error("User not found");
+
   let eligibilityStatus = null;
   if (user.role === "user") {
-    eligibilityStatus = await Eligible.findOne({ user: user.userId });
+    eligibilityStatus = await Eligible.findOne({ user: userId });
   }
 
-  return { user, eligibilityStatus };
+  return { 
+    user: {
+      userId: user._id,
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+      contactNumber: user.contactNumber,
+      avatar: user.avatar,
+      sex: user.sex,
+      age: user.age
+    }, 
+    eligibilityStatus 
+  };
 };
 
 exports.googleAuth = async (request, response) => {
