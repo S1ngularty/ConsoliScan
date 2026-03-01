@@ -371,16 +371,10 @@ const managementItems = [
         hasDropdown: true,
         dropdown: [
           {
-            name: "Sales Orders",
-            icon: <FileText size={18} />,
+            name: "Sales Transactions",
+            icon: <FileText  size={18} />,
             navigate: "/admin/orders",
-            location: "Admin / Sales / Orders",
-          },
-          {
-            name: "Pending Fulfillment",
-            icon: <Truck size={18} />,
-            navigate: "/admin/orders/pending",
-            location: "Admin / Sales / Pending",
+            location: "Admin / Sales / Transactions ",
           },
         ],
       },

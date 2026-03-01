@@ -49,11 +49,22 @@ router.get(
   adminDashboardController.getPromotionAnalytics,
 );
 
+// Returns Analytics
+// Query params: startDate, endDate
+router.get("/analytics/returns", adminDashboardController.getReturnAnalytics);
+
 // Checkout Queue Analytics
 router.get(
   "/analytics/checkout-queue",
   adminDashboardController.getCheckoutQueueAnalytics,
 );
+
+// ==================== ORDERS MANAGEMENT ====================
+
+// Get all orders with filtering
+// Query params: status, customerType, startDate, endDate, search, page, limit, sortBy, sortOrder
+const orderController = require("../controllers/orderController");
+router.get("/orders", orderController.getAllOrdersAdmin);
 
 // ==================== ACTIVITY & LOGS ====================
 

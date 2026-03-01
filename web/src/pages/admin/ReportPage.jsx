@@ -4,6 +4,7 @@ import {
   Users,
   ShoppingBag,
   Package,
+  Undo2,
   TrendingUp,
   RefreshCw,
 } from "lucide-react";
@@ -31,6 +32,7 @@ import {
   getOrderAnalytics,
   getInventoryAnalytics,
   getPromotionAnalytics,
+  getReturnsReport,
 } from "../../services/dashboardService";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -278,6 +280,7 @@ const ReportPage = () => {
       stockByCategory: [],
     },
     promotions: { performanceData: [] },
+    returns: [],
   });
 
   const [charts, setCharts] = useState({
@@ -286,6 +289,7 @@ const ReportPage = () => {
     categories: [],
     orderStatus: [],
     orderTiming: [],
+    returnStatus: [],
   });
 
   // ── Fetch ───────────────────────────────────────────────────────────────────
@@ -300,7 +304,7 @@ const ReportPage = () => {
       const ed = end.toISOString().split("T")[0];
       const groupBy = parseInt(timeRange, 10) > 60 ? "month" : "day";
 
-      const [sR, prR, catR, uR, oR, invR, proR] = await Promise.all([
+      const [sR, prR, catR, uR, oR, invR, proR, retR] = await Promise.all([
         getSalesAnalytics({ startDate: sd, endDate: ed, groupBy }),
         getProductAnalytics({
           limit: 10,
@@ -313,6 +317,7 @@ const ReportPage = () => {
         getOrderAnalytics({ startDate: sd, endDate: ed }),
         getInventoryAnalytics(),
         getPromotionAnalytics({ startDate: sd, endDate: ed }),
+        getReturnsReport({ startDate: sd, endDate: ed }),
       ]);
 
       const sales = getResult(sR);
@@ -320,6 +325,14 @@ const ReportPage = () => {
       const orders = getResult(oR);
       const inv = getResult(invR);
       const promo = getResult(proR);
+      const returnsReport = getResult(retR);
+      const returnsData = Array.isArray(returnsReport?.data)
+        ? returnsReport.data
+        : Array.isArray(retR?.data)
+          ? retR.data
+          : Array.isArray(returnsReport)
+            ? returnsReport
+            : [];
 
       setData({
         salesSummary: sales.summary || {},
@@ -330,7 +343,14 @@ const ReportPage = () => {
         orders,
         inventory: inv,
         promotions: promo,
+        returns: returnsData,
       });
+
+      const returnStatusMap = returnsData.reduce((acc, item) => {
+        const key = item?.status || "UNKNOWN";
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
 
       setCharts({
         sales: (sales.data || []).map((i) => ({
@@ -359,6 +379,10 @@ const ReportPage = () => {
         orderTiming: (orders.timingAnalysis || []).map((i) => ({
           name: `${i._id?.hour ?? 0}:00`,
           orders: i.orderCount || 0,
+        })),
+        returnStatus: Object.entries(returnStatusMap).map(([name, value]) => ({
+          name,
+          value,
         })),
       });
     } catch (e) {
@@ -402,6 +426,20 @@ const ReportPage = () => {
   const topCatMax = data.categories[0]?.totalSales || 1;
   const lowStockCount = data.inventory.lowStockProducts?.length || 0;
   const outStockCount = data.inventory.outOfStockProducts?.length || 0;
+  const totalReturns = data.returns?.length || 0;
+  const completedReturns = (data.returns || []).filter(
+    (item) => item?.status === "COMPLETED",
+  ).length;
+  const rejectedReturns = (data.returns || []).filter(
+    (item) => item?.status === "REJECTED",
+  ).length;
+  const pendingReturns = (data.returns || []).filter((item) =>
+    ["PENDING", "VALIDATED", "INSPECTED"].includes(item?.status),
+  ).length;
+  const totalReturnedValue = (data.returns || []).reduce(
+    (sum, item) => sum + Number(item?.originalPrice || 0),
+    0,
+  );
 
   // ════════════════════════════════════════════════════════════════════════════
   // TAB: SALES & REVENUE
@@ -728,14 +766,174 @@ const ReportPage = () => {
   );
 
   // ════════════════════════════════════════════════════════════════════════════
+  // TAB: RETURNS REPORT
+  // ════════════════════════════════════════════════════════════════════════════
+  const renderReturns = () => (
+    <>
+      <SectionLabel text="Returns Report" />
+      <div className="rp-kpi-row">
+        <KpiCard
+          label="Total Return Requests"
+          value={totalReturns.toLocaleString()}
+          sub="all recorded returns"
+          accent={C.red}
+        />
+        <KpiCard
+          label="Completed Returns"
+          value={completedReturns.toLocaleString()}
+          sub={pct(completedReturns, totalReturns)}
+          accent={C.green}
+        />
+        <KpiCard
+          label="Rejected Returns"
+          value={rejectedReturns.toLocaleString()}
+          sub={pct(rejectedReturns, totalReturns)}
+          accent={C.orange}
+        />
+        <KpiCard
+          label="Returned Value"
+          value={currency.format(totalReturnedValue)}
+          sub="sum of item original prices"
+          accent={C.red}
+        />
+      </div>
+
+      <div className="rp-grid rp-grid--2col">
+        <Panel
+          title="Return Status Breakdown"
+          sub="Current state distribution"
+          accent={C.red}
+        >
+          {loading ? (
+            <Skeleton />
+          ) : (
+            <div className="rp-chart">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={
+                      charts.returnStatus.length
+                        ? charts.returnStatus
+                        : [{ name: "No data", value: 1 }]
+                    }
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={52}
+                    outerRadius={82}
+                    paddingAngle={3}
+                    dataKey="value"
+                    animationDuration={700}
+                  >
+                    {charts.returnStatus.map((entry, i) => (
+                      <Cell
+                        key={i}
+                        fill={
+                          STATUS_COLOR[entry.name] ||
+                          PIE_COLORS[i % PIE_COLORS.length]
+                        }
+                        stroke="none"
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<ChartTooltip prefix="" />} />
+                  <Legend
+                    iconType="circle"
+                    iconSize={8}
+                    formatter={(v) => (
+                      <span
+                        style={{
+                          fontSize: 11,
+                          color: "#6b7280",
+                          fontWeight: 500,
+                        }}
+                      >
+                        {v}
+                      </span>
+                    )}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </Panel>
+
+        <Panel
+          title="Returns Snapshot"
+          sub="Operational summary"
+          accent={C.red}
+        >
+          {loading ? (
+            <Skeleton h={200} />
+          ) : (
+            <DataTable
+              headers={["Metric", "Value"]}
+              rows={[
+                ["Pending / In-progress", pendingReturns.toLocaleString()],
+                ["Completed", completedReturns.toLocaleString()],
+                ["Rejected", rejectedReturns.toLocaleString()],
+                [
+                  "Cancellation",
+                  (data.returns || [])
+                    .filter((i) => i?.status === "CANCELLED")
+                    .length.toLocaleString(),
+                ],
+              ]}
+              emptyMsg="No return metrics available."
+            />
+          )}
+        </Panel>
+      </div>
+
+      <Panel
+        title="Recent Returns"
+        sub="Latest return requests and outcomes"
+        accent={C.red}
+        wide
+      >
+        {loading ? (
+          <Skeleton h={220} />
+        ) : (
+          <DataTable
+            headers={[
+              "Date",
+              "Item",
+              "Value",
+              "Status",
+              "Fulfillment",
+              "Inspection",
+            ]}
+            rows={(data.returns || [])
+              .slice()
+              .sort(
+                (a, b) =>
+                  new Date(b?.initiatedAt || b?.createdAt || 0) -
+                  new Date(a?.initiatedAt || a?.createdAt || 0),
+              )
+              .slice(0, 10)
+              .map((item) => [
+                shortDate(item?.initiatedAt || item?.createdAt),
+                item?.originalItemName || "Unknown item",
+                currency.format(item?.originalPrice || 0),
+                <StatusBadge status={item?.status || "UNKNOWN"} />,
+                item?.fulfillmentType || "—",
+                item?.inspectionStatus || "—",
+              ])}
+            emptyMsg="No return records found."
+          />
+        )}
+      </Panel>
+    </>
+  );
+
+  // ════════════════════════════════════════════════════════════════════════════
   // TAB: PROFIT & MARKUP
   // ════════════════════════════════════════════════════════════════════════════
   const renderProfit = () => {
     // Calculate simulated profit based on 20% markup
-    const profitData = (data.salesData || []).map(item => ({
+    const profitData = (data.salesData || []).map((item) => ({
       name: shortDate(item._id?.date || item.date),
       revenue: item.totalSales || 0,
-      profit: (item.totalSales || 0) * 0.2
+      profit: (item.totalSales || 0) * 0.2,
     }));
 
     return (
@@ -768,11 +966,20 @@ const ReportPage = () => {
             <div className="rp-chart" style={{ height: 280 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={profitData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="#f0f0f0"
+                  />
                   <XAxis dataKey="name" {...axisProps} dy={6} />
                   <YAxis {...axisProps} width={60} tickFormatter={yFmt} />
                   <Tooltip content={<ChartTooltip prefix="₱" />} />
-                  <Bar dataKey="profit" fill={C.green} radius={[4, 4, 0, 0]} name="Profit" />
+                  <Bar
+                    dataKey="profit"
+                    fill={C.green}
+                    radius={[4, 4, 0, 0]}
+                    name="Profit"
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -786,12 +993,21 @@ const ReportPage = () => {
           wide
         >
           <DataTable
-            headers={["Date", "Total Revenue", "Est. Profit (20%)", "PWD/Senior Disc. (Est. 5%)"]}
-            rows={profitData.map(item => [
+            headers={[
+              "Date",
+              "Total Revenue",
+              "Est. Profit (20%)",
+              "PWD/Senior Disc. (Est. 5%)",
+            ]}
+            rows={profitData.map((item) => [
               item.name,
               currency.format(item.revenue),
-              <span style={{ color: C.green, fontWeight: 600 }}>{currency.format(item.profit)}</span>,
-              <span style={{ color: C.red }}>{currency.format(item.revenue * 0.05)}</span>
+              <span style={{ color: C.green, fontWeight: 600 }}>
+                {currency.format(item.profit)}
+              </span>,
+              <span style={{ color: C.red }}>
+                {currency.format(item.revenue * 0.05)}
+              </span>,
             ])}
           />
         </Panel>
@@ -1339,6 +1555,12 @@ const ReportPage = () => {
         >
           <Package size={16} /> Inventory Status
         </button>
+        <button
+          className={`tab-btn${activeTab === "returns" ? " active" : ""}`}
+          onClick={() => setActiveTab("returns")}
+        >
+          <Undo2 size={16} /> Returns Report
+        </button>
       </div>
 
       {/* ── Tab body ────────────────────────────────────────────────────────── */}
@@ -1348,6 +1570,7 @@ const ReportPage = () => {
         {activeTab === "users" && renderUsers()}
         {activeTab === "products" && renderProducts()}
         {activeTab === "inventory" && renderInventory()}
+        {activeTab === "returns" && renderReturns()}
       </div>
     </div>
   );

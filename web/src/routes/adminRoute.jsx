@@ -2,6 +2,7 @@ import React from "react";
 import DashboardPage from "../pages/admin/DashboardPage";
 import AnalyticsPage from "../pages/admin/AnalyticsPage";
 import ReportPage from "../pages/admin/ReportPage";
+import OrderPage from "../pages/admin/OrderPage";
 import UserPage from "../pages/admin/user/UserPage";
 import RolePermissions from "../pages/admin/user/RolesPermissions";
 import ActivityLogs from "../pages/admin/user/ActivityLogs";
@@ -27,6 +28,11 @@ function adminRoute() {
     {
       component: <ReportPage></ReportPage>,
       path: "/admin/reports",
+      index: false,
+    },
+    {
+      component: <OrderPage></OrderPage>,
+      path: "/admin/orders",
       index: false,
     },
     {

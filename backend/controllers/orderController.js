@@ -1,5 +1,5 @@
-const orderService = require("../services/orderService")
-const controllerWrapper = require("../utils/controllerWrapper")
+const orderService = require("../services/orderService");
+const controllerWrapper = require("../utils/controllerWrapper");
 
 async function confirmOrder(req, res) {
   try {
@@ -8,20 +8,23 @@ async function confirmOrder(req, res) {
     res.status(201).json({
       success: true,
       orderId: order._id,
-      blockchainTxId: order.blockchainTxId
+      blockchainTxId: order.blockchainTxId,
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 }
 
-const getUser_OrderList = controllerWrapper(orderService.getOrders)
+const getUser_OrderList = controllerWrapper(orderService.getOrders);
+
+const getAllOrdersAdmin = controllerWrapper(orderService.getAllOrdersAdmin);
 
 module.exports = {
   confirmOrder,
-  getUser_OrderList
+  getUser_OrderList,
+  getAllOrdersAdmin,
 };

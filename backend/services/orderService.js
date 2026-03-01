@@ -119,7 +119,73 @@ async function getOrders(request) {
   return orderList;
 }
 
+/**
+ * Get all orders for admin with filtering, sorting, and population
+ */
+async function getAllOrdersAdmin(request) {
+  const {
+    status,
+    customerType,
+    startDate,
+    endDate,
+    search,
+    page = 1,
+    limit = 50,
+    sortBy = "confirmedAt",
+    sortOrder = "desc",
+  } = request.query;
+
+  // Build filter
+  const filter = {};
+
+  if (status) {
+    filter.status = status;
+  }
+
+  if (customerType) {
+    filter.customerType = customerType;
+  }
+
+  if (startDate || endDate) {
+    filter.confirmedAt = {};
+    if (startDate) filter.confirmedAt.$gte = new Date(startDate);
+    if (endDate) filter.confirmedAt.$lte = new Date(endDate);
+  }
+
+  if (search) {
+    filter.$or = [{ checkoutCode: { $regex: search, $options: "i" } }];
+  }
+
+  // Calculate pagination
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const sort = { [sortBy]: sortOrder === "desc" ? -1 : 1 };
+
+  // Execute query
+  const [orders, total] = await Promise.all([
+    Order.find(filter)
+      .populate("user", "name email phone")
+      .populate("cashier", "name email")
+      .select("-serverCalculations -bnpcCaps")
+      .sort(sort)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean(),
+    Order.countDocuments(filter),
+  ]);
+
+  return {
+    orders,
+    pagination: {
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      pages: Math.ceil(total / parseInt(limit)),
+    },
+  };
+}
+
 module.exports = {
   confirmOrder,
   getOrders,
+  getAllOrdersAdmin,
 };

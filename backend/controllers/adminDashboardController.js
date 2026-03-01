@@ -56,6 +56,12 @@ exports.getPromotionAnalytics = controllerWrapper((request) => {
   return adminDashboardService.getPromotionAnalytics({ startDate, endDate });
 });
 
+// Returns Analytics
+exports.getReturnAnalytics = controllerWrapper((request) => {
+  const { startDate, endDate } = request.query;
+  return adminDashboardService.getReturnAnalytics({ startDate, endDate });
+});
+
 // Activity Logs
 exports.getActivityLogs = controllerWrapper((request) => {
   const { limit, page, userId, action, status } = request.query;

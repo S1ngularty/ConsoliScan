@@ -4,6 +4,7 @@ const User = require("../models/userModel");
 const ActivityLog = require("../models/activityLogsModel");
 const Category = require("../models/categoryModel");
 const Promo = require("../models/promoModel");
+const Return = require("../models/ReturnModel");
 const Cart = require("../models/cartModel");
 const CheckoutQueue = require("../models/checkoutQueueModel");
 
@@ -736,6 +737,104 @@ const getPromotionAnalytics = async (params = {}) => {
   }
 };
 
+// ==================== RETURNS ANALYTICS ====================
+const getReturnAnalytics = async (params = {}) => {
+  try {
+    const { startDate, endDate } = params;
+
+    const dateFilter = {};
+    if (startDate || endDate) {
+      dateFilter.initiatedAt = {};
+      if (startDate) dateFilter.initiatedAt.$gte = new Date(startDate);
+      if (endDate) {
+        const endDateObj = new Date(endDate);
+        endDateObj.setDate(endDateObj.getDate() + 1);
+        endDateObj.setHours(0, 0, 0, 0);
+        dateFilter.initiatedAt.$lt = endDateObj;
+      }
+    }
+
+    const [returns, statusBreakdown, fulfillmentBreakdown, summaryAgg] =
+      await Promise.all([
+        Return.find(dateFilter)
+          .populate("customerId", "name email")
+          .populate("orderId", "checkoutCode confirmedAt")
+          .sort({ initiatedAt: -1 })
+          .lean(),
+        Return.aggregate([
+          { $match: dateFilter },
+          {
+            $group: {
+              _id: "$status",
+              count: { $sum: 1 },
+              totalValue: { $sum: "$originalPrice" },
+            },
+          },
+          { $sort: { count: -1 } },
+        ]),
+        Return.aggregate([
+          { $match: dateFilter },
+          {
+            $group: {
+              _id: "$fulfillmentType",
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { count: -1 } },
+        ]),
+        Return.aggregate([
+          { $match: dateFilter },
+          {
+            $group: {
+              _id: null,
+              totalReturns: { $sum: 1 },
+              totalReturnedValue: { $sum: "$originalPrice" },
+              avgReturnValue: { $avg: "$originalPrice" },
+            },
+          },
+        ]),
+      ]);
+
+    const summary = summaryAgg[0] || {
+      totalReturns: 0,
+      totalReturnedValue: 0,
+      avgReturnValue: 0,
+    };
+
+    const statusMap = statusBreakdown.reduce((acc, curr) => {
+      acc[curr._id] = curr.count;
+      return acc;
+    }, {});
+
+    const completedReturns = statusMap.COMPLETED || 0;
+    const rejectedReturns = statusMap.REJECTED || 0;
+    const cancelledReturns = statusMap.CANCELLED || 0;
+    const pendingReturns =
+      (statusMap.PENDING || 0) +
+      (statusMap.VALIDATED || 0) +
+      (statusMap.INSPECTED || 0);
+
+    return {
+      summary: {
+        ...summary,
+        completedReturns,
+        rejectedReturns,
+        cancelledReturns,
+        pendingReturns,
+        completionRate:
+          summary.totalReturns > 0
+            ? (completedReturns / summary.totalReturns) * 100
+            : 0,
+      },
+      statusBreakdown,
+      fulfillmentBreakdown,
+      data: returns,
+    };
+  } catch (error) {
+    throw new Error(`Failed to get return analytics: ${error.message}`);
+  }
+};
+
 // ==================== ACTIVITY LOGS ====================
 const getActivityLogs = async (params = {}) => {
   try {
@@ -811,6 +910,7 @@ const getComprehensiveReport = async (params = {}) => {
       orders,
       inventory,
       promotions,
+      returns,
       queue,
     ] = await Promise.all([
       getDashboardSummary(),
@@ -821,6 +921,7 @@ const getComprehensiveReport = async (params = {}) => {
       getOrderAnalytics(params),
       getInventoryAnalytics(),
       getPromotionAnalytics(),
+      getReturnAnalytics(params),
       getCheckoutQueueAnalytics(),
     ]);
 
@@ -834,6 +935,7 @@ const getComprehensiveReport = async (params = {}) => {
       orderAnalytics: orders,
       inventoryAnalytics: inventory,
       promotionAnalytics: promotions,
+      returnAnalytics: returns,
       checkoutQueueStatus: queue,
     };
   } catch (error) {
@@ -852,6 +954,7 @@ module.exports = {
   getOrderAnalytics,
   getInventoryAnalytics,
   getPromotionAnalytics,
+  getReturnAnalytics,
   getActivityLogs,
   getCheckoutQueueAnalytics,
   getComprehensiveReport,

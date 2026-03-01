@@ -195,3 +195,24 @@ export async function getActivityLogs(params = {}) {
     throw error;
   }
 }
+
+// Get returns report data
+export async function getReturnsReport(params = {}) {
+  try {
+    const { startDate, endDate } = params;
+    const response = await axios.get("/api/v1/admin/analytics/returns", {
+      params: {
+        startDate,
+        endDate,
+      },
+    });
+
+    return {
+      ...response.data,
+      data: response.data?.result?.data || [],
+    };
+  } catch (error) {
+    console.error("Error fetching returns report:", error);
+    throw error;
+  }
+}
