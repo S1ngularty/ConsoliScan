@@ -9,7 +9,7 @@ export async function getMe() {
   try {
     const result = await axios.post(`api/v1/me`);
     if (!result) throw new Error("failed to get current user");
-    return result.data.user;
+    return result.data.result;
   } catch (error) {
     return null;
   }

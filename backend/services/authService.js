@@ -74,11 +74,12 @@ exports.login = async (request, response) => {
 exports.verifyToken = async (request) => {
   const { user } = request;
   let eligibilityStatus = null;
+  const userData = await User.findById(user.userId);
   if (user.role === "user") {
     eligibilityStatus = await Eligible.findOne({ user: user.userId });
   }
 
-  return { user, eligibilityStatus };
+  return { user: userData, eligibilityStatus };
 };
 
 exports.googleAuth = async (request, response) => {

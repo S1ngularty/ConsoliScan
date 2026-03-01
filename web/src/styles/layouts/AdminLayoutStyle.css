@@ -17,7 +17,7 @@
 
 /* ConsoliScan Theme Top Nav */
 .admin-top-nav {
-  height: 64px;
+  min-height: 64px;
   background-color: #ffffff;
   border-bottom: 1px solid #eef0f2;
   display: flex;

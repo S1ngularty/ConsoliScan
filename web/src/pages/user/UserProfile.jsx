@@ -62,16 +62,15 @@ const UserProfile = () => {
 
       if (userData) {
         setUser({
-          _id: userData._id,
-          firstName: userData.firstName || '',
-          lastName: userData.lastName || '',
-          email: userData.email || '',
-          phoneNumber: userData.phoneNumber || '',
-          avatar: userData.avatar?.url || 'https://via.placeholder.com/150',
-          role: userData.role
+          _id: userData.user._id,
+          firstName: userData.user.name || '',
+          email: userData.user.email || '',
+          phoneNumber: userData.user.phoneNumber || '',
+          avatar: userData.user.avatar?.url || 'https://via.placeholder.com/150',
+          role: userData.user.role
         });
       }
-
+      console.log("userData:", userData);
       if (homeData) {
         // Infer status from homeData or user object if available
         // Assuming homeData.is_eligibility_verified is boolean

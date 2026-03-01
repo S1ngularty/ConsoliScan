@@ -71,8 +71,8 @@ const OrderHistory = () => {
 
   // Calculations for Stats
   const totalSpent = filteredOrders.reduce((sum, o) => sum + (o.finalAmountPaid || 0), 0);
-  const totalPoints = filteredOrders.reduce((sum, o) => sum + (o.loyaltyDiscount?.pointsEarned || o.pointsEarned || 0), 0);
-
+  const totalPoints = filteredOrders.reduce((sum, o) => sum + Number(o.loyaltyDiscount?.pointsEarned || o.pointsEarned || 0), 0).toFixed(2);
+  // console.log("Total Spent:", totalSpent, "Total Points:", totalPoints);  
   if (loading) {
     return <div className="loading-state">Loading orders...</div>;
   }
@@ -91,7 +91,7 @@ const OrderHistory = () => {
           <span className="stat-label">Total Spent</span>
         </div>
         <div className="stat-card">
-          <span className="stat-value">{totalPoints.toLocaleString()}</span>
+          <span className="stat-value">{Number(totalPoints).toFixed(2)}</span>
           <span className="stat-label">Points Earned</span>
         </div>
         <div className="stat-card">
