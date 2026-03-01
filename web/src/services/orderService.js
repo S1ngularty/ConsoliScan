@@ -72,3 +72,32 @@ export async function downloadReceipt(orderId, checkoutCode) {
     throw error;
   }
 }
+
+/**
+ * Download orders report PDF with filters
+ * @param {Object} params - Filter parameters
+ * @param {string} params.status - Filter by order status
+ * @param {string} params.customerType - Filter by customer type
+ * @param {string} params.startDate - Filter from date
+ * @param {string} params.endDate - Filter to date
+ * @param {string} params.search - Search by checkout code
+ * @returns {Promise<Blob>} PDF blob
+ */
+export async function downloadOrdersReport(params = {}) {
+  try {
+    const response = await axios.get("/api/v1/admin/reports/orders/pdf", {
+      params: {
+        status: params.status,
+        customerType: params.customerType,
+        startDate: params.startDate,
+        endDate: params.endDate,
+        search: params.search,
+      },
+      responseType: "blob",
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error downloading orders report:", error);
+    throw error;
+  }
+}

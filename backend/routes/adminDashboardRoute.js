@@ -66,6 +66,10 @@ router.get(
 const orderController = require("../controllers/orderController");
 router.get("/orders", orderController.getAllOrdersAdmin);
 
+// Generate orders PDF report
+// Query params: status, customerType, startDate, endDate, search
+router.get("/reports/orders/pdf", orderController.generateReportPDF);
+
 // ==================== ACTIVITY & LOGS ====================
 
 // Activity Logs

@@ -7,6 +7,7 @@ import {
   TextField,
   MenuItem,
   IconButton,
+  Button,
   Collapse,
   Table,
   TableBody,
@@ -24,7 +25,11 @@ import {
 } from "lucide-react";
 
 import "../../styles/admin/OrderPageStyle.css";
-import { getAllOrders, downloadReceipt } from "../../services/orderService";
+import {
+  getAllOrders,
+  downloadReceipt,
+  downloadOrdersReport,
+} from "../../services/orderService";
 import Toast from "../../components/common/SnackbarComponent";
 
 const OrderPage = () => {
@@ -117,6 +122,32 @@ const OrderPage = () => {
       showToast("Receipt downloaded successfully");
     } catch (error) {
       showToast("Failed to download receipt", "error");
+    }
+  };
+
+  const handleDownloadReport = async () => {
+    try {
+      showToast("Generating report...");
+      const blob = await downloadOrdersReport({
+        status: filters.status,
+        customerType: filters.customerType,
+        startDate: filters.startDate,
+        endDate: filters.endDate,
+        search: filters.search,
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `orders-report-${new Date().getTime()}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      showToast("Report downloaded successfully");
+    } catch (error) {
+      console.error("Error downloading report:", error);
+      showToast("Failed to download report", "error");
     }
   };
 
@@ -566,6 +597,23 @@ const OrderPage = () => {
             View and manage all sales orders and transactions
           </Typography>
         </Box>
+        <Button
+          variant="contained"
+          startIcon={<Download size={18} />}
+          onClick={handleDownloadReport}
+          sx={{
+            backgroundColor: "#00A86B",
+            textTransform: "none",
+            fontWeight: 600,
+            padding: "8px 20px",
+            borderRadius: "8px",
+            "&:hover": {
+              backgroundColor: "#008f5b",
+            },
+          }}
+        >
+          Download Report
+        </Button>
       </Box>
 
       <Box className="filters-section">
