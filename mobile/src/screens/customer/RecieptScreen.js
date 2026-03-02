@@ -13,11 +13,10 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 
 const ReceiptScreen = ({ route, navigation }) => {
   const { orderId, checkoutCode, orderData, cashier } = route.params || {};
-  
+
   // Use the provided data or fallback
   const receiptData = orderData || {};
-  // console.log(receiptData)
-  
+  console.log("Receipt Data:", receiptData);
   // Format date
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -50,11 +49,20 @@ const ReceiptScreen = ({ route, navigation }) => {
   // Calculate amounts from your data structure
   const amounts = {
     subtotal: receiptData.baseAmount || 0,
-    totalDiscount:
+    bnpcDiscount:
       receiptData.bnpcDiscount?.total ||
       receiptData.seniorPwdDiscountAmount ||
       0,
+    promoDiscount: receiptData.promoDiscount?.amount || 0,
+    loyaltyDiscount: receiptData.loyaltyDiscount?.amount || 0,
     voucherDiscount: receiptData.voucherDiscount || 0,
+    totalDiscount:
+      (receiptData.bnpcDiscount?.total ||
+        receiptData.seniorPwdDiscountAmount ||
+        0) +
+      (receiptData.promoDiscount?.amount || 0) +
+      (receiptData.loyaltyDiscount?.amount || 0) +
+      (receiptData.voucherDiscount || 0),
     finalTotal: receiptData.finalAmountPaid || 0,
     cashReceived: receiptData.cashTransaction?.cashReceived || 0,
     changeDue: receiptData.cashTransaction?.changeDue || 0,
@@ -90,8 +98,18 @@ const ReceiptScreen = ({ route, navigation }) => {
       
       Subtotal: ₱${amounts.subtotal.toFixed(2)}
       ${
-        amounts.totalDiscount > 0
-          ? `BNPC Discount: -₱${amounts.totalDiscount.toFixed(2)}`
+        amounts.bnpcDiscount > 0
+          ? `BNPC Discount: -₱${amounts.bnpcDiscount.toFixed(2)}`
+          : ""
+      }
+      ${
+        amounts.promoDiscount > 0
+          ? `Promo Discount: -₱${amounts.promoDiscount.toFixed(2)}`
+          : ""
+      }
+      ${
+        amounts.loyaltyDiscount > 0
+          ? `Loyalty Discount: -₱${amounts.loyaltyDiscount.toFixed(2)}`
           : ""
       }
       ${
@@ -119,12 +137,11 @@ const ReceiptScreen = ({ route, navigation }) => {
   };
 
   const handleDone = () => {
-    if(receiptData.user){
-      navigation.navigate("HomeTabs",{
-      screen:"Home"
-    })
-    }
-    else{
+    if (receiptData.user) {
+      navigation.navigate("HomeTabs", {
+        screen: "Home",
+      });
+    } else {
       navigation.navigate("Home");
     }
   };
@@ -228,7 +245,7 @@ const ReceiptScreen = ({ route, navigation }) => {
                   <Text style={styles.itemName} numberOfLines={2}>
                     {item.name || `Item ${index + 1}`}
                   </Text>
-                  {item.isGroceryDiscountEligible && (
+                  {item.isBNPCEligible && (
                     <Text style={styles.bnpcTag}>BNPC</Text>
                   )}
                 </View>
@@ -258,13 +275,39 @@ const ReceiptScreen = ({ route, navigation }) => {
               </Text>
             </View>
 
-            {amounts.totalDiscount > 0 && (
+            {amounts.bnpcDiscount > 0 && (
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>
                   BNPC Discount ({customerType.toUpperCase()})
                 </Text>
                 <Text style={[styles.totalValue, styles.discountValue]}>
-                  -₱{amounts.totalDiscount.toFixed(2)}
+                  -₱{amounts.bnpcDiscount.toFixed(2)}
+                </Text>
+              </View>
+            )}
+
+            {amounts.promoDiscount > 0 && (
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>
+                  Promo Discount{" "}
+                  {receiptData.promoDiscount?.code
+                    ? `(${receiptData.promoDiscount.code})`
+                    : ""}
+                </Text>
+                <Text style={[styles.totalValue, styles.discountValue]}>
+                  -₱{amounts.promoDiscount.toFixed(2)}
+                </Text>
+              </View>
+            )}
+
+            {amounts.loyaltyDiscount > 0 && (
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>
+                  Loyalty Points ({receiptData.loyaltyDiscount?.pointsUsed || 0}{" "}
+                  pts)
+                </Text>
+                <Text style={[styles.totalValue, styles.discountValue]}>
+                  -₱{amounts.loyaltyDiscount.toFixed(2)}
                 </Text>
               </View>
             )}
@@ -329,7 +372,7 @@ const ReceiptScreen = ({ route, navigation }) => {
               <View style={styles.bnpcRow}>
                 <Text style={styles.bnpcLabel}>Discount Applied</Text>
                 <Text style={styles.bnpcValue}>
-                  ₱{amounts.totalDiscount.toFixed(2)}
+                  ₱{amounts.bnpcDiscount.toFixed(2)}
                 </Text>
               </View>
               <View style={styles.bnpcDivider} />
@@ -374,7 +417,9 @@ const ReceiptScreen = ({ route, navigation }) => {
         )}
 
         {/* Points Earned */}
-        {receiptData.pointsEarned > 0 && (
+        {(receiptData.pointsEarned > 0 ||
+          receiptData.loyaltyDiscount?.pointsEarned > 0 ||
+          receiptData.loyaltyDiscount?.pointsUsed > 0) && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name="trophy" size={16} color="#374151" />
@@ -382,17 +427,23 @@ const ReceiptScreen = ({ route, navigation }) => {
             </View>
 
             <View style={styles.pointsBox}>
-              <View style={styles.pointsRow}>
-                <Text style={styles.pointsLabel}>Points Earned</Text>
-                <Text style={styles.pointsValue}>
-                  +{receiptData.pointsEarned}
-                </Text>
-              </View>
-              {receiptData.pointsUsed > 0 && (
+              {receiptData.loyaltyDiscount?.pointsUsed > 0 && (
                 <View style={styles.pointsRow}>
                   <Text style={styles.pointsLabel}>Points Used</Text>
                   <Text style={[styles.pointsValue, styles.pointsUsed]}>
-                    -{receiptData.pointsUsed}
+                    -{receiptData.loyaltyDiscount.pointsUsed}
+                  </Text>
+                </View>
+              )}
+              {(receiptData.pointsEarned > 0 ||
+                receiptData.loyaltyDiscount?.pointsEarned > 0) && (
+                <View style={styles.pointsRow}>
+                  <Text style={styles.pointsLabel}>Points Earned</Text>
+                  <Text style={styles.pointsValue}>
+                    +
+                    {receiptData.pointsEarned ||
+                      receiptData.loyaltyDiscount?.pointsEarned ||
+                      0}
                   </Text>
                 </View>
               )}
