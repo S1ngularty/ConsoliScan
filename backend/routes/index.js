@@ -13,6 +13,12 @@ const cashier = require("./cashierRoute");
 const adminDashboard = require("./adminDashboardRoute");
 const savedItems = require("./savedItemsRoute");
 const returns = require("./returnRoute");
+const expense = require("./expenseRoute");
+const supplier = require("./supplierRoute");
+const stockMovement = require("./stockMovementRoute");
+const purchaseOrder = require("./purchaseOrderRoute");
+const storeSettings = require("./storeSettingsRoute");
+const bulkOperations = require("./bulkOperationsRoute");
 
 module.exports = {
   product,
@@ -30,4 +36,10 @@ module.exports = {
   adminDashboard,
   savedItems,
   returns,
+  expense,
+  supplier,
+  stockMovement,
+  purchaseOrder,
+  storeSettings,
+  bulkOperations,
 };

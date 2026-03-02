@@ -1,0 +1,396 @@
+.bulk-operations-page {
+  padding: 24px;
+  max-width: 1600px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: #f9fafb;
+}
+
+.page-header {
+  margin-bottom: 32px;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-icon {
+  color: #5c6f2b;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 28px;
+  color: #1f2937;
+  font-weight: 700;
+}
+
+.page-header p {
+  margin: 4px 0 0 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* Operations Grid */
+.operations-grid {
+  display: grid;
+  grid-template-columns: 280px 1fr 320px;
+  gap: 24px;
+}
+
+/* Operation Selector */
+.operation-selector {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid #e5e7eb;
+  height: fit-content;
+}
+
+.operation-selector h3 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.operation-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.operation-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.operation-btn:hover {
+  border-color: #5c6f2b;
+  background: #f9fafb;
+}
+
+.operation-btn.active {
+  border-color: #5c6f2b;
+  background: #f0f9ff;
+  color: #5c6f2b;
+}
+
+.operation-btn.danger {
+  color: #dc2626;
+}
+
+.operation-btn.danger:hover {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+
+.operation-btn.danger.active {
+  border-color: #dc2626;
+  background: #fee2e2;
+}
+
+/* Operation Form */
+.operation-form {
+  background: white;
+  border-radius: 12px;
+  padding: 32px;
+  border: 1px solid #e5e7eb;
+}
+
+.form-section {
+  margin-bottom: 24px;
+}
+
+.form-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 20px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.form-section h3 svg {
+  color: #5c6f2b;
+}
+
+.form-section.danger-section h3 svg {
+  color: #dc2626;
+}
+
+.form-section label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.form-section input,
+.form-section select,
+.form-section textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.form-section input:focus,
+.form-section select:focus,
+.form-section textarea:focus {
+  outline: none;
+  border-color: #5c6f2b;
+  box-shadow: 0 0 0 3px rgba(92, 111, 43, 0.1);
+}
+
+.form-section textarea {
+  resize: vertical;
+}
+
+.help-text {
+  margin: 8px 0 0 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.info-text {
+  margin: 0 0 20px 0;
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.submit-btn {
+  width: 100%;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, #5c6f2b 0%, #7a8f3a 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 20px;
+}
+
+.submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(92, 111, 43, 0.3);
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.submit-btn.danger {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+}
+
+.submit-btn.danger:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+/* Warning Box */
+.warning-box {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  background: #fef2f2;
+  border: 2px solid #fee2e2;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.warning-box svg {
+  color: #dc2626;
+  flex-shrink: 0;
+}
+
+.warning-box strong {
+  display: block;
+  color: #991b1b;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.warning-box p {
+  margin: 0;
+  color: #7f1d1d;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Export/Import Info */
+.export-info,
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  color: #065f46;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.export-info svg,
+.file-info svg {
+  color: #10b981;
+  flex-shrink: 0;
+}
+
+/* File Upload */
+.file-upload {
+  margin-bottom: 16px;
+}
+
+.file-upload input[type="file"] {
+  display: none;
+}
+
+.file-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 20px;
+  background: #f9fafb;
+  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.file-label:hover {
+  border-color: #5c6f2b;
+  background: #f0f9ff;
+  color: #5c6f2b;
+}
+
+/* Tips Section */
+.tips-section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid #e5e7eb;
+  height: fit-content;
+}
+
+.tips-section h3 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.tips-section ul {
+  margin: 0;
+  padding-left: 20px;
+  list-style: none;
+}
+
+.tips-section li {
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.6;
+  position: relative;
+  padding-left: 12px;
+}
+
+.tips-section li::before {
+  content: "→";
+  position: absolute;
+  left: -8px;
+  color: #5c6f2b;
+  font-weight: 700;
+}
+
+.tips-section li strong {
+  color: #1f2937;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 2px;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .operations-grid {
+    grid-template-columns: 250px 1fr;
+  }
+
+  .tips-section {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 768px) {
+  .bulk-operations-page {
+    padding: 16px;
+  }
+
+  .page-header h1 {
+    font-size: 24px;
+  }
+
+  .operations-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .operation-selector {
+    order: 1;
+  }
+
+  .operation-form {
+    order: 2;
+  }
+
+  .tips-section {
+    order: 3;
+    grid-column: span 1;
+  }
+
+  .operation-buttons {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .operation-btn {
+    flex: 1;
+    min-width: 140px;
+  }
+
+  .operation-form {
+    padding: 24px;
+  }
+}

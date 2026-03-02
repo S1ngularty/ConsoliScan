@@ -1,5 +1,8 @@
 const adminDashboardService = require("../services/adminDashboardService");
 const controllerWrapper = require("../utils/controllerWrapper");
+const {
+  generateComprehensiveReportPDF,
+} = require("../utils/comprehensiveReportGenerator");
 
 // Dashboard Summary
 exports.getDashboardSummary = controllerWrapper(
@@ -56,6 +59,12 @@ exports.getPromotionAnalytics = controllerWrapper((request) => {
   return adminDashboardService.getPromotionAnalytics({ startDate, endDate });
 });
 
+// Returns Analytics
+exports.getReturnAnalytics = controllerWrapper((request) => {
+  const { startDate, endDate } = request.query;
+  return adminDashboardService.getReturnAnalytics({ startDate, endDate });
+});
+
 // Activity Logs
 exports.getActivityLogs = controllerWrapper((request) => {
   const { limit, page, userId, action, status } = request.query;
@@ -79,5 +88,53 @@ exports.getComprehensiveReport = controllerWrapper((request) => {
   return adminDashboardService.getComprehensiveReport({
     startDate,
     endDate,
+  });
+});
+
+// Generate Comprehensive Report PDF
+exports.generateComprehensiveReportPDF = generateComprehensiveReportPDF;
+
+// Staff Performance Analytics
+exports.getStaffPerformanceAnalytics = controllerWrapper((request) => {
+  const { startDate, endDate, limit } = request.query;
+  return adminDashboardService.getStaffPerformanceAnalytics({
+    startDate,
+    endDate,
+    limit: limit ? parseInt(limit) : 10,
+  });
+});
+
+// Customer Insights
+exports.getCustomerInsights = controllerWrapper((request) => {
+  const { limit } = request.query;
+  return adminDashboardService.getCustomerInsights({
+    limit: limit ? parseInt(limit) : 10,
+  });
+});
+
+// Product Performance Analytics
+exports.getProductPerformanceAnalytics = controllerWrapper((request) => {
+  const { startDate, endDate, limit } = request.query;
+  return adminDashboardService.getProductPerformanceAnalytics({
+    startDate,
+    endDate,
+    limit: limit ? parseInt(limit) : 20,
+  });
+});
+
+// Financial Reports
+exports.getFinancialReports = controllerWrapper((request) => {
+  const { startDate, endDate } = request.query;
+  return adminDashboardService.getFinancialReports({
+    startDate,
+    endDate,
+  });
+});
+
+// Predictive Analytics
+exports.getPredictiveAnalytics = controllerWrapper((request) => {
+  const { forecastDays } = request.query;
+  return adminDashboardService.getPredictiveAnalytics({
+    forecastDays: forecastDays ? parseInt(forecastDays) : 30,
   });
 });

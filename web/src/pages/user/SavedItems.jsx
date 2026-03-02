@@ -15,7 +15,7 @@ const SavedItems = () => {
     try {
       setLoading(true);
       const data = await fetchSavedItems();
-      setItems(data || []);
+      setItems(data.items || []);
     } catch (error) {
       console.error("Failed to load saved items:", error);
     } finally {
@@ -38,7 +38,7 @@ const SavedItems = () => {
             <div key={item._id} className="saved-item-card">
               <div className="item-image-container">
                 <img 
-                  src={item.product?.image?.url || 'https://via.placeholder.com/200'} 
+                  src={item.images[0]?.url || 'https://via.placeholder.com/200'} 
                   alt={item.product?.name} 
                   className="item-image"
                 />
@@ -47,11 +47,11 @@ const SavedItems = () => {
                 </button>
               </div>
               <div className="item-details">
-                <h3 className="item-name">{item.product?.name}</h3>
-                <span className="item-price">₱{item.product?.price?.toFixed(2)}</span>
+                <h3 className="item-name">{item?.name}</h3>
+                <span className="item-price">₱{item?.price?.toFixed(2)}</span>
                 
                 <button className="add-to-cart-btn">
-                  <ShoppingBag size={18} /> Add to Cart
+                  <ShoppingBag size={18} /> View Product
                 </button>
               </div>
             </div>
