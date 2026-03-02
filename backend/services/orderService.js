@@ -64,17 +64,19 @@ async function confirmOrder(request) {
     throw error;
   }
 
-  // Blockchain logging
-  try {
-    const blockchainResult =  blockchainService.logConfirmedOrder(order);
-    if (blockchainResult?.txId && blockchainResult?.hash) {
-      order.blockchainTxId = blockchainResult.txId;
-      order.blockchainHash = blockchainResult.hash;
-      await order.save();
-    }
-  } catch (error) {
-    console.error("Blockchain logging failed:", error);
-  }
+  // Blockchain logging - run as side effect without blocking
+  blockchainService
+    .logConfirmedOrder(order)
+    .then((blockchainResult) => {
+      if (blockchainResult?.txId && blockchainResult?.hash) {
+        order.blockchainTxId = blockchainResult.txId;
+        order.blockchainHash = blockchainResult.hash;
+        return order.save();
+      }
+    })
+    .catch((error) => {
+      console.error("Blockchain logging failed:", error);
+    });
   // Cleanup
   await CheckoutQueue.findByIdAndDelete(orderId);
 

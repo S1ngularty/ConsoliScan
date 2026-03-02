@@ -361,7 +361,7 @@ const OrderSummaryScreen = ({ route, navigation }) => {
           </View>
 
           {/* Items List */}
-          <View style={styles.itemsList}>
+          <ScrollView style={styles.itemsList}>
             {(orderDetails?.items || transactionData?.items || []).map(
               (item, index) => (
                 <View key={index} style={styles.itemRow}>
@@ -387,7 +387,7 @@ const OrderSummaryScreen = ({ route, navigation }) => {
                 </View>
               ),
             )}
-          </View>
+          </ScrollView>
         </View>
 
         {/* Amounts Breakdown */}
@@ -510,22 +510,6 @@ const OrderSummaryScreen = ({ route, navigation }) => {
                   0
                 ).toFixed(2)}
               </Text>
-            </View>
-
-            {/* Cash & Change */}
-            <View style={styles.cashSection}>
-              <View style={styles.cashRow}>
-                <Text style={styles.cashLabel}>Cash Received</Text>
-                <Text style={styles.cashValue}>
-                  ₱{(transactionData.amounts?.cashReceived || 0).toFixed(2)}
-                </Text>
-              </View>
-              <View style={styles.cashRow}>
-                <Text style={styles.cashLabel}>Change Due</Text>
-                <Text style={[styles.cashValue, styles.changeValue]}>
-                  ₱{(transactionData.amounts?.changeDue || 0).toFixed(2)}
-                </Text>
-              </View>
             </View>
           </View>
         </View>
@@ -975,31 +959,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
     color: "#111827",
-  },
-  cashSection: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 6,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  cashRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  cashLabel: {
-    fontSize: 14,
-    color: "#6B7280",
-  },
-  cashValue: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#374151",
-  },
-  changeValue: {
-    color: "#059669",
   },
   capsGrid: {
     backgroundColor: "#F0F9FF",

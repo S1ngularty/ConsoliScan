@@ -186,8 +186,9 @@ const OrderCard = ({
     order.items?.filter((i) => i.status === "RETURNED").length || 0;
   const exchangedCount =
     order.items?.filter((i) => i.status === "EXCHANGED").length || 0;
-  const pointsEarned =
-    order.loyaltyDiscount?.pointsEarned || order.pointsEarned || 0;
+  const pointsEarned = Math.round(
+    Number(order.loyaltyDiscount?.pointsEarned || order.pointsEarned || 0),
+  );
 
   return (
     <Animated.View
@@ -480,9 +481,10 @@ const OrderDetailsModal = ({
     order.discountBreakdown?.promo || order.promoDiscount?.amount || 0;
   const loyaltyDiscount =
     order.discountBreakdown?.loyalty || order.loyaltyDiscount?.amount || 0;
-  const pointsUsed = order.loyaltyDiscount?.pointsUsed || 0;
-  const pointsEarned =
-    order.loyaltyDiscount?.pointsEarned || order.pointsEarned || 0;
+  const pointsUsed = Math.round(Number(order.loyaltyDiscount?.pointsUsed || 0));
+  const pointsEarned = Math.round(
+    Number(order.loyaltyDiscount?.pointsEarned || order.pointsEarned || 0),
+  );
   const isDownloading = downloadingId === order._id;
   const isConfirmed = order.status === "CONFIRMED";
 
@@ -1039,9 +1041,12 @@ const OrderHistoryScreen = ({ navigation }) => {
     totalSpent: formatPrice(
       filteredOrders.reduce((s, o) => s + (o.finalAmountPaid || 0), 0),
     ),
-    totalPoints: filteredOrders.reduce(
-      (s, o) => s + (o.loyaltyDiscount?.pointsEarned || o.pointsEarned || 0),
-      0,
+    totalPoints: Math.round(
+      filteredOrders.reduce(
+        (s, o) =>
+          s + Number(o.loyaltyDiscount?.pointsEarned || o.pointsEarned || 0),
+        0,
+      ),
     ),
     avgTransaction:
       filteredOrders.length > 0

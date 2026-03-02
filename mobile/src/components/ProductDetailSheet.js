@@ -16,12 +16,15 @@ import {
   removeFromSaved,
   checkIsSaved,
 } from "../api/savedItems.api";
+import netUtil from "../utils/netUtil";
+import { useDispatch, useSelector } from "react-redux";
 
 const ProductDetailSheet = ({ product, onConfirm, onCancel }) => {
   const [quantity, setQuantity] = useState(1);
   const [isSaved, setIsSaved] = useState(false);
   const [savingLoading, setSavingLoading] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(true);
+  const userState = useSelector((state) => state.user);
 
   const imageUrl = product?.images?.[0]?.url;
   const secondaryImage = product?.images?.[1]?.url;
@@ -30,6 +33,14 @@ const ProductDetailSheet = ({ product, onConfirm, onCancel }) => {
   useEffect(() => {
     const checkSavedStatus = async () => {
       try {
+        if (
+          userState?.role !== "customer" ||
+          !userState?.user ||
+          !netUtil.isConnected()
+        ) {
+          setIsSaved(false);
+          return;
+        }
         setCheckingStatus(true);
         const result = await checkIsSaved(product?._id);
         setIsSaved(result.isSaved);
