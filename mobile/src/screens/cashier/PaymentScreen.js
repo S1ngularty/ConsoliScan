@@ -220,9 +220,7 @@ const PaymentScreen = ({ route, navigation }) => {
 
   // Calculate remaining caps
   const remainingDiscountCap = safeNumber(WEEKLY_CAP - bookletUsed);
-  const remainingPurchaseCap = safeNumber(
-    PURCHASE_CAP - bnpcEligibleSubtotal,
-  );
+  const remainingPurchaseCap = safeNumber(PURCHASE_CAP - bnpcEligibleSubtotal);
 
   // Final totals - properly calculated and rounded
   const finalTotal = safeNumber(
