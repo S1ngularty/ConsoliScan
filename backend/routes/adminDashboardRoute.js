@@ -59,6 +59,41 @@ router.get(
   adminDashboardController.getCheckoutQueueAnalytics,
 );
 
+// Staff Performance Analytics
+// Query params: startDate, endDate, limit
+router.get(
+  "/analytics/staff-performance",
+  adminDashboardController.getStaffPerformanceAnalytics,
+);
+
+// Customer Insights
+// Query params: limit
+router.get(
+  "/analytics/customer-insights",
+  adminDashboardController.getCustomerInsights,
+);
+
+// Product Performance Analytics
+// Query params: startDate, endDate, limit
+router.get(
+  "/analytics/product-performance",
+  adminDashboardController.getProductPerformanceAnalytics,
+);
+
+// Financial Reports
+// Query params: startDate, endDate
+router.get(
+  "/analytics/financial-reports",
+  adminDashboardController.getFinancialReports,
+);
+
+// Predictive Analytics
+// Query params: forecastDays (default 30)
+router.get(
+  "/analytics/predictive",
+  adminDashboardController.getPredictiveAnalytics,
+);
+
 // ==================== ORDERS MANAGEMENT ====================
 
 // Get all orders with filtering

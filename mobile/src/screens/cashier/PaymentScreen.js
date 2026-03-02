@@ -22,6 +22,12 @@ const PaymentScreen = ({ route, navigation }) => {
   console.log("PaymentScreen checkoutData:", checkoutData);
   console.log(appUser);
 
+  // Safe number conversion - always round to 2 decimal places
+  const safeNumber = (val) => {
+    const num = parseFloat(val) || 0;
+    return isNaN(num) ? 0 : parseFloat(num.toFixed(2));
+  };
+
   // Extract all data from checkout payload
   const userEligibility = checkoutData?.userEligibility || {};
   const {
@@ -75,10 +81,12 @@ const PaymentScreen = ({ route, navigation }) => {
 
   // Get weekly usage from system
   const weeklyUsageSnapshot = checkoutData?.weeklyUsageSnapshot || {};
-  const systemBookletUsedBefore =
-    weeklyUsageSnapshot.discountUsed || currentUsage?.discountUsed || 0;
-  const systemPurchaseUsedBefore =
-    weeklyUsageSnapshot.bnpcAmountUsed || currentUsage?.purchasedUsed || 0;
+  const systemBookletUsedBefore = safeNumber(
+    weeklyUsageSnapshot.discountUsed || currentUsage?.discountUsed,
+  );
+  const systemPurchaseUsedBefore = safeNumber(
+    weeklyUsageSnapshot.bnpcAmountUsed || currentUsage?.purchasedUsed,
+  );
   const systemWeekStartUsage =
     weeklyUsageSnapshot.weekStart || currentUsage?.weekStart;
   const systemWeekEndUsage =
@@ -86,43 +94,45 @@ const PaymentScreen = ({ route, navigation }) => {
 
   // Get totals from server calculation
   const totals = checkoutData?.totals || {};
-  const subtotal = totals.subtotal || 0;
-  const bnpcEligibleSubtotal =
-    totals.bnpcEligibleSubtotal || systemBnpcEligibleSubtotal || 0;
-  const bnpcDiscount = totals.bnpcDiscount || 0;
-  const promoDiscount = totals.promoDiscount || 0;
-  const loyaltyDiscount = totals.loyaltyDiscount || 0;
-  const finalTotalFromServer = totals.finalTotal || subtotal;
-
-  // Get discount breakdown
-  const discountBreakdown = checkoutData?.discountBreakdown || {};
-  const serverBnpcDiscount = discountBreakdown.bnpcDiscount || bnpcDiscount;
-  const serverPromoDiscount = discountBreakdown.promoDiscount || promoDiscount;
-  const serverLoyaltyDiscount =
-    discountBreakdown.loyaltyDiscount || loyaltyDiscount;
+  const subtotal = safeNumber(totals.subtotal);
+  const bnpcEligibleSubtotal = safeNumber(
+    totals.bnpcEligibleSubtotal || systemBnpcEligibleSubtotal,
+  );
+  const serverBnpcDiscount = safeNumber(
+    totals.bnpcDiscount || checkoutData?.discountBreakdown?.bnpcDiscount,
+  );
+  const serverPromoDiscount = safeNumber(
+    totals.promoDiscount || checkoutData?.discountBreakdown?.promoDiscount,
+  );
+  const serverLoyaltyDiscount = safeNumber(
+    totals.loyaltyDiscount || checkoutData?.discountBreakdown?.loyaltyDiscount,
+  );
 
   // Get promo data
   const promoData = checkoutData?.promo || {};
   const hasPromo = promoData && Object.keys(promoData).length > 0;
   const promoCode = promoData?.code || "";
-  const promoDiscountAmount = promoData?.discountAmount || serverPromoDiscount;
+  const promoDiscountAmount = safeNumber(
+    promoData?.discountAmount || serverPromoDiscount,
+  );
 
   // Get loyalty points data
   const loyaltyPointsData = checkoutData?.loyaltyPoints || {};
   const hasLoyaltyPoints =
     loyaltyPointsData && Object.keys(loyaltyPointsData).length > 0;
-  const loyaltyPointsUsed = loyaltyPointsData?.pointsUsed || 0;
-  const loyaltyDiscountAmount =
-    loyaltyPointsData?.discountAmount || serverLoyaltyDiscount;
+  const loyaltyPointsUsed = safeNumber(loyaltyPointsData?.pointsUsed) || 0;
+  const loyaltyDiscountAmount = safeNumber(
+    loyaltyPointsData?.discountAmount || serverLoyaltyDiscount,
+  );
 
-  const pointsEarned = checkoutData?.pointsEarned || 0;
+  const pointsEarned = safeNumber(checkoutData?.pointsEarned);
 
   // Get BNPC products for display
   const bnpcProducts = checkoutData?.bnpcProducts || [];
   const hasBNPCProducts = bnpcProducts.length > 0;
 
   // Get voucher (legacy)
-  const voucher = checkoutData?.voucher?.discountAmount || 0;
+  const voucher = safeNumber(checkoutData?.voucher?.discountAmount);
 
   // State for cashier inputs
   const [bookletUsedInput, setBookletUsedInput] = useState(
@@ -132,8 +142,10 @@ const PaymentScreen = ({ route, navigation }) => {
   );
   const [bookletUpdated, setBookletUpdated] = useState(false); // New checkbox state
 
-  // Parse inputs
-  const bookletUsed = Math.min(parseFloat(bookletUsedInput) || 0, WEEKLY_CAP);
+  // Parse inputs - safely convert to number and round
+  const bookletUsed = safeNumber(
+    Math.min(parseFloat(bookletUsedInput) || 0, WEEKLY_CAP),
+  );
 
   // Manual verification state (for cashier override) - AUTO SET FOR APP USERS
   const [manualVerification, setManualVerification] = useState({
@@ -194,9 +206,10 @@ const PaymentScreen = ({ route, navigation }) => {
 
     if (!isEligibleForDiscount || bnpcEligibleSubtotal === 0) return 0;
 
-    const discountAmount = bnpcEligibleSubtotal * 0.05;
-    const remainingDiscountCap = WEEKLY_CAP - bookletUsed;
-    return Math.min(discountAmount, remainingDiscountCap);
+    const discountAmount = safeNumber(bnpcEligibleSubtotal * 0.05);
+    const remainingDiscountCap = WEEKLY_CAP - safeNumber(bookletUsed);
+    const cappedDiscount = Math.min(discountAmount, remainingDiscountCap);
+    return safeNumber(Math.max(cappedDiscount, 0));
   }, [
     manualVerification,
     systemVerified,
@@ -206,17 +219,21 @@ const PaymentScreen = ({ route, navigation }) => {
   ]);
 
   // Calculate remaining caps
-  const remainingDiscountCap = Math.max(WEEKLY_CAP - bookletUsed, 0);
-  const remainingPurchaseCap = Math.max(PURCHASE_CAP - bnpcEligibleSubtotal, 0);
+  const remainingDiscountCap = safeNumber(WEEKLY_CAP - bookletUsed);
+  const remainingPurchaseCap = safeNumber(
+    PURCHASE_CAP - bnpcEligibleSubtotal,
+  );
 
-  // Final totals
-  const finalTotal = Math.max(
-    subtotal -
-      fivePercentDiscount -
-      promoDiscountAmount -
-      loyaltyDiscountAmount -
-      voucher,
-    0,
+  // Final totals - properly calculated and rounded
+  const finalTotal = safeNumber(
+    Math.max(
+      subtotal -
+        fivePercentDiscount -
+        promoDiscountAmount -
+        loyaltyDiscountAmount -
+        voucher,
+      0,
+    ),
   );
 
   const handleManualVerify = (type) => {
@@ -428,11 +445,13 @@ const PaymentScreen = ({ route, navigation }) => {
             : "manual";
 
       // Calculate updated weekly usage (for booklet)
-      const newDiscountUsed =
+      const newDiscountUsed = safeNumber(
         systemBookletUsedBefore +
-        (fivePercentDiscount > 0 ? fivePercentDiscount : 0);
-      const newPurchaseUsed =
-        systemPurchaseUsedBefore + (bnpcEligibleSubtotal || 0);
+          (fivePercentDiscount > 0 ? fivePercentDiscount : 0),
+      );
+      const newPurchaseUsed = safeNumber(
+        systemPurchaseUsedBefore + (bnpcEligibleSubtotal || 0),
+      );
 
       // Create comprehensive transaction log
       const transactionLog = {
@@ -465,11 +484,12 @@ const PaymentScreen = ({ route, navigation }) => {
           loyaltyDiscount: loyaltyDiscountAmount,
           loyaltyPointsUsed: loyaltyPointsUsed,
           voucherDiscount: voucher,
-          totalDiscount:
+          totalDiscount: safeNumber(
             fivePercentDiscount +
-            promoDiscountAmount +
-            loyaltyDiscountAmount +
-            voucher,
+              promoDiscountAmount +
+              loyaltyDiscountAmount +
+              voucher,
+          ),
           finalTotal,
           finalAmountPaid: finalTotal,
         },
