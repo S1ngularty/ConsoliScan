@@ -49,11 +49,61 @@ router.get(
   adminDashboardController.getPromotionAnalytics,
 );
 
+// Returns Analytics
+// Query params: startDate, endDate
+router.get("/analytics/returns", adminDashboardController.getReturnAnalytics);
+
 // Checkout Queue Analytics
 router.get(
   "/analytics/checkout-queue",
   adminDashboardController.getCheckoutQueueAnalytics,
 );
+
+// Staff Performance Analytics
+// Query params: startDate, endDate, limit
+router.get(
+  "/analytics/staff-performance",
+  adminDashboardController.getStaffPerformanceAnalytics,
+);
+
+// Customer Insights
+// Query params: limit
+router.get(
+  "/analytics/customer-insights",
+  adminDashboardController.getCustomerInsights,
+);
+
+// Product Performance Analytics
+// Query params: startDate, endDate, limit
+router.get(
+  "/analytics/product-performance",
+  adminDashboardController.getProductPerformanceAnalytics,
+);
+
+// Financial Reports
+// Query params: startDate, endDate
+router.get(
+  "/analytics/financial-reports",
+  adminDashboardController.getFinancialReports,
+);
+
+// Predictive Analytics
+// Query params: forecastDays (default 30)
+router.get(
+  "/analytics/predictive",
+  adminDashboardController.getPredictiveAnalytics,
+);
+
+// ==================== ORDERS MANAGEMENT ====================
+
+// Get all orders with filtering
+// Query params: status, customerType, startDate, endDate, search, page, limit, sortBy, sortOrder
+const orderController = require("../controllers/orderController");
+router.get("/orders", orderController.getAllOrdersAdmin);
+
+// Generate orders PDF report
+// Query params: status, customerType, startDate, endDate, search
+router.get("/reports/orders/pdf", orderController.generateReportPDF);
 
 // ==================== ACTIVITY & LOGS ====================
 
@@ -68,6 +118,13 @@ router.get("/logs/activity", adminDashboardController.getActivityLogs);
 router.get(
   "/reports/comprehensive",
   adminDashboardController.getComprehensiveReport,
+);
+
+// Generate comprehensive report PDF
+// Query params: timeRange (days, default: 30)
+router.get(
+  "/reports/comprehensive/pdf",
+  adminDashboardController.generateComprehensiveReportPDF,
 );
 
 module.exports = router;

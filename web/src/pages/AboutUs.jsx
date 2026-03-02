@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
-import Navbar from "../components/home components/Navbar";
-import Footer from "../components/home components/Footer";
-import ChatBot from "../components/home components/ChatBot";
+import Navbar from "../components/homeComponents/Navbar";
+import Footer from "../components/homeComponents/Footer";
+import ChatBot from "../components/homeComponents/ChatBot";
 import "../styles/css/global.css";
 import "../styles/css/aboutUs.css";
 import egoImage from "../styles/assets/Ego.png";

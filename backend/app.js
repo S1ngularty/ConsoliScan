@@ -19,6 +19,12 @@ const {
   adminDashboard,
   savedItems,
   returns,
+  expense,
+  supplier,
+  stockMovement,
+  purchaseOrder,
+  storeSettings,
+  bulkOperations,
 } = require("./routes/index");
 const productModel = require("./models/productModel");
 
@@ -28,6 +34,7 @@ const allowedOrigins = [
   "http://localhost:8081",
   "http://192.168.1.11:5173",
   "https://your-backend-name.onrender.com",
+  "https://consoli-scan.vercel.app",
 ];
 
 app.use(
@@ -66,5 +73,11 @@ app.use("/api/v1", loyalty);
 app.use("/api/v1/returns", returns);
 app.use("/api/v1", cashier);
 app.use("/api/v1/admin", adminDashboard);
+app.use("/api/v1/admin/expenses", expense);
+app.use("/api/v1/admin/suppliers", supplier);
+app.use("/api/v1/admin/stock-movements", stockMovement);
+app.use("/api/v1/admin/purchase-orders", purchaseOrder);
+app.use("/api/v1/admin/settings", storeSettings);
+app.use("/api/v1/admin/bulk-operations", bulkOperations);
 
 module.exports = app;

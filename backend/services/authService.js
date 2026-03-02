@@ -34,6 +34,7 @@ exports.register = async (request) => {
 
 exports.login = async (request, response) => {
   const { email, password } = request.body;
+  console.log(password)
   let userData = await User.findOne({ email }).select(
     "+password role email name status",
   );
@@ -45,7 +46,7 @@ exports.login = async (request, response) => {
   if (userData.role === "user") {
     eligibilityStatus = await Eligible.findOne({ user: userData._id });
   }
-
+  console.log(password, userData.password)
   const isMatched = await bcrypt.compare(password, userData.password);
   if (!isMatched) throw new Error("password does not match");
   const jwtToken = await userData.getToken();
@@ -78,10 +79,12 @@ exports.verifyToken = async (request) => {
   if (!user) throw new Error("User not found");
 
   let eligibilityStatus = null;
+  const userData = await User.findById(user.userId);
   if (user.role === "user") {
     eligibilityStatus = await Eligible.findOne({ user: userId });
   }
 
+<<<<<<< HEAD
   return { 
     user: {
       userId: user._id,
@@ -97,6 +100,9 @@ exports.verifyToken = async (request) => {
     }, 
     eligibilityStatus 
   };
+=======
+  return { user: userData, eligibilityStatus };
+>>>>>>> f1f5a560020538d3bee7db82edb012244b8ae487
 };
 
 exports.googleAuth = async (request, response) => {

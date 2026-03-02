@@ -4,6 +4,7 @@ const User = require("../models/userModel");
 const ActivityLog = require("../models/activityLogsModel");
 const Category = require("../models/categoryModel");
 const Promo = require("../models/promoModel");
+const Return = require("../models/ReturnModel");
 const Cart = require("../models/cartModel");
 const CheckoutQueue = require("../models/checkoutQueueModel");
 
@@ -736,6 +737,104 @@ const getPromotionAnalytics = async (params = {}) => {
   }
 };
 
+// ==================== RETURNS ANALYTICS ====================
+const getReturnAnalytics = async (params = {}) => {
+  try {
+    const { startDate, endDate } = params;
+
+    const dateFilter = {};
+    if (startDate || endDate) {
+      dateFilter.initiatedAt = {};
+      if (startDate) dateFilter.initiatedAt.$gte = new Date(startDate);
+      if (endDate) {
+        const endDateObj = new Date(endDate);
+        endDateObj.setDate(endDateObj.getDate() + 1);
+        endDateObj.setHours(0, 0, 0, 0);
+        dateFilter.initiatedAt.$lt = endDateObj;
+      }
+    }
+
+    const [returns, statusBreakdown, fulfillmentBreakdown, summaryAgg] =
+      await Promise.all([
+        Return.find(dateFilter)
+          .populate("customerId", "name email")
+          .populate("orderId", "checkoutCode confirmedAt")
+          .sort({ initiatedAt: -1 })
+          .lean(),
+        Return.aggregate([
+          { $match: dateFilter },
+          {
+            $group: {
+              _id: "$status",
+              count: { $sum: 1 },
+              totalValue: { $sum: "$originalPrice" },
+            },
+          },
+          { $sort: { count: -1 } },
+        ]),
+        Return.aggregate([
+          { $match: dateFilter },
+          {
+            $group: {
+              _id: "$fulfillmentType",
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { count: -1 } },
+        ]),
+        Return.aggregate([
+          { $match: dateFilter },
+          {
+            $group: {
+              _id: null,
+              totalReturns: { $sum: 1 },
+              totalReturnedValue: { $sum: "$originalPrice" },
+              avgReturnValue: { $avg: "$originalPrice" },
+            },
+          },
+        ]),
+      ]);
+
+    const summary = summaryAgg[0] || {
+      totalReturns: 0,
+      totalReturnedValue: 0,
+      avgReturnValue: 0,
+    };
+
+    const statusMap = statusBreakdown.reduce((acc, curr) => {
+      acc[curr._id] = curr.count;
+      return acc;
+    }, {});
+
+    const completedReturns = statusMap.COMPLETED || 0;
+    const rejectedReturns = statusMap.REJECTED || 0;
+    const cancelledReturns = statusMap.CANCELLED || 0;
+    const pendingReturns =
+      (statusMap.PENDING || 0) +
+      (statusMap.VALIDATED || 0) +
+      (statusMap.INSPECTED || 0);
+
+    return {
+      summary: {
+        ...summary,
+        completedReturns,
+        rejectedReturns,
+        cancelledReturns,
+        pendingReturns,
+        completionRate:
+          summary.totalReturns > 0
+            ? (completedReturns / summary.totalReturns) * 100
+            : 0,
+      },
+      statusBreakdown,
+      fulfillmentBreakdown,
+      data: returns,
+    };
+  } catch (error) {
+    throw new Error(`Failed to get return analytics: ${error.message}`);
+  }
+};
+
 // ==================== ACTIVITY LOGS ====================
 const getActivityLogs = async (params = {}) => {
   try {
@@ -811,6 +910,7 @@ const getComprehensiveReport = async (params = {}) => {
       orders,
       inventory,
       promotions,
+      returns,
       queue,
     ] = await Promise.all([
       getDashboardSummary(),
@@ -821,6 +921,7 @@ const getComprehensiveReport = async (params = {}) => {
       getOrderAnalytics(params),
       getInventoryAnalytics(),
       getPromotionAnalytics(),
+      getReturnAnalytics(params),
       getCheckoutQueueAnalytics(),
     ]);
 
@@ -834,12 +935,714 @@ const getComprehensiveReport = async (params = {}) => {
       orderAnalytics: orders,
       inventoryAnalytics: inventory,
       promotionAnalytics: promotions,
+      returnAnalytics: returns,
       checkoutQueueStatus: queue,
     };
   } catch (error) {
     throw new Error(
       `Failed to generate comprehensive report: ${error.message}`,
     );
+  }
+};
+
+// ==================== STAFF PERFORMANCE ANALYTICS ====================
+const getStaffPerformanceAnalytics = async (params = {}) => {
+  try {
+    const { startDate, endDate, limit = 10 } = params;
+
+    let dateFilter = {};
+    if (startDate || endDate) {
+      dateFilter.createdAt = {};
+      if (startDate) dateFilter.createdAt.$gte = new Date(startDate);
+      if (endDate) dateFilter.createdAt.$lte = new Date(endDate);
+    }
+
+    // Cashier performance by orders processed
+    const cashierPerformance = await Order.aggregate([
+      {
+        $match: {
+          ...dateFilter,
+          status: { $in: ["CONFIRMED", "COMPLETED"] },
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "cashier",
+          foreignField: "_id",
+          as: "cashier",
+        },
+      },
+      { $unwind: { path: "$cashier", preserveNullAndEmptyArrays: true } },
+      {
+        $group: {
+          _id: "$cashier._id",
+          cashierName: { $first: "$cashier.name" },
+          cashierEmail: { $first: "$cashier.email" },
+          totalOrders: { $sum: 1 },
+          totalRevenue: { $sum: "$finalAmountPaid" },
+          avgOrderValue: { $avg: "$finalAmountPaid" },
+        },
+      },
+      { $sort: { totalRevenue: -1 } },
+      { $limit: parseInt(limit) },
+    ]);
+
+    // Activity logs by user
+    const userActivityCount = await ActivityLog.aggregate([
+      { $match: dateFilter },
+      {
+        $group: {
+          _id: "$user",
+          activityCount: { $sum: 1 },
+        },
+      },
+      { $sort: { activityCount: -1 } },
+      { $limit: parseInt(limit) },
+      {
+        $lookup: {
+          from: "users",
+          localField: "_id",
+          foreignField: "_id",
+          as: "userInfo",
+        },
+      },
+      { $unwind: "$userInfo" },
+      {
+        $project: {
+          userId: "$_id",
+          userName: "$userInfo.name",
+          role: "$userInfo.role",
+          activityCount: 1,
+        },
+      },
+    ]);
+
+    return {
+      cashierPerformance,
+      userActivityCount,
+    };
+  } catch (error) {
+    throw new Error(
+      `Failed to get staff performance analytics: ${error.message}`,
+    );
+  }
+};
+
+// ==================== CUSTOMER INSIGHTS ====================
+const getCustomerInsights = async (params = {}) => {
+  try {
+    const { limit = 10 } = params;
+
+    // Customer Lifetime Value (CLV)
+    const customerCLV = await Order.aggregate([
+      {
+        $match: { status: { $in: ["CONFIRMED", "COMPLETED"] } },
+      },
+      {
+        $group: {
+          _id: "$user",
+          totalSpent: { $sum: "$finalAmountPaid" },
+          orderCount: { $sum: 1 },
+          avgOrderValue: { $avg: "$finalAmountPaid" },
+          firstPurchase: { $min: "$createdAt" },
+          lastPurchase: { $max: "$createdAt" },
+        },
+      },
+      { $sort: { totalSpent: -1 } },
+      { $limit: parseInt(limit) },
+      {
+        $lookup: {
+          from: "users",
+          localField: "_id",
+          foreignField: "_id",
+          as: "customer",
+        },
+      },
+      { $unwind: { path: "$customer", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          customerId: "$_id",
+          customerName: "$customer.name",
+          customerEmail: "$customer.email",
+          customerType: "$customer.customerType",
+          totalSpent: 1,
+          orderCount: 1,
+          avgOrderValue: 1,
+          firstPurchase: 1,
+          lastPurchase: 1,
+        },
+      },
+    ]);
+
+    // Customer segmentation
+    const customerSegmentation = await User.aggregate([
+      {
+        $match: { role: "user", status: "active" },
+      },
+      {
+        $group: {
+          _id: "$customerType",
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { count: -1 } },
+    ]);
+
+    // Purchase frequency
+    const purchaseFrequency = await Order.aggregate([
+      {
+        $match: { status: { $in: ["CONFIRMED", "COMPLETED"] } },
+      },
+      {
+        $group: {
+          _id: "$user",
+          orderCount: { $sum: 1 },
+        },
+      },
+      {
+        $group: {
+          _id: "$orderCount",
+          customerCount: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    // New vs returning customers (last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const newCustomers = await User.countDocuments({
+      role: "user",
+      createdAt: { $gte: thirtyDaysAgo },
+    });
+
+    const returningCustomers = await Order.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: thirtyDaysAgo },
+          status: { $in: ["CONFIRMED", "COMPLETED"] },
+        },
+      },
+      {
+        $group: {
+          _id: "$user",
+          orderCount: { $sum: 1 },
+        },
+      },
+      {
+        $match: { orderCount: { $gt: 1 } },
+      },
+      {
+        $count: "total",
+      },
+    ]);
+
+    return {
+      topCustomers: customerCLV,
+      segmentation: customerSegmentation,
+      purchaseFrequency,
+      newCustomersLast30Days: newCustomers,
+      returningCustomersLast30Days: returningCustomers[0]?.total || 0,
+    };
+  } catch (error) {
+    throw new Error(`Failed to get customer insights: ${error.message}`);
+  }
+};
+
+// ==================== PRODUCT PERFORMANCE ANALYTICS ====================
+const getProductPerformanceAnalytics = async (params = {}) => {
+  try {
+    const { startDate, endDate, limit = 20 } = params;
+
+    let dateFilter = {};
+    if (startDate || endDate) {
+      dateFilter.createdAt = {};
+      if (startDate) dateFilter.createdAt.$gte = new Date(startDate);
+      if (endDate) dateFilter.createdAt.$lte = new Date(endDate);
+    }
+
+    // Slow-moving inventory (low sales, high stock)
+    const slowMoving = await Product.aggregate([
+      {
+        $match: {
+          deletedAt: null,
+          stock: { $gt: 0 },
+        },
+      },
+      {
+        $lookup: {
+          from: "orders",
+          let: { productId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                ...dateFilter,
+                status: { $in: ["CONFIRMED", "COMPLETED"] },
+              },
+            },
+            { $unwind: "$items" },
+            {
+              $match: {
+                $expr: { $eq: ["$items.product", "$$productId"] },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                totalSold: { $sum: "$items.quantity" },
+              },
+            },
+          ],
+          as: "salesData",
+        },
+      },
+      {
+        $addFields: {
+          totalSold: {
+            $ifNull: [{ $arrayElemAt: ["$salesData.totalSold", 0] }, 0],
+          },
+        },
+      },
+      {
+        $match: {
+          totalSold: { $lt: 5 }, // Less than 5 units sold
+        },
+      },
+      {
+        $project: {
+          name: 1,
+          sku: 1,
+          stock: 1,
+          price: 1,
+          totalSold: 1,
+          stockValue: { $multiply: ["$stock", "$price"] },
+        },
+      },
+      { $sort: { stockValue: -1 } },
+      { $limit: parseInt(limit) },
+    ]);
+
+    // Fast-moving products
+    const fastMoving = await Order.aggregate([
+      {
+        $match: {
+          ...dateFilter,
+          status: { $in: ["CONFIRMED", "COMPLETED"] },
+        },
+      },
+      { $unwind: "$items" },
+      {
+        $group: {
+          _id: "$items.product",
+          totalSold: { $sum: "$items.quantity" },
+          totalRevenue: { $sum: "$items.subtotal" },
+        },
+      },
+      { $sort: { totalSold: -1 } },
+      { $limit: parseInt(limit) },
+      {
+        $lookup: {
+          from: "products",
+          localField: "_id",
+          foreignField: "_id",
+          as: "product",
+        },
+      },
+      { $unwind: "$product" },
+      {
+        $project: {
+          productId: "$_id",
+          productName: "$product.name",
+          sku: "$product.sku",
+          currentStock: "$product.stock",
+          totalSold: 1,
+          totalRevenue: 1,
+        },
+      },
+    ]);
+
+    // Product profitability (if cost is available)
+    const profitability = await Order.aggregate([
+      {
+        $match: {
+          ...dateFilter,
+          status: { $in: ["CONFIRMED", "COMPLETED"] },
+        },
+      },
+      { $unwind: "$items" },
+      {
+        $lookup: {
+          from: "products",
+          localField: "items.product",
+          foreignField: "_id",
+          as: "productInfo",
+        },
+      },
+      { $unwind: "$productInfo" },
+      {
+        $addFields: {
+          cost: { $ifNull: ["$productInfo.cost", 0] },
+          profit: {
+            $subtract: [
+              "$items.subtotal",
+              {
+                $multiply: [
+                  "$items.quantity",
+                  { $ifNull: ["$productInfo.cost", 0] },
+                ],
+              },
+            ],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: "$items.product",
+          productName: { $first: "$productInfo.name" },
+          sku: { $first: "$productInfo.sku" },
+          totalRevenue: { $sum: "$items.subtotal" },
+          totalProfit: { $sum: "$profit" },
+          unitsSold: { $sum: "$items.quantity" },
+        },
+      },
+      {
+        $addFields: {
+          profitMargin: {
+            $cond: [
+              { $gt: ["$totalRevenue", 0] },
+              {
+                $multiply: [
+                  { $divide: ["$totalProfit", "$totalRevenue"] },
+                  100,
+                ],
+              },
+              0,
+            ],
+          },
+        },
+      },
+      { $sort: { totalProfit: -1 } },
+      { $limit: parseInt(limit) },
+    ]);
+
+    return {
+      slowMoving,
+      fastMoving,
+      profitability,
+    };
+  } catch (error) {
+    throw new Error(
+      `Failed to get product performance analytics: ${error.message}`,
+    );
+  }
+};
+
+// ==================== FINANCIAL REPORTS ====================
+const getFinancialReports = async (params = {}) => {
+  try {
+    const { startDate, endDate } = params;
+
+    let dateFilter = {};
+    if (startDate || endDate) {
+      dateFilter.createdAt = {};
+      if (startDate) dateFilter.createdAt.$gte = new Date(startDate);
+      if (endDate) dateFilter.createdAt.$lte = new Date(endDate);
+    }
+
+    // Payment method breakdown
+    const paymentBreakdown = await Order.aggregate([
+      {
+        $match: {
+          ...dateFilter,
+          status: { $in: ["CONFIRMED", "COMPLETED"] },
+        },
+      },
+      {
+        $group: {
+          _id: "$paymentMethod",
+          totalAmount: { $sum: "$finalAmountPaid" },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { totalAmount: -1 } },
+    ]);
+
+    // Profit margin analysis
+    const profitMargin = await Order.aggregate([
+      {
+        $match: {
+          ...dateFilter,
+          status: { $in: ["CONFIRMED", "COMPLETED"] },
+        },
+      },
+      { $unwind: "$items" },
+      {
+        $lookup: {
+          from: "products",
+          localField: "items.product",
+          foreignField: "_id",
+          as: "productInfo",
+        },
+      },
+      { $unwind: { path: "$productInfo", preserveNullAndEmptyArrays: true } },
+      {
+        $addFields: {
+          itemCost: {
+            $multiply: [
+              "$items.quantity",
+              { $ifNull: ["$productInfo.cost", 0] },
+            ],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: "$items.subtotal" },
+          totalCost: { $sum: "$itemCost" },
+          totalDiscount: {
+            $sum: { $ifNull: ["$discountBreakdown.total", 0] },
+          },
+        },
+      },
+      {
+        $project: {
+          totalRevenue: 1,
+          totalCost: 1,
+          totalDiscount: 1,
+          grossProfit: { $subtract: ["$totalRevenue", "$totalCost"] },
+          profitMargin: {
+            $cond: [
+              { $gt: ["$totalRevenue", 0] },
+              {
+                $multiply: [
+                  {
+                    $divide: [
+                      { $subtract: ["$totalRevenue", "$totalCost"] },
+                      "$totalRevenue",
+                    ],
+                  },
+                  100,
+                ],
+              },
+              0,
+            ],
+          },
+        },
+      },
+    ]);
+
+    // Daily cash flow
+    const dailyCashFlow = await Order.aggregate([
+      {
+        $match: {
+          ...dateFilter,
+          status: { $in: ["CONFIRMED", "COMPLETED"] },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: "$createdAt" },
+            month: { $month: "$createdAt" },
+            day: { $dayOfMonth: "$createdAt" },
+          },
+          totalRevenue: { $sum: "$finalAmountPaid" },
+          orderCount: { $sum: 1 },
+        },
+      },
+      { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } },
+    ]);
+
+    return {
+      paymentBreakdown,
+      profitMargin: profitMargin[0] || {
+        totalRevenue: 0,
+        totalCost: 0,
+        grossProfit: 0,
+        profitMargin: 0,
+      },
+      dailyCashFlow,
+    };
+  } catch (error) {
+    throw new Error(`Failed to get financial reports: ${error.message}`);
+  }
+};
+
+// ==================== PREDICTIVE ANALYTICS ====================
+const getPredictiveAnalytics = async (params = {}) => {
+  try {
+    const { forecastDays = 30 } = params;
+
+    // Get historical sales data (last 90 days)
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+    const historicalSales = await Order.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: ninetyDaysAgo },
+          status: { $in: ["CONFIRMED", "COMPLETED"] },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: "$createdAt" },
+            month: { $month: "$createdAt" },
+            day: { $dayOfMonth: "$createdAt" },
+          },
+          dailyRevenue: { $sum: "$finalAmountPaid" },
+          orderCount: { $sum: 1 },
+        },
+      },
+      { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } },
+    ]);
+
+    // Simple moving average for forecast
+    const recentData = historicalSales.slice(-30);
+    const avgDailyRevenue =
+      recentData.reduce((sum, day) => sum + day.dailyRevenue, 0) /
+      recentData.length;
+    const avgDailyOrders =
+      recentData.reduce((sum, day) => sum + day.orderCount, 0) /
+      recentData.length;
+
+    const forecast = {
+      avgDailyRevenue: avgDailyRevenue || 0,
+      avgDailyOrders: avgDailyOrders || 0,
+      projectedMonthlyRevenue: (avgDailyRevenue || 0) * forecastDays,
+      projectedMonthlyOrders: Math.round((avgDailyOrders || 0) * forecastDays),
+    };
+
+    // Inventory reorder recommendations
+    const reorderRecommendations = await Product.aggregate([
+      {
+        $match: {
+          deletedAt: null,
+          stock: { $gt: 0 },
+        },
+      },
+      {
+        $lookup: {
+          from: "orders",
+          let: { productId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                createdAt: { $gte: ninetyDaysAgo },
+                status: { $in: ["CONFIRMED", "COMPLETED"] },
+              },
+            },
+            { $unwind: "$items" },
+            {
+              $match: {
+                $expr: { $eq: ["$items.product", "$$productId"] },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                totalSold: { $sum: "$items.quantity" },
+              },
+            },
+          ],
+          as: "salesData",
+        },
+      },
+      {
+        $addFields: {
+          totalSold: {
+            $ifNull: [{ $arrayElemAt: ["$salesData.totalSold", 0] }, 0],
+          },
+          avgDailySales: {
+            $divide: [
+              { $ifNull: [{ $arrayElemAt: ["$salesData.totalSold", 0] }, 0] },
+              90,
+            ],
+          },
+          daysOfStockRemaining: {
+            $cond: [
+              {
+                $gt: [
+                  {
+                    $ifNull: [{ $arrayElemAt: ["$salesData.totalSold", 0] }, 0],
+                  },
+                  0,
+                ],
+              },
+              {
+                $divide: [
+                  "$stock",
+                  {
+                    $divide: [
+                      {
+                        $ifNull: [
+                          { $arrayElemAt: ["$salesData.totalSold", 0] },
+                          0,
+                        ],
+                      },
+                      90,
+                    ],
+                  },
+                ],
+              },
+              9999,
+            ],
+          },
+        },
+      },
+      {
+        $match: {
+          daysOfStockRemaining: { $lt: forecastDays },
+        },
+      },
+      {
+        $project: {
+          name: 1,
+          sku: 1,
+          stock: 1,
+          avgDailySales: 1,
+          daysOfStockRemaining: 1,
+          recommendedOrderQty: {
+            $ceil: {
+              $multiply: ["$avgDailySales", forecastDays],
+            },
+          },
+        },
+      },
+      { $sort: { daysOfStockRemaining: 1 } },
+      { $limit: 20 },
+    ]);
+
+    // Peak hours analysis
+    const peakHours = await Order.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: ninetyDaysAgo },
+          status: { $in: ["CONFIRMED", "COMPLETED"] },
+        },
+      },
+      {
+        $group: {
+          _id: { $hour: "$createdAt" },
+          orderCount: { $sum: 1 },
+          avgRevenue: { $avg: "$finalAmountPaid" },
+        },
+      },
+      { $sort: { orderCount: -1 } },
+    ]);
+
+    return {
+      forecast,
+      reorderRecommendations,
+      peakHours,
+      historicalTrend: historicalSales,
+    };
+  } catch (error) {
+    throw new Error(`Failed to get predictive analytics: ${error.message}`);
   }
 };
 
@@ -852,7 +1655,13 @@ module.exports = {
   getOrderAnalytics,
   getInventoryAnalytics,
   getPromotionAnalytics,
+  getReturnAnalytics,
   getActivityLogs,
   getCheckoutQueueAnalytics,
   getComprehensiveReport,
+  getStaffPerformanceAnalytics,
+  getCustomerInsights,
+  getProductPerformanceAnalytics,
+  getFinancialReports,
+  getPredictiveAnalytics,
 };

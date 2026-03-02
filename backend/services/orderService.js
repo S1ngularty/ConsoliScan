@@ -9,6 +9,7 @@ const {
   managePoints,
   promoUpdateUsage,
 } = require("../helper/discountValidator");
+const PDFDocument = require("pdfkit");
 
 async function confirmOrder(request) {
   if (!request.body) throw new Error("empty content request");
@@ -63,12 +64,19 @@ async function confirmOrder(request) {
     throw error;
   }
 
-  // Blockchain logging
-  const blockchainResult = await blockchainService.logConfirmedOrder(order);
-  order.blockchainTxId = blockchainResult.txId;
-  order.blockchainHash = blockchainResult.hash;
-  await order.save();
-
+  // Blockchain logging - run as side effect without blocking
+  blockchainService
+    .logConfirmedOrder(order)
+    .then((blockchainResult) => {
+      if (blockchainResult?.txId && blockchainResult?.hash) {
+        order.blockchainTxId = blockchainResult.txId;
+        order.blockchainHash = blockchainResult.hash;
+        return order.save();
+      }
+    })
+    .catch((error) => {
+      console.error("Blockchain logging failed:", error);
+    });
   // Cleanup
   await CheckoutQueue.findByIdAndDelete(orderId);
 
@@ -119,7 +127,130 @@ async function getOrders(request) {
   return orderList;
 }
 
+/**
+ * Get all orders for admin with filtering, sorting, and population
+ */
+async function getAllOrdersAdmin(request) {
+  const {
+    status,
+    customerType,
+    startDate,
+    endDate,
+    search,
+    page = 1,
+    limit = 50,
+    sortBy = "confirmedAt",
+    sortOrder = "desc",
+  } = request.query;
+
+  // Build filter
+  const filter = {};
+
+  if (status) {
+    filter.status = status;
+  }
+
+  if (customerType) {
+    filter.customerType = customerType;
+  }
+
+  if (startDate || endDate) {
+    filter.confirmedAt = {};
+    if (startDate) filter.confirmedAt.$gte = new Date(startDate);
+    if (endDate) filter.confirmedAt.$lte = new Date(endDate);
+  }
+
+  if (search) {
+    filter.$or = [{ checkoutCode: { $regex: search, $options: "i" } }];
+  }
+
+  // Calculate pagination
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const sort = { [sortBy]: sortOrder === "desc" ? -1 : 1 };
+
+  // Execute query
+  const [orders, total] = await Promise.all([
+    Order.find(filter)
+      .populate("user", "name email phone")
+      .populate("cashier", "name email")
+      .select("-serverCalculations -bnpcCaps")
+      .sort(sort)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean(),
+    Order.countDocuments(filter),
+  ]);
+
+  return {
+    orders,
+    pagination: {
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      pages: Math.ceil(total / parseInt(limit)),
+    },
+  };
+}
+
+/**
+ * Generate PDF report of orders with statistics
+ */
+async function generateOrdersReport(request) {
+  const { status, customerType, startDate, endDate, search } = request.query;
+
+  // Build filter
+  const filter = {};
+  if (status) filter.status = status;
+  if (customerType) filter.customerType = customerType;
+  if (startDate || endDate) {
+    filter.confirmedAt = {};
+    if (startDate) filter.confirmedAt.$gte = new Date(startDate);
+    if (endDate) filter.confirmedAt.$lte = new Date(endDate);
+  }
+  if (search) {
+    filter.$or = [{ checkoutCode: { $regex: search, $options: "i" } }];
+  }
+
+  // Fetch all filtered orders
+  const orders = await Order.find(filter)
+    .populate("user", "name email phone")
+    .populate("cashier", "name email")
+    .sort({ confirmedAt: -1 })
+    .lean();
+
+  // Calculate statistics
+  const stats = {
+    totalOrders: orders.length,
+    totalRevenue: 0,
+    totalDiscount: 0,
+    byStatus: {},
+    byCustomerType: {},
+    byPaymentMethod: {},
+  };
+
+  orders.forEach((order) => {
+    // Ensure numeric conversion
+    const finalAmount = parseFloat(order.finalAmountPaid) || 0;
+    const discountTotal = parseFloat(order.discountBreakdown?.total) || 0;
+
+    stats.totalRevenue += finalAmount;
+    stats.totalDiscount += discountTotal;
+
+    // Count by status
+    const st = order.status || "UNKNOWN";
+    stats.byStatus[st] = (stats.byStatus[st] || 0) + 1;
+
+    // Count by customer type
+    const ct = order.customerType || "regular";
+    stats.byCustomerType[ct] = (stats.byCustomerType[ct] || 0) + 1;
+  });
+
+  return { orders, stats, filter };
+}
+
 module.exports = {
   confirmOrder,
   getOrders,
+  getAllOrdersAdmin,
+  generateOrdersReport,
 };

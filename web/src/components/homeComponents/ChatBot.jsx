@@ -8,8 +8,7 @@ import {
   ArrowLeft,
   Info,
 } from "lucide-react";
-import "../../styles/css/Chatbot.css";
-
+import "../../styles/css/chatBotStyle.css"
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
