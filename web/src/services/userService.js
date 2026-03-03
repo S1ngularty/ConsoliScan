@@ -48,11 +48,13 @@ export async function getUser(id = "") {
 }
 
 export async function updateProfile(id = "", data = {}) {
+  
   try {
     const isUpdated = await axios.put(`api/v1/profile/user/${id}`, data);
+  
     if (!isUpdated) throw new Error("failed to update the user profile");
-    const data = isUpdated.data.result;
-    return data;
+    const updateData = isUpdated.data.result;
+    return updateData;
   } catch (error) {
     return error;
   }

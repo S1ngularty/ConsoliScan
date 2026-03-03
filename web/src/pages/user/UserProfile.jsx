@@ -424,30 +424,23 @@ const UserProfile = () => {
               </div>
             </div>
 
-            <div className="modal-footer">
-              <button 
-                className="cancel-btn" 
-                onClick={() => setShowEligibilityModal(false)}
-                disabled={applicationLoading}
-              >
-                Cancel
-              </button>
-              <button 
-                className="submit-btn" 
-                onClick={submitApplication}
-                disabled={applicationLoading}
-              >
-                {applicationLoading ? (
-                  <>
-                    <Loader2 size={18} className="animate-spin" /> Submitting...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle size={18} /> Submit Application
-                  </>
-                )}
-              </button>
-            </div>
+         <div className="modal-footer">
+  <button 
+    className="submit-btn" 
+    onClick={submitApplication}
+    disabled={applicationLoading}
+  >
+    {applicationLoading ? (
+      <>
+        <Loader2 size={18} className="animate-spin" /> Submitting...
+      </>
+    ) : (
+      <>
+        <CheckCircle size={18} /> Submit Application
+      </>
+    )}
+  </button>
+</div>
           </div>
         </div>
       )}
