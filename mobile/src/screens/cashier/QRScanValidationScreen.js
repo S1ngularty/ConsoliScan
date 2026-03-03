@@ -800,16 +800,16 @@ const QRScanValidationScreen = () => {
               </View>
             </View>
 
-            {remainingItems.length > 0 ? (
+            {allOrderItems.length > 0 ? (
               <View style={styles.itemsList}>
-                {remainingItems.map((item, i) => {
+                {allOrderItems.map((item, i) => {
                   const prog = getItemProgress(item);
                   return (
                     <View
                       key={`${item.sku}_${i}`}
                       style={[
                         styles.itemRow,
-                        i === remainingItems.length - 1 && {
+                        i === allOrderItems.length - 1 && {
                           borderBottomWidth: 0,
                         },
                       ]}
@@ -896,7 +896,12 @@ const QRScanValidationScreen = () => {
                 contentContainerStyle={styles.chipsRow}
               >
                 {scannedItems.map((item, i) => (
-                  <View key={`chip_${i}`} style={styles.chip}>
+                  <TouchableOpacity
+                    key={`chip_${i}`}
+                    style={styles.chip}
+                    onPress={() => handleOpenAdjustModal(item)}
+                    activeOpacity={0.7}
+                  >
                     <MaterialCommunityIcons
                       name="check-circle"
                       size={13}
@@ -908,7 +913,7 @@ const QRScanValidationScreen = () => {
                     <Text style={styles.chipQty}>
                       {item.scannedQuantity}/{item.quantity}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </ScrollView>
             </View>

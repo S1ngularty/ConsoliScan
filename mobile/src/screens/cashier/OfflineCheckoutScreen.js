@@ -494,12 +494,13 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
 
   const checkAllMatched = (currentScanned, cartItems = customerCart?.items) => {
     if (!cartItems) return;
-    // Only check original cart items, not manually added ones
+    // Check that all original cart items have been scanned (at least once)
+    // Allow any quantity, not just exact matches
     const allMatched = originalCartItems.every((cartItem) => {
       const scanned = currentScanned.find(
         (s) => s.productId === cartItem.productId,
       );
-      return scanned && scanned.scannedQty === cartItem.quantity;
+      return scanned && scanned.scannedQty > 0;
     });
     setAllItemsMatched(allMatched);
   };
@@ -563,22 +564,9 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
       return;
     }
 
-    // Check if item is in original cart (not manually added)
-    const isOriginalCartItem = originalCartItems.some(
-      (item) => item.productId === adjustingItem.productId,
-    );
-    // Only validate max quantity for items originally in the cart
-    if (isOriginalCartItem && qty > adjustingItem.quantity) {
-      Alert.alert(
-        "Invalid Quantity",
-        `Maximum quantity for this item is ${adjustingItem.quantity}`,
-      );
-      return;
-    }
-
-    // For manually added items, set a reasonable upper limit
-    if (!isOriginalCartItem && qty > 999) {
-      Alert.alert("Invalid Quantity", "Maximum quantity is 999");
+    // Allow any reasonable quantity (max 9999)
+    if (qty > 9999) {
+      Alert.alert("Invalid Quantity", "Maximum quantity is 9999");
       return;
     }
 
@@ -1013,7 +1001,7 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
               (item) => item.productId === cartItem.productId,
             );
             const isComplete = isOriginal
-              ? scanned && scanned.scannedQty === cartItem.quantity
+              ? scanned && scanned.scannedQty > 0 // Just need at least 1 scanned
               : true; // Manually added items are always "complete"
 
             return (
@@ -1032,7 +1020,7 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
                   </Text>
                   <Text style={styles.itemQtyLabel}>
                     {isOriginal
-                      ? `${scanned?.scannedQty || 0} / ${cartItem.quantity}`
+                      ? `${scanned?.scannedQty || 0} scanned (declared: ${cartItem.quantity})`
                       : `${scanned?.scannedQty || 0} scanned (extra)`}
                   </Text>
                 </View>
@@ -1429,17 +1417,9 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
                     {getProductById(adjustingItem.productId)?.name ||
                       adjustingItem.productId}
                   </Text>
-                  {originalCartItems.some(
-                    (item) => item.productId === adjustingItem.productId,
-                  ) ? (
-                    <Text style={styles.qtyModalItemSub}>
-                      Required: {adjustingItem.quantity}
-                    </Text>
-                  ) : (
-                    <Text style={styles.qtyModalItemSub}>
-                      Manually added item (Max: 999)
-                    </Text>
-                  )}
+                  <Text style={styles.qtyModalItemSub}>
+                    Adjust quantity as needed (Max: 9999)
+                  </Text>
                 </View>
 
                 <View style={styles.qtyModalInputSection}>
@@ -1476,13 +1456,7 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
                       style={styles.qtyModalQtyBtn}
                       onPress={() => {
                         const current = parseInt(adjustQuantity, 10) || 0;
-                        const isOriginalItem = originalCartItems.some(
-                          (item) => item.productId === adjustingItem.productId,
-                        );
-                        const maxQty = isOriginalItem
-                          ? adjustingItem.quantity
-                          : 999;
-                        if (current < maxQty) {
+                        if (current < 9999) {
                           setAdjustQuantity(String(current + 1));
                         }
                       }}
