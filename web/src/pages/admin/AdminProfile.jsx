@@ -1,19 +1,22 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Save, User as UserIcon, Mail, Shield, Camera } from "lucide-react";
-import { getMe, updateProfile, updateAvatar } from "../../services/userService"; // Links to your exact service file
+import { getMe, updateProfile, updateAvatar } from "../../services/userService";
 import "../../styles/admin/AdminProfileStyle.css"; 
 
 const AdminProfile = () => {
   const [userId, setUserId] = useState("");
-  const [formData, setFormData] = useState({ name: "", email: "" });
+  
+  // Clean data structure for the profile payload
+  const [formData, setFormData] = useState({ 
+    name: "", 
+    email: "" 
+  });
   const [role, setRole] = useState("");
   
-  // Avatar states
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = useRef(null);
 
-  // UI States
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
@@ -21,28 +24,35 @@ const AdminProfile = () => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const userData = await getMe();
-        // Check if we actually got data and not an Error object back from the service
-        if (userData && !(userData instanceof Error)) {
-          // Store the ID so we can pass it to the update functions
-          setUserId(userData._id || userData.id); 
-          setFormData({ name: userData.name || "", email: userData.email || "" });
-          setRole(userData.role === "super_admin" ? "Super Admin" : "Admin User");
+        const response = await getMe();
+        
+        // Safely extract the user object regardless of how the backend wraps it
+        const user = response?.user || response;
+
+        if (user && user._id || user?.id) {
+          setUserId(String(user._id || user.id)); // Ensure ID is a clean string
           
-          // If your backend returns an avatar URL, set it here for the preview
-          if (userData.avatar?.url) {
-            setAvatarPreview(userData.avatar.url);
+          setFormData({ 
+            name: user.name || "", 
+            email: user.email || "" 
+          });
+          
+          setRole(user.role === "super_admin" ? "Super Admin" : "Admin User");
+          
+          if (user.avatar?.url) {
+            setAvatarPreview(user.avatar.url);
           }
         } else {
-          setMessage({ type: "error", text: "Could not load user data." });
+          setMessage({ type: "error", text: "Could not load user profile details." });
         }
       } catch (error) {
-        console.error("Failed to fetch profile details", error);
-        setMessage({ type: "error", text: "Failed to load profile data." });
+        console.error("Profile fetch error:", error);
+        setMessage({ type: "error", text: "Failed to connect to the server." });
       } finally {
         setIsLoading(false);
       }
     };
+    
     fetchUser();
   }, []);
 
@@ -50,15 +60,15 @@ const AdminProfile = () => {
     const file = e.target.files[0];
     if (file) {
       setSelectedFile(file);
-      // Create a local preview URL so the user sees the image immediately
       setAvatarPreview(URL.createObjectURL(file)); 
     }
   };
 
   const handleUpdate = async (e) => {
     e.preventDefault();
+    
     if (!userId) {
-      setMessage({ type: "error", text: "User ID is missing. Cannot update." });
+      setMessage({ type: "error", text: "Missing User ID. Cannot save." });
       return;
     }
 
@@ -66,30 +76,36 @@ const AdminProfile = () => {
     setMessage({ type: "", text: "" });
 
     try {
-      // 1. Update text profile info
-      const profileResult = await updateProfile(userId, formData);
-      
-      // Since your service returns the error object, we check for it
-      if (profileResult instanceof Error) {
-        throw profileResult; 
-      }
+      // 1. Prepare the exact data structure for the text payload
+      const payload = {
+        name: formData.name.trim(),
+        email: formData.email.trim()
+      };
 
-      // 2. Update avatar if a new file was selected
+      // Pass the clean string ID and the payload object
+      const profileResult = await updateProfile(userId, payload);
+      
+      if (profileResult instanceof Error) throw profileResult;
+
+      // 2. Handle the avatar separately using your form-data service
       if (selectedFile) {
         const avatarResult = await updateAvatar(selectedFile, userId);
         if (avatarResult instanceof Error) {
-          setMessage({ type: "error", text: "Profile updated, but avatar upload failed." });
+          setMessage({ type: "error", text: "Profile text saved, but avatar failed to upload." });
           setIsSaving(false);
           return;
         }
       }
 
       setMessage({ type: "success", text: "Profile updated successfully!" });
-      setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+      setTimeout(() => {
+        setMessage({ type: "", text: "" });
+        setSelectedFile(null); // Clear file queue after success
+      }, 3000);
       
     } catch (error) {
-      console.error("Profile update error:", error);
-      const errorMsg = error.response?.data?.message || error.message || "Failed to update profile. Please try again.";
+      console.error("Save error:", error);
+      const errorMsg = "Failed to update profile.";
       setMessage({ type: "error", text: errorMsg });
     } finally {
       setIsSaving(false);
@@ -106,7 +122,6 @@ const AdminProfile = () => {
       </div>
 
       <div className="profile-content-grid">
-        {/* Left Side: Avatar Card */}
         <div className="profile-avatar-card">
           <div 
             className="avatar-large" 
@@ -123,7 +138,6 @@ const AdminProfile = () => {
               formData.name ? formData.name.charAt(0).toUpperCase() : "A"
             )}
             
-            {/* Hover overlay for camera icon */}
             <div className="avatar-overlay" style={{
               position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.5)', 
               color: 'white', display: 'flex', justifyContent: 'center', padding: '5px'
@@ -132,7 +146,6 @@ const AdminProfile = () => {
             </div>
           </div>
           
-          {/* Hidden file input */}
           <input 
             type="file" 
             ref={fileInputRef} 
@@ -146,11 +159,9 @@ const AdminProfile = () => {
           <p style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>Click image to change</p>
         </div>
 
-        {/* Right Side: Edit Form Card */}
         <div className="profile-form-card">
           <h3>Personal Information</h3>
           
-          {/* Status Messages */}
           {message.text && (
             <div className={`alert-${message.type}`} style={{ 
               color: message.type === 'error' ? 'red' : 'green', 
