@@ -14,7 +14,7 @@ import MenuScreen from "../screens/customer/MenuScreen";
 import CartScreen from "../screens/customer/CartScreen";
 import OrderHistoryScreen from "../screens/customer/OrderHistory";
 import ScanningScreen from "../screens/customer/ScanningScreen";
-import FloatingChatbot from "../components/FloatingChatbot";
+// import FloatingChatbot from "../components/FloatingChatbot";
 
 const Tab = createBottomTabNavigator();
 
@@ -51,19 +51,20 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
           // Special handling for Scan button
           if (route.name === "Scan") {
             return (
-              <View key={route.key} style={styles.scanButtonContainer}>
-                <TouchableOpacity
-                  style={styles.scanButton}
-                  onPress={onPress}
-                  activeOpacity={0.9}
-                >
+              <TouchableOpacity
+                key={route.key}
+                style={styles.scanButton}
+                onPress={onPress}
+                activeOpacity={0.9}
+              >
+                <View style={styles.scanButtonInner}>
                   <MaterialCommunityIcons
-                    name="barcode-scan"
-                    size={32}
-                    color="#fff"
+                    name="qrcode-scan"
+                    size={24}
+                    color="#FFFFFF"
                   />
-                </TouchableOpacity>
-              </View>
+                </View>
+              </TouchableOpacity>
             );
           }
 
@@ -73,43 +74,46 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
               case "Home":
                 return isFocused ? "home" : "home-outline";
               case "History":
-                return isFocused ? "receipt" : "receipt-outline";
+                return isFocused ? "clock-outline" : "clock-outline";
               case "Cart":
-                return isFocused ? "cart" : "cart-outline";
+                return isFocused ? "shopping-outline" : "shopping-outline";
               case "Menu":
                 return isFocused ? "menu" : "menu";
               default:
-                return "home";
+                return "home-outline";
             }
           };
 
-          const getIconComponent = (routeName) => {
-            if (routeName === "Menu") {
-              return Ionicons;
+          const getLabel = (routeName) => {
+            switch (routeName) {
+              case "Home":
+                return "Home";
+              case "History":
+                return "History";
+              case "Cart":
+                return "Cart";
+              case "Menu":
+                return "Menu";
+              default:
+                return "";
             }
-            return MaterialCommunityIcons;
           };
-
-          const IconComponent = getIconComponent(route.name);
-          const iconName = getIconName(route.name);
 
           return (
             <TouchableOpacity
               key={route.key}
               style={styles.tabItem}
               onPress={onPress}
-              activeOpacity={0.8}
+              activeOpacity={0.7}
             >
-              <IconComponent
-                name={iconName}
-                size={route.name === "Menu" ? 26 : 24}
-                color={isFocused ? "#00A86B" : "#94a3b8"}
+              <MaterialCommunityIcons
+                name={getIconName(route.name)}
+                size={22}
+                color={isFocused ? "#2D3A4A" : "#9AA6B2"}
               />
-              <Text
-                style={[styles.tabLabel, isFocused && styles.tabLabelActive]}
-              >
-                {route.name === "Menu" ? "More" : options.title || route.name}
-              </Text>
+              {isFocused && (
+                <View style={styles.activeIndicator} />
+              )}
             </TouchableOpacity>
           );
         })}
@@ -120,111 +124,113 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
 
 export default function HomeNavigator() {
   return (
-    <Tab.Navigator
-      tabBar={(props) => <CustomTabBar {...props} />}
-      screenOptions={{ 
-        headerShown: false,
-        tabBarStyle: {
-          position: 'absolute', // Required for floating effect
-          backgroundColor: 'transparent',
-          borderTopWidth: 0,
-          elevation: 0,
-        }
-      }}
-    >
-      <Tab.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{ title: "Home" }}
-      />
-      <Tab.Screen
-        name="History"
-        component={OrderHistoryScreen}
-        options={{ title: "History" }}
-      />
-      <Tab.Screen
-        name="Scan"
-        component={ScanningScreen}
-        options={{ 
-          title: "Scan",
-          tabBarStyle: { display: 'none' } // Optionally hide tab bar on scan screen
+    <>
+      <Tab.Navigator
+        tabBar={(props) => <CustomTabBar {...props} />}
+        screenOptions={{ 
+          headerShown: false,
+          tabBarStyle: {
+            backgroundColor: '#FFFFFF',
+            borderTopWidth: 1,
+            borderTopColor: '#F0F4F8',
+          }
         }}
-      />
-      <Tab.Screen
-        name="Cart"
-        component={CartScreen}
-        options={{ title: "Cart" }}
-      />
-      <Tab.Screen
-        name="Menu"
-        component={MenuScreen}
-        options={{ title: "More" }}
-      />
-    </Tab.Navigator>
+      >
+        <Tab.Screen
+          name="Home"
+          component={HomeScreen}
+          options={{ title: "Home" }}
+        />
+        <Tab.Screen
+          name="History"
+          component={OrderHistoryScreen}
+          options={{ title: "History" }}
+        />
+        <Tab.Screen
+          name="Scan"
+          component={ScanningScreen}
+          options={{ 
+            title: "Scan",
+            tabBarStyle: { display: 'none' }
+          }}
+        />
+        <Tab.Screen
+          name="Cart"
+          component={CartScreen}
+          options={{ title: "Cart" }}
+        />
+        <Tab.Screen
+          name="Menu"
+          component={MenuScreen}
+          options={{ title: "Menu" }}
+        />
+      </Tab.Navigator>
+      {/* <FloatingChatbot /> */}
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   tabContainer: {
     position: "absolute",
-    bottom: 20,
-    left: 20,
-    right: 20,
+    bottom: 0,
+    left: 0,
+    right: 0,
     alignItems: "center",
+    backgroundColor: "transparent",
   },
   tabBar: {
     flexDirection: "row",
-    backgroundColor: "#ffffff",
-    borderRadius: 35,
-    height: 70,
-    justifyContent: "space-between",
+    backgroundColor: "#FFFFFF",
+    height: 72,
+    justifyContent: "space-around",
     alignItems: "center",
-    paddingHorizontal: 10,
     width: "100%",
-    // Shadow for iOS
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    // Elevation for Android
-    elevation: 10,
+    paddingHorizontal: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#F0F4F8",
+    // Subtle shadow
+    shadowColor: "#2D3A4A",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 8,
   },
   tabItem: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     height: "100%",
+    paddingVertical: 12,
+    position: "relative",
   },
-  scanButtonContainer: {
-    top: -25, // Move it up to float
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 10,
+  activeIndicator: {
+    position: "absolute",
+    bottom: 8,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#2D3A4A",
   },
   scanButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#00A86B",
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    height: "100%",
+    transform: [{ translateY: -16 }],
+  },
+  scanButtonInner: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: "#2D3A4A",
     justifyContent: "center",
     alignItems: "center",
-    // Shadow for the button
-    shadowColor: "#00A86B",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-    borderWidth: 4,
-    borderColor: "#f2f2f2", // Match background color or transparent
-  },
-  tabLabel: {
-    fontSize: 10,
-    color: "#94a3b8",
-    marginTop: 4,
-    fontWeight: "500",
-  },
-  tabLabelActive: {
-    color: "#00A86B",
-    fontWeight: "700",
+    // Subtle shadow
+    shadowColor: "#2D3A4A",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
 });

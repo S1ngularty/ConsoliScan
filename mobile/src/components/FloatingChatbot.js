@@ -34,6 +34,8 @@ const FloatingChatbot = () => {
 
   // Animation for FAB
   const scaleAnim = useRef(new Animated.Value(0)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.spring(scaleAnim, {
@@ -42,9 +44,45 @@ const FloatingChatbot = () => {
       friction: 7,
       useNativeDriver: true,
     }).start();
+
+    // Subtle rotation animation for the robot head
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(rotateAnim, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: true,
+          // easing: Easing.inOut(Easing.ease),
+        }),
+        Animated.timing(rotateAnim, {
+          toValue: 0,
+          duration: 2000,
+          useNativeDriver: true,
+          // easing: Easing.inOut(Easing.ease),
+        }),
+      ])
+    ).start();
+
+    // Pulse animation for attention
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.1,
+          duration: 1000,
+          useNativeDriver: true,
+          // easing: Easing.inOut(Easing.ease),
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+          // easing: Easing.inOut(Easing.ease),
+        }),
+      ])
+    ).start();
   }, []);
 
-  // FAQ Database organized by categories
+  // FAQ Database (keeping the same as your original)
   const faqDatabase = {
     main: {
       title: "Main Menu",
@@ -168,7 +206,7 @@ const FloatingChatbot = () => {
           id: "loyalty-4",
           text: "Do loyalty points expire?",
           answer:
-            "Points are valid for:\n• 24 months from earning date\n• Regularly check your points balance\n• Use them before expration to avoid losing them\n• Check your profile for expiration dates",
+            "Points are valid for:\n• 24 months from earning date\n• Regularly check your points balance\n• Use them before expiration to avoid losing them\n• Check your profile for expiration dates",
         },
         {
           id: "loyalty-5",
@@ -490,6 +528,11 @@ const FloatingChatbot = () => {
     setCurrentQuestions(faqDatabase.main.questions);
   };
 
+  const rotateInterpolation = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["-5deg", "5deg"],
+  });
+
   const renderMessage = (message, index) => {
     const isBot = message.type === "bot";
 
@@ -502,9 +545,20 @@ const FloatingChatbot = () => {
         ]}
       >
         {isBot && (
-          <View style={styles.botAvatar}>
-            <MaterialCommunityIcons name="robot-happy" size={20} color="#fff" />
-          </View>
+          <Animated.View
+            style={[
+              styles.botAvatar,
+              {
+                transform: [{ rotate: rotateInterpolation }],
+              },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name="robot"
+              size={20}
+              color="#fff"
+            />
+          </Animated.View>
         )}
 
         <View
@@ -580,21 +634,34 @@ const FloatingChatbot = () => {
 
   return (
     <>
-      {/* Floating Action Button */}
+      {/* Floating Action Button - Bot Style */}
       {!isOpen && (
         <Animated.View
-          style={[styles.fabContainer, { transform: [{ scale: scaleAnim }] }]}
+          style={[
+            styles.fabContainer,
+            {
+              transform: [{ scale: scaleAnim }, { scale: pulseAnim }],
+            },
+          ]}
         >
           <TouchableOpacity
             style={styles.fab}
             onPress={() => setIsOpen(true)}
             activeOpacity={0.8}
           >
-            <MaterialCommunityIcons
-              name="message-text"
-              size={30}
-              color="white"
-            />
+            <View style={styles.robotHead}>
+              <View style={styles.robotEyes}>
+                <View style={styles.robotEye} />
+                <View style={styles.robotEye} />
+              </View>
+              <View style={styles.robotAntenna} />
+              <MaterialCommunityIcons
+                name="robot"
+                size={30}
+                color="#00A86B"
+                style={styles.robotIcon}
+              />
+            </View>
             <View style={styles.badge}>
               <Text style={styles.badgeText}>1</Text>
             </View>
@@ -624,8 +691,15 @@ const FloatingChatbot = () => {
                 />
               </TouchableOpacity>
               <View style={styles.headerContent}>
-                <Text style={styles.headerTitle}>Support Assistant</Text>
-                <Text style={styles.headerSubtitle}>ConsoliScan Help</Text>
+                <View style={styles.headerTitleContainer}>
+                  <MaterialCommunityIcons
+                    name="robot"
+                    size={20}
+                    color="#00A86B"
+                  />
+                  <Text style={styles.headerTitle}>ConsoliBot</Text>
+                </View>
+                <Text style={styles.headerSubtitle}>AI Support Assistant</Text>
               </View>
               <View style={styles.statusBadge}>
                 <View style={styles.statusDot} />
@@ -647,13 +721,12 @@ const FloatingChatbot = () => {
             {/* Footer Info */}
             <View style={styles.footer}>
               <MaterialCommunityIcons
-                name="information"
+                name="robot-happy"
                 size={16}
                 color="#94a3b8"
               />
               <Text style={styles.footerText}>
-                This chatbot uses predefined FAQ. For complex issues, contact
-                support.
+                I'm here to help! Ask me anything about ConsoliScan.
               </Text>
             </View>
           </View>
@@ -664,42 +737,77 @@ const FloatingChatbot = () => {
 };
 
 const styles = StyleSheet.create({
-  // FAB Styles
+  // FAB Styles - Bot Themed
   fabContainer: {
     position: "absolute",
-    bottom: 100, // Above tab bar
+    bottom: 100,
     right: 20,
     zIndex: 9999,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
+    shadowColor: "#00A86B",
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
-    shadowRadius: 4.65,
-    elevation: 8,
+    shadowRadius: 12,
+    elevation: 12,
   },
   fab: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#00A86B",
+    position: "relative",
+  },
+  robotHead: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: "#00A86B",
     justifyContent: "center",
     alignItems: "center",
+    position: "relative",
+  },
+  robotEyes: {
+    flexDirection: "row",
+    position: "absolute",
+    top: 12,
+    gap: 8,
+  },
+  robotEye: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#FFFFFF",
+  },
+  robotAntenna: {
+    position: "absolute",
+    top: -6,
+    width: 4,
+    height: 8,
+    backgroundColor: "#00A86B",
+    borderRadius: 2,
+  },
+  robotIcon: {
+    position: "absolute",
   },
   badge: {
     position: "absolute",
     top: -2,
     right: -2,
     backgroundColor: "#EF4444",
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: "white",
   },
   badgeText: {
     color: "white",
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "bold",
   },
 
@@ -712,12 +820,12 @@ const styles = StyleSheet.create({
   modalContainer: {
     backgroundColor: "#F9FAFB",
     height: "90%",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     overflow: "hidden",
   },
 
-  // Existing Chatbot Styles
+  // Chat Styles
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -728,9 +836,9 @@ const styles = StyleSheet.create({
     borderBottomColor: "#F1F5F9",
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: "#F8FAFC",
     justifyContent: "center",
     alignItems: "center",
@@ -739,8 +847,13 @@ const styles = StyleSheet.create({
   headerContent: {
     flex: 1,
   },
+  headerTitleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   headerTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "700",
     color: "#0F172A",
   },
@@ -748,24 +861,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#94A3B8",
     marginTop: 2,
+    marginLeft: 28,
   },
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     backgroundColor: "rgba(0, 168, 107, 0.1)",
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: "#00A86B",
   },
   statusText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "600",
     color: "#00A86B",
   },
@@ -774,11 +888,11 @@ const styles = StyleSheet.create({
   },
   messagesContent: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 20,
     paddingBottom: 40,
   },
   messageContainer: {
-    marginBottom: 16,
+    marginBottom: 20,
     flexDirection: "row",
     alignItems: "flex-end",
   },
@@ -789,27 +903,31 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   botAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     backgroundColor: "#00A86B",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 8,
+    borderWidth: 2,
+    borderColor: "rgba(0, 168, 107, 0.2)",
   },
   messageBubble: {
     maxWidth: width * 0.75,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
   },
   botBubble: {
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "#F1F5F9",
+    borderBottomLeftRadius: 4,
   },
   userBubble: {
     backgroundColor: "#00A86B",
+    borderBottomRightRadius: 4,
   },
   messageText: {
     fontSize: 14,
@@ -838,10 +956,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
     marginTop: 8,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 6,
     backgroundColor: "#F8FAFC",
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: "#F1F5F9",
   },
@@ -852,21 +970,26 @@ const styles = StyleSheet.create({
   },
   questionsContainer: {
     marginTop: 8,
-    gap: 8,
+    gap: 10,
   },
   questionButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     backgroundColor: "#FFFFFF",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: "#F1F5F9",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 4,
+    elevation: 2,
   },
   lastQuestionButton: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   questionButtonText: {
     flex: 1,
@@ -888,7 +1011,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     flex: 1,
-    fontSize: 11,
+    fontSize: 12,
     color: "#94A3B8",
     fontWeight: "500",
   },
