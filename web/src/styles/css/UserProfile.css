@@ -173,7 +173,7 @@
   cursor: not-allowed;
 }
 
-/* Eligibility Section */
+/* Container & Flow Layout Rules */
 .eligibility-status-card {
   background: #f8fafc;
   border-radius: 20px;
@@ -265,7 +265,7 @@
   color: white;
 }
 
-/* Modal Styles */
+/* Modal Overlay Flow Control */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -281,15 +281,18 @@
   padding: 20px;
 }
 
+/* Container limits and core Flex structure */
 .modal-container {
   background: white;
   border-radius: 30px;
   width: 100%;
   max-width: 600px;
-  max-height: 90vh;
-  overflow-y: auto;
+  max-height: 90vh; /* Critical: Caps modal height to screen */
+  display: flex; /* Critical: Enable Flex column */
+  flex-direction: column;
   box-shadow: 0 20px 50px rgba(0,0,0,0.2);
   animation: modalSlideUp 0.3s ease;
+  overflow: hidden; /* Critical: Keep border radius clean around scroll */
 }
 
 @keyframes modalSlideUp {
@@ -297,16 +300,15 @@
   to { transform: translateY(0); opacity: 1; }
 }
 
+/* Header locks to top */
 .modal-header {
   padding: 24px 32px;
   border-bottom: 1px solid #f1f5f9;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  position: sticky;
-  top: 0;
   background: white;
-  z-index: 10;
+  flex-shrink: 0; /* Prevents shrinking */
 }
 
 .modal-header h2 {
@@ -334,10 +336,29 @@
   color: #1a1a1a;
 }
 
+/* Scrollable Inner Body Container */
 .modal-body {
   padding: 32px;
+  overflow-y: auto; /* Activates internal scrolling */
+  flex-grow: 1; /* Pushes footer down, takes available space */
 }
 
+/* Optional Scrollbar Styling for aesthetics */
+.modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+.modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.modal-body::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.modal-body::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Content Element Sizing */
 .type-selector {
   display: flex;
   gap: 16px;
@@ -404,41 +425,42 @@
   cursor: pointer;
 }
 
+/* Container perfectly centers the single button */
 .modal-footer {
   padding: 24px 32px;
   border-top: 1px solid #f1f5f9;
   display: flex;
-  justify-content: flex-end;
-  gap: 16px;
-  position: sticky;
-  bottom: 0;
+  justify-content: center; /* Centers the button */
+  align-items: center;     
   background: white;
+  position: sticky;        
+  bottom: 0;               
   z-index: 10;
 }
 
-.cancel-btn {
-  background: white;
-  border: 2px solid #e2e8f0;
+/* Submit Button Styles */
+.submit-btn {
+  background: #00A86B; 
+  border: 2px solid #00A86B; 
+  color: white;
   padding: 12px 24px;
   border-radius: 100px;
-  font-weight: 600;
-  color: #64748b;
-  cursor: pointer;
-}
-
-.submit-btn {
-  background: #00A86B;
-  color: white;
-  padding: 12px 32px;
-  border-radius: 100px;
   font-weight: 700;
-  border: none;
   cursor: pointer;
+  transition: all 0.2s ease;
   display: flex;
+  justify-content: center;
   align-items: center;
   gap: 8px;
+  min-width: 180px; 
 }
 
+.submit-btn:hover:not(:disabled) {
+  background: #008f5a; 
+  border-color: #008f5a;
+}
+
+/* Disabled state when loading */
 .submit-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
