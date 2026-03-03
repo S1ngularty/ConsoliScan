@@ -7,13 +7,13 @@ import "../styles/css/appDownloadBanner.css";
 import "../styles/css/footer.css";
 import "../styles/css/home.css"; // Added new CSS file for home styles
 
-import Navbar from "../components/home components/Navbar";
-import Hero from "../components/home components/Hero";
-import Carousel from "../components/home components/Carousel";
-import AppDownloadBanner from "../components/home components/AppDownloadBanner";
-import Footer from "../components/home components/Footer";
+import Navbar from "../components/homeComponents/Navbar";
+import Hero from "../components/homeComponents/Hero";
+import Carousel from "../components/homeComponents/Carousel";
+import AppDownloadBanner from "../components/homeComponents/AppDownloadBanner";
+import Footer from "../components/homeComponents/Footer";
 import ChatBot from "../components/common/Chatbot";
-import TopEvents from "../components/home components/TopEvents";
+import TopEvents from "../components/homeComponents/TopEvents";
 
 const Home = () => {
   useEffect(() => {
