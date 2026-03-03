@@ -1,12 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   StyleSheet,
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
   StatusBar,
   ScrollView,
   Pressable,
@@ -16,21 +14,17 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { API_URL } from "../../constants/config";
 import { useDispatch, useSelector } from "react-redux";
 import { register } from "../../features/slices/auth/authThunks";
-import axios from "axios";
 import { LinearGradient } from "expo-linear-gradient";
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withDelay, 
-  withSpring, 
-  withTiming,
-  FadeInDown
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  FadeInDown,
 } from "react-native-reanimated";
 
-const { width, height } = Dimensions.get("window");
+const { height } = Dimensions.get("window");
 
 const COLORS = {
   green: "#5C6F2B",
@@ -40,6 +34,13 @@ const COLORS = {
   text: "#0f172a",
   muted: "#334155",
 };
+
+// Memoized animated input component - prevent recreation on every render
+const AnimatedInput = React.memo(({ index, children }) => (
+  <Animated.View entering={FadeInDown.delay(index * 100).springify()}>
+    {children}
+  </Animated.View>
+));
 
 const RegisterScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
@@ -54,6 +55,7 @@ const RegisterScreen = ({ navigation }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
   const { loading, error } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
 
@@ -61,7 +63,7 @@ const RegisterScreen = ({ navigation }) => {
   const sheetY = useSharedValue(height);
 
   useEffect(() => {
-    sheetY.value = withSpring(0, { damping: 15, stiffness: 90 });
+    sheetY.value = withSpring(0, { damping: 30, stiffness: 150 });
   }, []);
 
   const animatedSheetStyle = useAnimatedStyle(() => {
@@ -70,36 +72,68 @@ const RegisterScreen = ({ navigation }) => {
     };
   });
 
-  const validateForm = () => {
-    // ... existing validation logic ...
+  const validateField = useCallback(
+    (field, value, draft = formData) => {
+      switch (field) {
+        case "name":
+          if (!value.trim()) return "Name is required";
+          return "";
+        case "email":
+          if (!value.trim()) return "Email is required";
+          if (!/\S+@\S+\.\S+/.test(value)) return "Invalid email format";
+          return "";
+        case "age":
+          if (!value) return "Age is required";
+          if (isNaN(value) || Number(value) < 1 || Number(value) > 120)
+            return "Enter valid age (1-120)";
+          return "";
+        case "sex":
+          if (!value) return "Please select gender";
+          return "";
+        case "password":
+          if (!value) return "Password is required";
+          if (value.length < 6) return "Password must be at least 6 characters";
+          return "";
+        case "confirmPassword":
+          if (!value) return "Please confirm password";
+          if (draft.password !== value) return "Passwords do not match";
+          return "";
+        default:
+          return "";
+      }
+    },
+    [formData],
+  );
+
+  const validateForm = useCallback(() => {
+    const fields = [
+      "name",
+      "email",
+      "age",
+      "sex",
+      "password",
+      "confirmPassword",
+    ];
     const newErrors = {};
 
-    if (!formData.name.trim()) newErrors.name = "Name is required";
-    if (!formData.email.trim()) newErrors.email = "Email is required";
-    else if (!/\S+@\S+\.\S+/.test(formData.email))
-      newErrors.email = "Invalid email format";
+    fields.forEach((field) => {
+      const message = validateField(field, formData[field], formData);
+      if (message) newErrors[field] = message;
+    });
 
-    if (!formData.password) newErrors.password = "Password is required";
-    else if (formData.password.length < 6)
-      newErrors.password = "Password must be at least 6 characters";
-
-    if (!formData.confirmPassword)
-      newErrors.confirmPassword = "Please confirm password";
-    else if (formData.password !== formData.confirmPassword)
-      newErrors.confirmPassword = "Passwords do not match";
-
-    if (!formData.age) newErrors.age = "Age is required";
-    else if (isNaN(formData.age) || formData.age < 1 || formData.age > 120)
-      newErrors.age = "Enter valid age (1-120)";
-
-    if (!formData.sex) newErrors.sex = "Please select gender";
-
+    setTouched({
+      name: true,
+      email: true,
+      age: true,
+      sex: true,
+      password: true,
+      confirmPassword: true,
+    });
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [formData, validateField]);
 
   const handleRegister = async () => {
-    // ... existing register logic ...
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     if (!validateForm()) {
@@ -122,52 +156,76 @@ const RegisterScreen = ({ navigation }) => {
       if (register.fulfilled.match(isSuccess)) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else if (register.rejected.match(isSuccess)) {
-        throw new Error(
-          "failed to create your account please try again later.",
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert(
+          "Registration failed",
+          isSuccess.payload ||
+            "Failed to create your account. Please try again.",
         );
       }
     } catch (error) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       console.log(error);
-      Alert.alert("Error", "Registration failed. Please try again.");
+      Alert.alert(
+        "Error",
+        error?.message || "Registration failed. Please try again.",
+      );
     }
   };
 
-  const updateFormData = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: "" }));
-    }
-  };
+  const updateFormData = useCallback(
+    (field, value) => {
+      const nextForm = { ...formData, [field]: value };
+      setFormData(nextForm);
 
-  const AnimatedInput = ({ index, children }) => (
-    <Animated.View entering={FadeInDown.delay(index * 100).springify()}>
-      {children}
-    </Animated.View>
+      if (touched[field]) {
+        const message = validateField(field, value, nextForm);
+        setErrors((prev) => ({ ...prev, [field]: message }));
+      }
+
+      if (field === "password" && touched.confirmPassword) {
+        const confirmMessage = validateField(
+          "confirmPassword",
+          nextForm.confirmPassword,
+          nextForm,
+        );
+        setErrors((prev) => ({ ...prev, confirmPassword: confirmMessage }));
+      }
+    },
+    [formData, touched, validateField],
+  );
+
+  const handleBlur = useCallback(
+    (field) => {
+      setTouched((prev) => ({ ...prev, [field]: true }));
+      setErrors((prev) => ({
+        ...prev,
+        [field]: validateField(field, formData[field], formData),
+      }));
+    },
+    [formData, validateField],
   );
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.light} />
-      
+
       {/* Background Decorative Blobs */}
       <View style={styles.backgroundContainer} pointerEvents="none">
         <View style={[styles.blob, styles.blob1]} />
         <View style={[styles.blob, styles.blob2]} />
       </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardView}
-      >
+      <View style={styles.keyboardView}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           <Animated.View style={[styles.content, animatedSheetStyle]}>
             <View style={styles.sheetHandle} />
-            
+
             {/* Header */}
             <View style={styles.header}>
               <TouchableOpacity
@@ -189,6 +247,17 @@ const RegisterScreen = ({ navigation }) => {
 
             {/* Registration Form */}
             <View style={styles.form}>
+              {error ? (
+                <View style={styles.formErrorBanner}>
+                  <MaterialCommunityIcons
+                    name="alert-circle-outline"
+                    size={16}
+                    color="#ef4444"
+                  />
+                  <Text style={styles.formErrorText}>{error}</Text>
+                </View>
+              ) : null}
+
               {/* Name */}
               <AnimatedInput index={1}>
                 <View style={styles.inputGroup}>
@@ -209,6 +278,7 @@ const RegisterScreen = ({ navigation }) => {
                       placeholderTextColor={COLORS.muted}
                       value={formData.name}
                       onChangeText={(value) => updateFormData("name", value)}
+                      onBlur={() => handleBlur("name")}
                       autoCapitalize="words"
                     />
                   </View>
@@ -238,6 +308,7 @@ const RegisterScreen = ({ navigation }) => {
                       placeholderTextColor={COLORS.muted}
                       value={formData.email}
                       onChangeText={(value) => updateFormData("email", value)}
+                      onBlur={() => handleBlur("email")}
                       autoCapitalize="none"
                       keyboardType="email-address"
                       autoComplete="email"
@@ -269,6 +340,7 @@ const RegisterScreen = ({ navigation }) => {
                       placeholderTextColor={COLORS.muted}
                       value={formData.age}
                       onChangeText={(value) => updateFormData("age", value)}
+                      onBlur={() => handleBlur("age")}
                       keyboardType="numeric"
                       maxLength={3}
                     />
@@ -285,18 +357,28 @@ const RegisterScreen = ({ navigation }) => {
                   {errors.sex ? (
                     <Text style={styles.errorText}>{errors.sex}</Text>
                   ) : null}
-                  <View style={styles.genderContainer}>
+                  <View
+                    style={[
+                      styles.genderContainer,
+                      errors.sex && styles.genderContainerError,
+                    ]}
+                  >
                     <TouchableOpacity
                       style={[
                         styles.genderOption,
                         formData.sex === "male" && styles.genderOptionSelected,
                       ]}
-                      onPress={() => updateFormData("sex", "male")}
+                      onPress={() => {
+                        setTouched((prev) => ({ ...prev, sex: true }));
+                        updateFormData("sex", "male");
+                      }}
                     >
                       <MaterialCommunityIcons
                         name="gender-male"
                         size={24}
-                        color={formData.sex === "male" ? COLORS.green : COLORS.muted}
+                        color={
+                          formData.sex === "male" ? COLORS.green : COLORS.muted
+                        }
                       />
                       <Text
                         style={[
@@ -311,19 +393,28 @@ const RegisterScreen = ({ navigation }) => {
                     <TouchableOpacity
                       style={[
                         styles.genderOption,
-                        formData.sex === "female" && styles.genderOptionSelected,
+                        formData.sex === "female" &&
+                          styles.genderOptionSelected,
                       ]}
-                      onPress={() => updateFormData("sex", "female")}
+                      onPress={() => {
+                        setTouched((prev) => ({ ...prev, sex: true }));
+                        updateFormData("sex", "female");
+                      }}
                     >
                       <MaterialCommunityIcons
                         name="gender-female"
                         size={24}
-                        color={formData.sex === "female" ? COLORS.green : COLORS.muted}
+                        color={
+                          formData.sex === "female"
+                            ? COLORS.green
+                            : COLORS.muted
+                        }
                       />
                       <Text
                         style={[
                           styles.genderText,
-                          formData.sex === "female" && styles.genderTextSelected,
+                          formData.sex === "female" &&
+                            styles.genderTextSelected,
                         ]}
                       >
                         Female
@@ -352,7 +443,10 @@ const RegisterScreen = ({ navigation }) => {
                       placeholder="Password"
                       placeholderTextColor={COLORS.muted}
                       value={formData.password}
-                      onChangeText={(value) => updateFormData("password", value)}
+                      onChangeText={(value) =>
+                        updateFormData("password", value)
+                      }
+                      onBlur={() => handleBlur("password")}
                       secureTextEntry={!showPassword}
                       autoComplete="new-password"
                     />
@@ -369,6 +463,10 @@ const RegisterScreen = ({ navigation }) => {
                   </View>
                   {errors.password ? (
                     <Text style={styles.errorText}>{errors.password}</Text>
+                  ) : formData.password ? (
+                    <Text style={styles.helperText}>
+                      Use at least 6 characters for a stronger password.
+                    </Text>
                   ) : null}
                 </View>
               </AnimatedInput>
@@ -395,12 +493,15 @@ const RegisterScreen = ({ navigation }) => {
                       onChangeText={(value) =>
                         updateFormData("confirmPassword", value)
                       }
+                      onBlur={() => handleBlur("confirmPassword")}
                       secureTextEntry={!showConfirmPassword}
                       autoComplete="new-password"
                     />
                     <Pressable
                       style={styles.eyeButton}
-                      onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                      onPress={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
                     >
                       <MaterialCommunityIcons
                         name={showConfirmPassword ? "eye-off" : "eye"}
@@ -410,7 +511,9 @@ const RegisterScreen = ({ navigation }) => {
                     </Pressable>
                   </View>
                   {errors.confirmPassword ? (
-                    <Text style={styles.errorText}>{errors.confirmPassword}</Text>
+                    <Text style={styles.errorText}>
+                      {errors.confirmPassword}
+                    </Text>
                   ) : null}
                 </View>
               </AnimatedInput>
@@ -428,12 +531,19 @@ const RegisterScreen = ({ navigation }) => {
 
               {/* Register Button */}
               <AnimatedInput index={8}>
-                <TouchableOpacity activeOpacity={0.8} onPress={handleRegister} disabled={loading}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={handleRegister}
+                  disabled={loading}
+                >
                   <LinearGradient
-                    colors={[COLORS.green, '#4a5d20']}
+                    colors={[COLORS.green, "#4a5d20"]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
-                    style={[styles.registerButton, loading && styles.registerButtonDisabled]}
+                    style={[
+                      styles.registerButton,
+                      loading && styles.registerButtonDisabled,
+                    ]}
                   >
                     {loading ? (
                       <View style={styles.loadingContainer}>
@@ -442,7 +552,9 @@ const RegisterScreen = ({ navigation }) => {
                           size={20}
                           color="#ffffff"
                         />
-                        <Text style={styles.registerText}>Creating account...</Text>
+                        <Text style={styles.registerText}>
+                          Creating account...
+                        </Text>
                       </View>
                     ) : (
                       <Text style={styles.registerText}>Create Account</Text>
@@ -454,7 +566,9 @@ const RegisterScreen = ({ navigation }) => {
               {/* Login Link */}
               <AnimatedInput index={9}>
                 <View style={styles.loginContainer}>
-                  <Text style={styles.loginText}>Already have an account? </Text>
+                  <Text style={styles.loginText}>
+                    Already have an account?{" "}
+                  </Text>
                   <Pressable onPress={() => navigation.navigate("Login")}>
                     <Text style={styles.loginLink}>Sign in</Text>
                   </Pressable>
@@ -463,7 +577,7 @@ const RegisterScreen = ({ navigation }) => {
             </View>
           </Animated.View>
         </ScrollView>
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 };
@@ -477,14 +591,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
-    paddingTop: 0, // Removed padding top to let the card sit properly
-    backgroundColor: "transparent", // Ensure background shows through
+    paddingTop: 0,
+    backgroundColor: "transparent",
   },
   content: {
-    flex: 1,
     paddingHorizontal: 24,
-    paddingBottom: 20,
+    paddingBottom: 40,
     backgroundColor: "#fff",
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
@@ -493,8 +605,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 15,
     elevation: 20,
-    minHeight: Dimensions.get("window").height * 0.9, // Ensure it covers most of the screen
-    marginTop: 40, // Push it down slightly from the very top
+    marginTop: 40,
   },
   header: {
     marginBottom: 32,
@@ -518,6 +629,23 @@ const styles = StyleSheet.create({
   },
   form: {
     flex: 1,
+  },
+  formErrorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#fef2f2",
+    borderWidth: 1,
+    borderColor: "#fecaca",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 14,
+  },
+  formErrorText: {
+    flex: 1,
+    color: "#b91c1c",
+    fontSize: 13,
   },
   inputGroup: {
     marginBottom: 16,
@@ -547,6 +675,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginLeft: 4,
   },
+  helperText: {
+    fontSize: 12,
+    color: COLORS.muted,
+    marginTop: 4,
+    marginLeft: 4,
+  },
   eyeButton: {
     padding: 4,
   },
@@ -558,6 +692,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: "#F8FAFC",
     overflow: "hidden",
+  },
+  genderContainerError: {
+    borderColor: "#ef4444",
   },
   genderOption: {
     flex: 1,

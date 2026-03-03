@@ -5,21 +5,16 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
   StatusBar,
   Dimensions,
-  Animated,
-  FlatList,
-  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Loader from "../../components/Loader";
 import * as Haptics from "expo-haptics";
-import { getToken, getUser, getEligibilityStatus } from "../../utils/authUtil";
+import { getUser, getEligibilityStatus } from "../../utils/authUtil";
 import { useDispatch, useSelector } from "react-redux";
-import { login, verifyToken } from "../../features/slices/auth/authThunks";
+import { login } from "../../features/slices/auth/authThunks";
 import { guestMode, authMode } from "../../features/slices/auth/authSlice";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -34,53 +29,49 @@ const COLORS = {
   muted: "#334155",
 };
 
-const ONBOARDING_DATA = [
-  {
-    id: "1",
-    title: "Scan",
-    description: "Effortlessly scan product barcodes with your camera.",
-    icon: "barcode-scan",
-    color: COLORS.green,
-  },
-  {
-    id: "2",
-    title: "Confirm",
-    description: "Verify product details and prices instantly.",
-    icon: "check-decagram",
-    color: COLORS.orange,
-  },
-  {
-    id: "3",
-    title: "Go",
-    description: "Checkout seamlessly and save time.",
-    icon: "cart-arrow-right",
-    color: COLORS.sand,
-  },
-];
-
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   const { loading, error } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
 
-  // Onboarding State
-  const scrollX = useRef(new Animated.Value(0)).current;
-  const flatListRef = useRef(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [showLogin, setShowLogin] = useState(false);
+  const validateField = (field, value) => {
+    if (field === "email") {
+      if (!value.trim()) return "Email is required";
+      if (!/\S+@\S+\.\S+/.test(value)) return "Invalid email format";
+    }
 
-  // Animations
-  const formOpacity = useRef(new Animated.Value(0)).current;
-  const formTranslateY = useRef(new Animated.Value(height)).current;
+    if (field === "password") {
+      if (!value) return "Password is required";
+    }
+
+    return "";
+  };
+
+  const validateLoginForm = () => {
+    const nextErrors = {
+      email: validateField("email", email),
+      password: validateField("password", password),
+    };
+    setFieldErrors(nextErrors);
+    return !nextErrors.email && !nextErrors.password;
+  };
 
   const handleLogin = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    if (!validateLoginForm()) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
+    }
+
     try {
       const result = await dispatch(login({ email, password }));
       if (login.fulfilled.match(result)) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else if (login.rejected.match(result)) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
     } catch (error) {
       console.error(error);
@@ -88,37 +79,29 @@ const LoginScreen = ({ navigation }) => {
     }
   };
 
+  const handleEmailChange = (value) => {
+    setEmail(value);
+    if (fieldErrors.email) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        email: validateField("email", value),
+      }));
+    }
+  };
+
+  const handlePasswordChange = (value) => {
+    setPassword(value);
+    if (fieldErrors.password) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        password: validateField("password", value),
+      }));
+    }
+  };
+
   function handleGuest() {
     dispatch(guestMode());
   }
-
-  const handleGetStarted = () => {
-    setShowLogin(true);
-    Animated.parallel([
-      Animated.timing(formOpacity, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-      Animated.spring(formTranslateY, {
-        toValue: 0,
-        friction: 8,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
-
-  const handleBackToOnboarding = () => {
-    Animated.timing(formTranslateY, {
-      toValue: height,
-      duration: 300,
-      useNativeDriver: true,
-    }).start(() => {
-      setShowLogin(false);
-      formOpacity.setValue(0);
-    });
-  };
 
   React.useEffect(() => {
     (async () => {
@@ -128,74 +111,12 @@ const LoginScreen = ({ navigation }) => {
         if (user) {
           dispatch(authMode({ user, eligibilityStatus }));
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          return;
-        } else {
-          // const token = await getToken();
-          // if (!token) return;
-          // const result = await dispatch(verifyToken(token));
-          // if (verifyToken.fulfilled.match(result))
-          //   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
       } catch (error) {
         console.log(error);
       }
     })();
   }, []);
-
-  const renderOnboardingItem = ({ item }) => {
-    return (
-      <View style={{ width, alignItems: "center", padding: 20 }}>
-        <View
-          style={[styles.iconContainer, { backgroundColor: item.color + "20" }]}
-        >
-          <MaterialCommunityIcons
-            name={item.icon}
-            size={100}
-            color={item.color}
-          />
-        </View>
-        <Text style={[styles.onboardingTitle, { color: COLORS.text }]}>
-          {item.title}
-        </Text>
-        <Text style={[styles.onboardingDesc, { color: COLORS.muted }]}>
-          {item.description}
-        </Text>
-      </View>
-    );
-  };
-
-  const renderDotIndicator = () => {
-    return (
-      <View style={styles.dotContainer}>
-        {ONBOARDING_DATA.map((_, index) => {
-          const inputRange = [
-            (index - 1) * width,
-            index * width,
-            (index + 1) * width,
-          ];
-          const dotWidth = scrollX.interpolate({
-            inputRange,
-            outputRange: [10, 20, 10],
-            extrapolate: "clamp",
-          });
-          const opacity = scrollX.interpolate({
-            inputRange,
-            outputRange: [0.3, 1, 0.3],
-            extrapolate: "clamp",
-          });
-          return (
-            <Animated.View
-              key={index}
-              style={[
-                styles.dot,
-                { width: dotWidth, opacity, backgroundColor: COLORS.green },
-              ]}
-            />
-          );
-        })}
-      </View>
-    );
-  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -214,208 +135,148 @@ const LoginScreen = ({ navigation }) => {
         </View>
       ) : (
         <View style={{ flex: 1 }}>
-          <View style={styles.onboardingContainer}>
-            <View style={styles.onboardingHeader}>
+          <View style={styles.loginSheetContainer}>
+            <View style={styles.loginHeader}>
               <Text style={styles.appName}>ConsoliScan</Text>
+              <Text style={styles.loginTitle}>Welcome Back!</Text>
+              <Text style={styles.loginSubtitle}>
+                Sign in to continue smart shopping
+              </Text>
             </View>
 
-            <View style={{ flex: 3 }}>
-              <Animated.FlatList
-                ref={flatListRef}
-                data={ONBOARDING_DATA}
-                renderItem={renderOnboardingItem}
-                keyExtractor={(item) => item.id}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onScroll={Animated.event(
-                  [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-                  { useNativeDriver: false },
-                )}
-                onMomentumScrollEnd={(event) => {
-                  setCurrentIndex(
-                    Math.round(event.nativeEvent.contentOffset.x / width),
-                  );
-                }}
-              />
-            </View>
+            <View style={styles.form}>
+              {error ? (
+                <View style={styles.formErrorBanner}>
+                  <MaterialCommunityIcons
+                    name="alert-circle-outline"
+                    size={16}
+                    color="#ef4444"
+                  />
+                  <Text style={styles.formErrorText}>{error}</Text>
+                </View>
+              ) : null}
 
-            <View
-              style={{
-                flex: 1,
-                alignItems: "center",
-                justifyContent: "space-between",
-                paddingBottom: 40,
-              }}
-            >
-              {renderDotIndicator()}
-
-              {currentIndex === ONBOARDING_DATA.length - 1 ? (
-                <TouchableOpacity
-                  style={styles.getStartedButton}
-                  onPress={handleGetStarted}
+              <View style={styles.inputWrapper}>
+                <Text style={styles.inputLabel}>Email Address</Text>
+                <View
+                  style={[
+                    styles.inputContainer,
+                    fieldErrors.email && styles.inputContainerError,
+                  ]}
                 >
-                  <LinearGradient
-                    colors={[COLORS.green, "#4a5d20"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.gradientButton}
+                  <MaterialCommunityIcons
+                    name="email-outline"
+                    size={20}
+                    color={fieldErrors.email ? "#ef4444" : COLORS.muted}
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="john@example.com"
+                    placeholderTextColor={COLORS.muted}
+                    value={email}
+                    onChangeText={handleEmailChange}
+                    onBlur={() =>
+                      setFieldErrors((prev) => ({
+                        ...prev,
+                        email: validateField("email", email),
+                      }))
+                    }
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                  />
+                </View>
+                {fieldErrors.email ? (
+                  <Text style={styles.fieldErrorText}>{fieldErrors.email}</Text>
+                ) : null}
+              </View>
+
+              <View style={styles.inputWrapper}>
+                <Text style={styles.inputLabel}>Password</Text>
+                <View
+                  style={[
+                    styles.inputContainer,
+                    fieldErrors.password && styles.inputContainerError,
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name="lock-outline"
+                    size={20}
+                    color={fieldErrors.password ? "#ef4444" : COLORS.muted}
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="••••••••"
+                    placeholderTextColor={COLORS.muted}
+                    value={password}
+                    onChangeText={handlePasswordChange}
+                    onBlur={() =>
+                      setFieldErrors((prev) => ({
+                        ...prev,
+                        password: validateField("password", password),
+                      }))
+                    }
+                    secureTextEntry={!showPassword}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
                   >
-                    <Text style={styles.getStartedText}>Get Started</Text>
                     <MaterialCommunityIcons
-                      name="arrow-right"
-                      size={24}
-                      color="#fff"
+                      name={showPassword ? "eye-off" : "eye"}
+                      size={20}
+                      color={COLORS.muted}
                     />
-                  </LinearGradient>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.nextButton}
-                  onPress={() =>
-                    flatListRef.current?.scrollToIndex({
-                      index: currentIndex + 1,
-                    })
-                  }
-                >
-                  <Text style={styles.nextText}>Next</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
+                  </TouchableOpacity>
+                </View>
+                {fieldErrors.password ? (
+                  <Text style={styles.fieldErrorText}>
+                    {fieldErrors.password}
+                  </Text>
+                ) : null}
+              </View>
 
-          {/* Login Sheet Overlay */}
-          {showLogin && (
-            <Animated.View
-              style={[
-                styles.loginSheetContainer,
-                {
-                  opacity: formOpacity,
-                  transform: [{ translateY: formTranslateY }],
-                },
-              ]}
-            >
-              <View style={styles.sheetHandle} />
-
-              <TouchableOpacity
-                style={styles.backButton}
-                onPress={handleBackToOnboarding}
-              >
-                <MaterialCommunityIcons
-                  name="arrow-left"
-                  size={24}
-                  color={COLORS.text}
-                />
-                <Text style={styles.backText}>Back</Text>
+              <TouchableOpacity style={styles.forgotPassword}>
+                <Text style={styles.forgotText}>Forgot password?</Text>
               </TouchableOpacity>
 
-              <KeyboardAvoidingView
-                behavior={Platform.OS === "ios" ? "padding" : "height"}
-                style={{ flex: 1 }}
+              <TouchableOpacity activeOpacity={0.8} onPress={handleLogin}>
+                <LinearGradient
+                  colors={[COLORS.green, "#4a5d20"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.signInButton}
+                >
+                  <Text style={styles.signInText}>Sign In</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <View style={styles.divider}>
+                <View style={styles.line} />
+                <Text style={styles.orText}>OR</Text>
+                <View style={styles.line} />
+              </View>
+
+              <TouchableOpacity
+                style={styles.guestButton}
+                onPress={handleGuest}
               >
-                <View style={styles.loginHeader}>
-                  <Text style={styles.loginTitle}>Welcome Back!</Text>
-                  <Text style={styles.loginSubtitle}>
-                    Sign in to continue smart shopping
-                  </Text>
-                </View>
+                <MaterialCommunityIcons
+                  name="account-outline"
+                  size={24}
+                  color={COLORS.green}
+                />
+                <Text style={styles.guestText}>Continue as Guest</Text>
+              </TouchableOpacity>
+            </View>
 
-                <View style={styles.form}>
-                  <View style={styles.inputWrapper}>
-                    <Text style={styles.inputLabel}>Email Address</Text>
-                    <View style={styles.inputContainer}>
-                      <MaterialCommunityIcons
-                        name="email-outline"
-                        size={20}
-                        color={COLORS.muted}
-                        style={styles.inputIcon}
-                      />
-                      <TextInput
-                        style={styles.input}
-                        placeholder="john@example.com"
-                        placeholderTextColor={COLORS.muted}
-                        value={email}
-                        onChangeText={setEmail}
-                        autoCapitalize="none"
-                        keyboardType="email-address"
-                      />
-                    </View>
-                  </View>
-
-                  <View style={styles.inputWrapper}>
-                    <Text style={styles.inputLabel}>Password</Text>
-                    <View style={styles.inputContainer}>
-                      <MaterialCommunityIcons
-                        name="lock-outline"
-                        size={20}
-                        color={COLORS.muted}
-                        style={styles.inputIcon}
-                      />
-                      <TextInput
-                        style={styles.input}
-                        placeholder="••••••••"
-                        placeholderTextColor={COLORS.muted}
-                        value={password}
-                        onChangeText={setPassword}
-                        secureTextEntry={!showPassword}
-                      />
-                      <TouchableOpacity
-                        onPress={() => setShowPassword(!showPassword)}
-                      >
-                        <MaterialCommunityIcons
-                          name={showPassword ? "eye-off" : "eye"}
-                          size={20}
-                          color={COLORS.muted}
-                        />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-
-                  <TouchableOpacity style={styles.forgotPassword}>
-                    <Text style={styles.forgotText}>Forgot password?</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity activeOpacity={0.8} onPress={handleLogin}>
-                    <LinearGradient
-                      colors={[COLORS.green, "#4a5d20"]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.signInButton}
-                    >
-                      <Text style={styles.signInText}>Sign In</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-
-                  <View style={styles.divider}>
-                    <View style={styles.line} />
-                    <Text style={styles.orText}>OR</Text>
-                    <View style={styles.line} />
-                  </View>
-
-                  <TouchableOpacity
-                    style={styles.guestButton}
-                    onPress={handleGuest}
-                  >
-                    <MaterialCommunityIcons
-                      name="account-outline"
-                      size={24}
-                      color={COLORS.green}
-                    />
-                    <Text style={styles.guestText}>Continue as Guest</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.footer}>
-                  <Text style={styles.footerText}>Don't have an account? </Text>
-                  <TouchableOpacity
-                    onPress={() => navigation.navigate("Register")}
-                  >
-                    <Text style={styles.signupText}>Sign Up</Text>
-                  </TouchableOpacity>
-                </View>
-              </KeyboardAvoidingView>
-            </Animated.View>
-          )}
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Don't have an account? </Text>
+              <TouchableOpacity onPress={() => navigation.navigate("Register")}>
+                <Text style={styles.signupText}>Sign Up</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       )}
     </SafeAreaView>
@@ -464,95 +325,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  // Onboarding Styles
-  onboardingContainer: {
-    flex: 1,
-  },
-  onboardingHeader: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingTop: 40,
-  },
-  appName: {
-    fontSize: 32,
-    fontWeight: "800",
-    color: COLORS.green,
-    letterSpacing: 1,
-    textShadowColor: "rgba(0, 0, 0, 0.1)",
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-  iconContainer: {
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 40,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.5)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  onboardingTitle: {
-    fontSize: 32,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 16,
-  },
-  onboardingDesc: {
-    fontSize: 16,
-    textAlign: "center",
-    paddingHorizontal: 40,
-    lineHeight: 24,
-  },
-  dotContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 30,
-    height: 20,
-  },
-  dot: {
-    height: 10,
-    borderRadius: 5,
-    marginHorizontal: 5,
-  },
-  getStartedButton: {
-    borderRadius: 30,
-    shadowColor: COLORS.green,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  gradientButton: {
-    flexDirection: "row",
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 30,
-    alignItems: "center",
-  },
-  getStartedText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
-    marginRight: 8,
-  },
-  nextButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-  },
-  nextText: {
-    color: COLORS.green,
-    fontSize: 18,
-    fontWeight: "600",
-  },
-
   // Login Sheet Styles
   loginSheetContainer: {
     position: "absolute",
@@ -606,6 +378,23 @@ const styles = StyleSheet.create({
   form: {
     flex: 1,
   },
+  formErrorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#fef2f2",
+    borderWidth: 1,
+    borderColor: "#fecaca",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 14,
+  },
+  formErrorText: {
+    flex: 1,
+    color: "#b91c1c",
+    fontSize: 13,
+  },
   inputWrapper: {
     marginBottom: 20,
   },
@@ -626,6 +415,9 @@ const styles = StyleSheet.create({
     height: 56,
     backgroundColor: "#F8FAFC",
   },
+  inputContainerError: {
+    borderColor: "#ef4444",
+  },
   inputIcon: {
     marginRight: 12,
   },
@@ -633,6 +425,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: COLORS.text,
+  },
+  fieldErrorText: {
+    fontSize: 12,
+    color: "#ef4444",
+    marginTop: 6,
+    marginLeft: 4,
   },
   forgotPassword: {
     alignSelf: "flex-end",
