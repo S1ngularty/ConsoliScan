@@ -195,3 +195,134 @@ export async function getActivityLogs(params = {}) {
     throw error;
   }
 }
+
+// Get returns report data
+export async function getReturnsReport(params = {}) {
+  try {
+    const { startDate, endDate } = params;
+    const response = await axios.get("/api/v1/admin/analytics/returns", {
+      params: {
+        startDate,
+        endDate,
+      },
+    });
+
+    return {
+      ...response.data,
+      data: response.data?.result?.data || [],
+    };
+  } catch (error) {
+    console.error("Error fetching returns report:", error);
+    throw error;
+  }
+}
+
+/**
+ * Download comprehensive report as PDF
+ * @param {string} timeRange - Number of days for the report (e.g., "30", "90", "365")
+ * @returns {Promise<Blob>} PDF blob
+ */
+export async function downloadComprehensiveReportPDF(timeRange = "30") {
+  try {
+    const response = await axios.get(
+      "/api/v1/admin/reports/comprehensive/pdf",
+      {
+        params: {
+          timeRange,
+        },
+        responseType: "blob",
+      },
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error downloading comprehensive report:", error);
+    throw error;
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  STAFF PERFORMANCE
+// ══════════════════════════════════════════════════════
+export async function getStaffPerformance(params = {}) {
+  try {
+    const response = await axios.get(
+      "/api/v1/admin/analytics/staff-performance",
+      {
+        params,
+      },
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching staff performance:", error);
+    throw error;
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  CUSTOMER INSIGHTS
+// ══════════════════════════════════════════════════════
+export async function getCustomerInsights(params = {}) {
+  try {
+    const response = await axios.get(
+      "/api/v1/admin/analytics/customer-insights",
+      {
+        params,
+      },
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching customer insights:", error);
+    throw error;
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  PRODUCT PERFORMANCE
+// ══════════════════════════════════════════════════════
+export async function getProductPerformance(params = {}) {
+  try {
+    const response = await axios.get(
+      "/api/v1/admin/analytics/product-performance",
+      {
+        params,
+      },
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching product performance:", error);
+    throw error;
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  FINANCIAL REPORTS
+// ══════════════════════════════════════════════════════
+export async function getFinancialReports(params = {}) {
+  try {
+    const response = await axios.get(
+      "/api/v1/admin/analytics/financial-reports",
+      {
+        params,
+      },
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching financial reports:", error);
+    throw error;
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  PREDICTIVE ANALYTICS
+// ══════════════════════════════════════════════════════
+export async function getPredictiveAnalytics(params = {}) {
+  try {
+    const response = await axios.get("/api/v1/admin/analytics/predictive", {
+      params,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching predictive analytics:", error);
+    throw error;
+  }
+}

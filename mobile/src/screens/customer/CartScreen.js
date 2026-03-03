@@ -12,11 +12,13 @@ import {
   Modal,
   BackHandler,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSelector, useDispatch } from "react-redux";
 import { useFocusEffect } from "@react-navigation/native";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   adjustQuantity,
@@ -78,7 +80,9 @@ const CartScreen = ({ navigation, route }) => {
   const [suggestedPromos, setSuggestedPromos] = useState([]);
 
   const dispatch = useDispatch();
-  const tabBarHeight = useBottomTabBarHeight();
+  const insets = useSafeAreaInsets();
+  // Use safe area bottom insets instead of tab bar height - works in all navigator contexts
+  const tabBarHeight = insets.bottom > 0 ? insets.bottom + 5 : 10;
   const { cart, itemCount, promo, sessionActive } = useSelector(
     (state) => state.cart,
   );

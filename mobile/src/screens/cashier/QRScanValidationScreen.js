@@ -418,26 +418,28 @@ const QRScanValidationScreen = () => {
   // ── Recalculate totals based on allOrderItems (similar to CartScreen) ──
   const recalculateTotals = () => {
     const originalCheckoutData = route.params?.checkoutData || {};
+    const originalItemCount = originalCheckoutData.items?.length || 0;
 
-    // Calculate new subtotal from all order items
+    // If no items were added, return the original checkout data untouched
+    if (allOrderItems.length === originalItemCount) {
+      return originalCheckoutData;
+    }
+
+    // Calculate new subtotal from all order items using itemTotal field
     const subtotal = allOrderItems.reduce((sum, item) => {
-      const itemTotal =
-        (item.product?.salePrice || item.product?.price || 0) * item.quantity;
+      // Use the itemTotal field if available (already calculated), otherwise use 0
+      const itemTotal = item.itemTotal || 0;
       return sum + itemTotal;
     }, 0);
 
     // Get eligible BNPC items (items that qualify for BNPC discount)
     const bnpcEligibleItems = allOrderItems.filter((item) => {
-      const product = item.product;
-      return (
-        product && product.bnpc === true && product.bnpcEligibility === true
-      );
+      return item.isBNPCEligible === true;
     });
 
     // Calculate BNPC eligible subtotal
     const bnpcEligibleSubtotal = bnpcEligibleItems.reduce((sum, item) => {
-      const itemTotal =
-        (item.product?.salePrice || item.product?.price || 0) * item.quantity;
+      const itemTotal = item.itemTotal || 0;
       return sum + itemTotal;
     }, 0);
 
@@ -445,22 +447,23 @@ const QRScanValidationScreen = () => {
     const bnpcDiscount = originalCheckoutData.totals?.bnpcDiscount || 0;
     const promoDiscount = originalCheckoutData.totals?.promoDiscount || 0;
     const loyaltyDiscount = originalCheckoutData.totals?.loyaltyDiscount || 0;
+    const discountTotal = bnpcDiscount + promoDiscount + loyaltyDiscount;
 
     // Calculate final total
-    const finalTotal = Math.max(
-      subtotal - bnpcDiscount - promoDiscount - loyaltyDiscount,
-      0,
-    );
+    const finalTotal = Math.max(subtotal - discountTotal, 0);
 
     // Return updated checkout data with recalculated totals
     return {
       ...originalCheckoutData,
+      items: allOrderItems,
       totals: {
         subtotal,
+        afterOtherDiscounts: finalTotal,
         bnpcEligibleSubtotal,
         bnpcDiscount,
         promoDiscount,
         loyaltyDiscount,
+        discountTotal,
         finalTotal,
       },
       discountBreakdown: {
@@ -931,7 +934,6 @@ const QRScanValidationScreen = () => {
               {scanComplete ? "Complete ✓" : "Complete Validation"}
             </Text>
           </TouchableOpacity>
-
           <TouchableOpacity
             style={styles.cancelBtn}
             onPress={handleBack}
@@ -1460,6 +1462,23 @@ const styles = StyleSheet.create({
   completeBtnSuccess: { backgroundColor: "#059669" },
   completeBtnDisabled: { backgroundColor: "#cbd5e1" },
   completeBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  // switchBtn: {
+  //   flexDirection: "row",
+  //   alignItems: "center",
+  //   justifyContent: "center",
+  //   backgroundColor: "#fff",
+  //   borderWidth: 1.5,
+  //   borderColor: "#00A86B",
+  //   borderRadius: 12,
+  //   paddingVertical: 12,
+  //   gap: 8,
+  //   marginTop: 8,
+  // },
+  // switchBtnText: {
+  //   color: "#00A86B",
+  //   fontSize: 14,
+  //   fontWeight: "600",
+  // },
   cancelBtn: { paddingVertical: 12, alignItems: "center" },
   cancelBtnText: { color: "#64748b", fontSize: 14, fontWeight: "600" },
 
