@@ -74,14 +74,15 @@ const Carousel = () => {
             ))}
           </div>
 
-          <button className="carousel-btn prev-btn" onClick={prevSlide}>
-            &#9650; {/* Up Arrow */}
-          </button>
+        {/* Top Button (Up Arrow) */}
+        <button className="carousel-btn prev-btn" onClick={prevSlide}>
+        &#9650;
+        </button>
 
-          <button className="carousel-btn next-btn" onClick={nextSlide}>
-            &#9660; {/* Down Arrow */}
-          </button>
-
+         {/* Bottom Button (Down Arrow) */}
+        <button className="carousel-btn next-btn" onClick={nextSlide}>
+        &#9660;
+        </button>
         </div>
       </div>
 
