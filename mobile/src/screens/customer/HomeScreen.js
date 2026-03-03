@@ -615,14 +615,15 @@ const HomeScreen = ({ navigation }) => {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
-        {isOffline || isServerDown ? (
-          <OfflineIndicator message="Cannot load dashboard" />
-        ) : (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#00A86B" />
-            <Text style={styles.loadingText}>Loading your dashboard…</Text>
-          </View>
-        )}
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#00A86B" />
+          <Text style={styles.loadingText}>Loading your dashboard…</Text>
+          {(isOffline || isServerDown) && (
+            <Text style={styles.loadingSubtext}>
+              Offline mode: trying to reconnect…
+            </Text>
+          )}
+        </View>
       </SafeAreaView>
     );
   }
@@ -632,7 +633,7 @@ const HomeScreen = ({ navigation }) => {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
-        <OfflineIndicator message="Cannot load dashboard" />
+        <OfflineIndicator message="Cannot load dashboard" onRetry={onRefresh} />
       </SafeAreaView>
     );
   }
@@ -867,6 +868,7 @@ const styles = StyleSheet.create({
   scrollContent: { paddingBottom: 80 },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   loadingText: { marginTop: 12, fontSize: 14, color: "#64748b" },
+  loadingSubtext: { marginTop: 8, fontSize: 12, color: "#94a3b8" },
 
   // Nav
   navBar: {

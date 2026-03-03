@@ -17,6 +17,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useSelector } from "react-redux";
+import { lockedOrder } from "../../api/checkout.api";
 
 const FRAME_SIZE = 240;
 const CORNER_LEN = 26;
@@ -97,6 +98,12 @@ const QRScanValidationScreen = () => {
   const [quantityInput, setQuantityInput] = useState("1");
 
   const catalogProducts = useSelector((state) => state.product?.products || []);
+
+  useEffect(()=>{
+    (async()=>{
+      const res = await lockedOrder(checkoutCode);
+    })()
+  },[])
 
   const getProductByBarcode = useCallback(
     (barcode) =>

@@ -189,6 +189,7 @@ export default function RootNavigator() {
 
   return (
     <View style={{ flex: 1 }}>
+      <OfflineBanner />
       <Stack.Navigator id="RootStack" screenOptions={{ headerShown: false }}>
         {role === ROLES.Customer && isNewUser ? (
           <Stack.Screen name="Onboarding" component={OnboardingScreen} />
@@ -206,7 +207,6 @@ export default function RootNavigator() {
           <Stack.Screen name="Auth" component={AuthNavigation} />
         )}
       </Stack.Navigator>
-      <OfflineBanner />
     </View>
   );
 }

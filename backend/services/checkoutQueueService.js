@@ -75,18 +75,18 @@ exports.lockedOrder = async (request) => {
   const { userId } = request.user;
   if (!request.body) throw new Error("empty request content");
   const { checkoutCode } = request.params;
-  const order = await Queue.findOneAndUpdate(
-    { checkoutCode, "cashier.cashierId": userId, status: "SCANNED" },
-    {
-      status: "LOCKED",
-    },
-    { new: true, runValidators: true },
+  const order = await Queue.findOne(
+    { checkoutCode, "cashier.cashierId": userId },
   ).populate({
     path: "items.product",
     select: "checkoutCode",
   });
 
-  if (!order) throw new Error("failed to update checkout status");
+  if(!order) throw new Error("order not found");
+  if(order.status == "LOCKED") return order; // Idempotent lock
+  order.status = "LOCKED";
+  order.lockedAt = Date.now();
+  await order.save();
 
   checkoutEmitter.emitCheckout(checkoutCode, "checkout:locked", {
     status: order.status,

@@ -545,7 +545,7 @@ const PaymentScreen = ({ route, navigation }) => {
       );
 
       // Lock the order first before paying
-      if (appUser) await lockedOrder(checkoutCode);
+      // if (appUser) await lockedOrder(checkoutCode);
 
       // Call payOrder API if appUser
       if (appUser) {
