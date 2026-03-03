@@ -108,20 +108,13 @@ const UserDashboard = () => {
             </button>
           </div>
 
-          {/* Quick Actions Grid */}
+         {/* Quick Actions Grid */}
           <div className="section-container">
             <div className="section-header">
               <h2>Quick Actions</h2>
             </div>
+            
             <div className="quick-actions-grid">
-              <div className="action-card" onClick={() => navigate('/user/cart')}>
-                <div className="action-icon">
-                  <ShoppingBag size={24} />
-                  {homeData.cartItemCount > 0 && <span className="badge">{homeData.cartItemCount}</span>}
-                </div>
-                <span className="action-title">My Cart</span>
-              </div>
-              
               <div className="action-card" onClick={() => navigate('/user/profile')}>
                 <div className="action-icon">
                   <ShieldCheck size={24} color={!homeData.is_eligibility_verified ? "#EF4444" : "inherit"} />
@@ -145,7 +138,7 @@ const UserDashboard = () => {
             </div>
           </div>
         </div>
-
+        
         {/* Right Column */}
         <div className="dashboard-column-right">
           {/* Discount Cap Card */}

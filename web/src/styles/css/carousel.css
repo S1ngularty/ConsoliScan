@@ -89,24 +89,64 @@
   line-height: 1.6;
 }
 
-/* Buttons */
+/* Shared design for BOTH buttons (Circle, Border, Centering) */
 .carousel-btn {
   position: absolute;
-  left: 50%; /* Center horizontally */
-  transform: translateX(-50%);
-  background: white;
-  border: none;
+  left: 50%;
+  transform: translateX(-50%); /* Centers them horizontally */
+  
+  /* Size and perfect circle */
   width: 40px;
   height: 40px;
   border-radius: 50%;
+  
+  /* White background, black border, black arrow */
+  background-color: white;
+  border: 2px solid black; 
+  color: black;            
+  
+  /* Flexbox to perfectly center the arrow inside the circle */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  line-height: 1;
+  font-size: 18px;
+  
   cursor: pointer;
   z-index: 10;
 }
 
+/* Places the Up button at the top */
 .prev-btn {
-  top: 10px; /* Position at top */
+  top: 10px; 
 }
 
+/* the Next button here is so hard to edit wtf*/
 .next-btn {
-  bottom: 10px; /* Position at bottom */
+  bottom: 10px !important; 
+  background-color: white !important;
+  border: 2px solid black !important;
+  color: black !important;
+  border-radius: 50% !important;
+  width: 40px !important;
+  height: 40px !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  font-size: 18px !important;
+}
+
+/* Disable ANY hover animations or effects on the bottom button */
+.next-btn:hover, 
+.next-btn:focus, 
+.next-btn:active {
+  transition: none !important; 
+  transform: translateX(-50%) !important; /* Prevents jumping/scaling */
+  background-color: white !important; 
+  color: black !important; 
+  box-shadow: none !important; 
+  border: 2px solid black !important; 
 }
