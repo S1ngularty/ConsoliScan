@@ -57,6 +57,12 @@ const ReturnSchema = new mongoose.Schema(
       min: 0,
     },
 
+    returnQuantity: {
+      type: Number,
+      default: 1,
+      min: 1,
+    },
+
     /* ======================
        RETURN REASON
     ======================= */
@@ -107,6 +113,18 @@ const ReturnSchema = new mongoose.Schema(
     loyaltyPointsAwarded: {
       type: Number,
       default: 0,
+
+      calculatedLoyaltyPoints: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+
+      earnRate: {
+        type: Number,
+        default: 10,
+        min: 0,
+      },
       min: 0,
     },
 

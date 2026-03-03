@@ -18,6 +18,7 @@ const Return = require("../models/ReturnModel");
 const Order = require("../models/orderModel");
 const Product = require("../models/productModel");
 const User = require("../models/userModel");
+const LoyaltyConfig = require("../models/loyaltyConfigModel");
 const blockchainService = require("./blockchainService");
 const { emitCheckout, emitToRoom } = require("../helper/socketEmitter");
 
@@ -47,7 +48,8 @@ function daysAgo(n) {
    ═══════════════════════════════════════════════════════════════════════════ */
 async function initiateReturn(request) {
   const { userId } = request.user;
-  const { orderId, itemId, returnReason, returnReasonNotes } = request.body;
+  const { orderId, itemId, returnReason, returnReasonNotes, returnQuantity } =
+    request.body;
 
   if (!orderId || !itemId) throw new Error("orderId and itemId are required");
 
@@ -89,6 +91,15 @@ async function initiateReturn(request) {
   });
 
   if (existing) {
+    existing.status = "PENDING"; // reset to pending if re-initiating
+    existing.returnReason = returnReason || existing.returnReason;
+    existing.returnReasonNotes =
+      returnReasonNotes || existing.returnReasonNotes;
+    existing.returnQuantity = Math.max(
+      existing.returnQuantity,
+      parseInt(returnQuantity) || 1,
+    );
+    await existing.save();
     return existing;
   }
 
@@ -99,6 +110,7 @@ async function initiateReturn(request) {
     originalItemId: new mongoose.Types.ObjectId(itemId),
     originalItemName: lineItem.name,
     originalPrice: lineItem.unitPrice,
+    returnQuantity: Math.max(1, parseInt(returnQuantity) || 1),
     returnReason: returnReason || "changed_mind",
     returnReasonNotes: returnReasonNotes || "",
     qrToken: "pending",
@@ -211,6 +223,7 @@ async function validateReturnQR(request) {
       name: lineItem.name,
       productId: lineItem.product,
       quantity: lineItem.quantity,
+      returnQuantity: returnDoc.returnQuantity,
       price: lineItem.unitPrice,
       originalPrice: lineItem.unitPrice,
       categoryId: lineItem.category?.id || null,
@@ -318,6 +331,24 @@ async function completeReturnLoyalty(request) {
     throw new Error("Inspection must be PASSED to fulfill return");
   }
 
+  /* ── Fetch loyalty config to calculate points dynamically ── */
+  const loyaltyConfig = await LoyaltyConfig.findById("loyalty_config");
+  if (!loyaltyConfig) {
+    throw new Error("Loyalty configuration not found");
+  }
+  console.log("Loyalty Config:", loyaltyConfig);
+  /* ── Calculate loyalty points based on config: price * quantity * earnRate / 100 ── */
+  const earnRate = loyaltyConfig.earnRate || 0.1;
+  const calculatedPoints = Math.round(
+    (returnDoc.originalPrice * returnDoc.returnQuantity * earnRate) / 100,
+  );
+  const finalLoyaltyAmount =
+    loyaltyAmount > 0 ? loyaltyAmount : calculatedPoints;
+
+  console.log(
+    `Calculated loyalty points: ${calculatedPoints}, Final loyalty points to award: ${finalLoyaltyAmount}`,
+  );
+
   /* ── Atomic transaction ── */
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -329,11 +360,11 @@ async function completeReturnLoyalty(request) {
     await User.findByIdAndUpdate(
       returnDoc.customerId,
       {
-        $inc: { loyaltyPoints: loyaltyAmount },
+        $inc: { loyaltyPoints: finalLoyaltyAmount },
         $push: {
           loyaltyHistory: {
             event: "earn",
-            points: loyaltyAmount,
+            points: finalLoyaltyAmount,
             date: now,
           },
         },
@@ -360,17 +391,17 @@ async function completeReturnLoyalty(request) {
       { session },
     );
 
-    /* ── 3. Return item to inventory ── */
+    /* ── 3. Return item to inventory (by returnQuantity) ── */
     await Product.updateOne(
       { _id: returnDoc.originalItemId },
-      { $inc: { stockQuantity: 1 } },
+      { $inc: { stockQuantity: returnDoc.returnQuantity } },
       { session },
     );
 
     /* ── 4. Mark return as COMPLETED ── */
     returnDoc.status = "COMPLETED";
     returnDoc.fulfillmentType = "LOYALTY_CONVERSION";
-    returnDoc.loyaltyPointsAwarded = loyaltyAmount;
+    returnDoc.loyaltyPointsAwarded = finalLoyaltyAmount;
     returnDoc.completedAt = now;
     await returnDoc.save({ session });
 
@@ -389,7 +420,7 @@ async function completeReturnLoyalty(request) {
       orderId: returnDoc.orderId,
       originalItemId: returnDoc.originalItemId,
       fulfillmentType: "LOYALTY",
-      loyaltyPoints: loyaltyAmount,
+      loyaltyPoints: finalLoyaltyAmount,
       completedAt: returnDoc.completedAt,
     });
     returnDoc.blockchainTxId = blockchainResult.txId;
@@ -405,16 +436,16 @@ async function completeReturnLoyalty(request) {
     returnId: returnDoc._id,
     status: "COMPLETED",
     fulfillmentType: "LOYALTY_CONVERSION",
-    loyaltyPointsAwarded: loyaltyAmount,
-    message: `Return complete! ₱${loyaltyAmount.toFixed(2)} converted to loyalty points`,
+    loyaltyPointsAwarded: finalLoyaltyAmount,
+    message: `Return complete! ₱${finalLoyaltyAmount.toFixed(2)} converted to loyalty points`,
   });
 
   return {
     returnId: returnDoc._id,
     status: "COMPLETED",
     fulfillmentType: "LOYALTY_CONVERSION",
-    loyaltyPointsAwarded: loyaltyAmount,
-    message: `₱${loyaltyAmount.toFixed(2)} awarded as loyalty points`,
+    loyaltyPointsAwarded: finalLoyaltyAmount,
+    message: `₱${finalLoyaltyAmount.toFixed(2)} awarded as loyalty points`,
   };
 }
 
@@ -426,7 +457,7 @@ async function completeReturnLoyalty(request) {
 async function completeReturnSwap(request) {
   const { userId } = request.user;
   const { returnId } = request.params;
-  const { replacementBarcode } = request.body;
+  const { replacementBarcode, returnQuantity } = request.body;
 
   if (!replacementBarcode) throw new Error("replacementBarcode is required");
 
@@ -442,6 +473,9 @@ async function completeReturnSwap(request) {
   if (returnDoc.inspectionStatus !== "PASSED") {
     throw new Error("Inspection must be PASSED to fulfill return");
   }
+
+  /* ── Use returnQuantity from request or from returnDoc ── */
+  const swapQuantity = returnQuantity || returnDoc.returnQuantity || 1;
 
   /* ── Load replacement product ── */
   const replacement = await Product.findOne({
@@ -460,9 +494,11 @@ async function completeReturnSwap(request) {
     );
   }
 
-  /* ── Stock check ── */
-  if (replacement.stockQuantity < 1) {
-    throw new Error("Replacement item is out of stock");
+  /* ── Stock check for exact quantity ── */
+  if (replacement.stockQuantity < swapQuantity) {
+    throw new Error(
+      `Insufficient stock. Need ${swapQuantity} unit(s), but only ${replacement.stockQuantity} available.`,
+    );
   }
 
   /* ── Atomic transaction ── */
@@ -491,19 +527,19 @@ async function completeReturnSwap(request) {
       { session },
     );
 
-    /* ── 2. Inventory: return original, keep same product as replacement ── */
+    /* ── 2. Inventory: return original (by quantity), reduce replacement ── */
     await Product.bulkWrite(
       [
         {
           updateOne: {
             filter: { _id: returnDoc.originalItemId },
-            update: { $inc: { stockQuantity: 1 } }, // original returned to stock
+            update: { $inc: { stockQuantity: swapQuantity } }, // original returned to stock
           },
         },
         {
           updateOne: {
             filter: { _id: replacement._id },
-            update: { $inc: { stockQuantity: -1 } }, // same product taken
+            update: { $inc: { stockQuantity: -swapQuantity } }, // same product taken (by quantity)
           },
         },
       ],
