@@ -17,6 +17,7 @@ import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import { useSelector, useDispatch } from "react-redux";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchHomeData } from "../../api/user.api";
+import { LinearGradient } from "expo-linear-gradient";
 import OfflineIndicator from "../../components/Common/OfflineIndicator";
 import SessionModal from "../../components/Customer/SessionModal";
 import { startSession } from "../../features/slices/cart/cartSlice";
@@ -290,81 +291,47 @@ const DiscountCapCard = ({ homeData }) => {
   );
 };
 
-// ─── Hero points display with count-up ──────────────────────────────────────
-const HeroPoints = ({ points, navigation }) => {
-  const displayPts = useCountUp(points, 1400, 2, 100);
-
-  // Pulse ring animation (native scale)
-  const pulse = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 1.06,
-          duration: 1600,
-          ease: Easing.inOut(Easing.sine),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulse, {
-          toValue: 1,
-          duration: 1600,
-
-          ease: Easing.inOut(Easing.sine),
-          useNativeDriver: true,
-        }),
-      ]),
-    ).start();
-  }, []);
+// ─── Payment Card Style Points Card ─────────────────────────────────────────
+const PointsCard = ({ points, navigation }) => {
+  const displayPts = useCountUp(points, 1200, 0, 100);
+  const mountStyle = useMountAnim(0);
 
   return (
-    <FadeSlideCard delay={0} style={styles.heroSection}>
-      <Text style={styles.heroLabel}>Points Balance</Text>
-
-      <Animated.View
-        style={[styles.heroPointsRing, { transform: [{ scale: pulse }] }]}
+    <Animated.View
+      style={[mountStyle, { marginHorizontal: 24, marginBottom: 24 }]}
+    >
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => navigation.navigate("Rewards")}
       >
-        <View style={styles.heroPointsInner}>
-          <Text style={styles.pointsValue}>{displayPts}</Text>
-          <Text style={styles.pointsCurrency}>pts</Text>
-        </View>
-      </Animated.View>
+        <LinearGradient
+          colors={["#00A86B", "#048b5f", "#037351"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.paymentCard}
+        >
+          {/* Card pattern overlay */}
+          <View style={styles.cardPattern}>
+            <View style={styles.cardCircle1} />
+            <View style={styles.cardCircle2} />
+          </View>
 
-      {points === 0 ? (
-        <TouchableOpacity
-          style={styles.earnPointsPill}
-          onPress={() => navigation.navigate("Rewards")}
-        >
-          <MaterialCommunityIcons
-            name="star-outline"
-            size={15}
-            color="#FF9800"
-          />
-          <Text style={styles.earnPointsText}>Start earning points</Text>
-          <MaterialCommunityIcons
-            name="chevron-right"
-            size={15}
-            color="#FF9800"
-          />
-        </TouchableOpacity>
-      ) : (
-        <TouchableOpacity
-          style={styles.rewardPill}
-          onPress={() => navigation.navigate("Rewards")}
-        >
-          <MaterialCommunityIcons
-            name="gift-outline"
-            size={15}
-            color="#00A86B"
-          />
-          <Text style={styles.rewardText}>Learn How to use points</Text>
-          <MaterialCommunityIcons
-            name="chevron-right"
-            size={15}
-            color="#00A86B"
-          />
-        </TouchableOpacity>
-      )}
-    </FadeSlideCard>
+          {/* Points Display */}
+          <View style={styles.cardPointsContent}>
+            <Text style={styles.cardLabel}>LOYALTY POINTS</Text>
+            <View style={styles.cardPointsRow}>
+              <Text style={styles.cardPoints}>{displayPts}</Text>
+              <Text style={styles.cardPointsSuffix}>PTS</Text>
+            </View>
+            <Text style={styles.cardSubtext}>
+              {points === 0
+                ? "Start shopping to earn points"
+                : "Keep shopping to earn more"}
+            </Text>
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+    </Animated.View>
   );
 };
 
@@ -401,7 +368,7 @@ const TransactionItem = ({ product, price, date, isEligible, delay = 0 }) => {
           <MaterialCommunityIcons
             name="barcode-scan"
             size={20}
-            color={isEligible ? "#00A86B" : "#0f172a"}
+            color={isEligible ? "#00A86B" : "#2D3748"}
           />
         </View>
         <View style={{ flex: 1, marginLeft: 12 }}>
@@ -691,7 +658,7 @@ const HomeScreen = ({ navigation }) => {
             style={styles.navIconBtn}
             onPress={() => navigation.navigate("Notifications")}
           >
-            <Ionicons name="notifications-outline" size={20} color="#0f172a" />
+            <Ionicons name="notifications-outline" size={20} color="#2D3748" />
             <View style={styles.notifDot} />
           </TouchableOpacity>
           <TouchableOpacity
@@ -726,16 +693,17 @@ const HomeScreen = ({ navigation }) => {
           />
         }
       >
-        {/* ── Points hero with count-up ── */}
-        <HeroPoints
+        {/* ── Points gradient card ── */}
+        <PointsCard
           points={homeData.loyaltyPoints || 0}
           navigation={navigation}
         />
 
-        {/* ── Quick actions (staggered mount) ── */}
+        {/* ── Quick Actions ── */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
         </View>
+
         <View style={styles.gridContainer}>
           {[
             {
@@ -782,11 +750,11 @@ const HomeScreen = ({ navigation }) => {
           <EmptyCartPrompt onNavigateToScan={handleNavigateToScan} />
         )}
 
-        {/* ── Discount cap with animated progress + count-up ── */}
+        {/* ── Discount cap ── */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Discount Cap</Text>
+          <Text style={styles.sectionTitle}>Weekly Limit</Text>
           <TouchableOpacity>
-            <Text style={styles.seeAll}>Details</Text>
+            <Text style={styles.seeAll}>View</Text>
           </TouchableOpacity>
         </View>
         <DiscountCapCard homeData={homeData} />
@@ -796,12 +764,9 @@ const HomeScreen = ({ navigation }) => {
           <EligibilityPrompt navigation={navigation} />
         )}
 
-        {/* ── Quick tips ── */}
-        <QuickTips />
-
         {/* ── Exclusive offers ── */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Exclusive Offers</Text>
+          <Text style={styles.sectionTitle}>For You</Text>
           <TouchableOpacity onPress={() => navigation.navigate("Offers")}>
             <Text style={styles.seeAll}>View all</Text>
           </TouchableOpacity>
@@ -814,21 +779,21 @@ const HomeScreen = ({ navigation }) => {
         >
           <OfferCard
             title="Senior/PWD Special"
-            description="Get extra 5% off BNPC items"
+            description="Get extra 5% off"
             icon="account-heart-outline"
             color="#00A86B"
             onPress={() => navigation.navigate("EligibilityIntro")}
           />
           <OfferCard
             title="Scan & Save"
-            description="Track all your grocery scans"
+            description="Track scans"
             icon="qrcode-scan"
             color="#0f172a"
             onPress={handleNavigateToScan}
           />
           <OfferCard
             title="Weekly Cap Alert"
-            description="Never miss your discount limit"
+            description="Track your limit"
             icon="bell-outline"
             color="#3b82f6"
             onPress={() => navigation.navigate("Notifications")}
@@ -837,7 +802,7 @@ const HomeScreen = ({ navigation }) => {
 
         {/* ── Recent scans ── */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Scans</Text>
+          <Text style={styles.sectionTitle}>Recent Activity</Text>
           <TouchableOpacity onPress={() => navigation.navigate("ScanHistory")}>
             <Text style={styles.seeAll}>See all</Text>
           </TouchableOpacity>
@@ -865,7 +830,7 @@ const HomeScreen = ({ navigation }) => {
         {/* ── Help card ── */}
         <FadeSlideCard delay={300} style={styles.tipsCard}>
           <TouchableOpacity
-            style={{ flexDirection: "row", alignItems: "center" }}
+            style={styles.helpCardContent}
             onPress={() => navigation.navigate("Shared", { screen: "Help" })}
             activeOpacity={0.7}
           >
@@ -875,10 +840,8 @@ const HomeScreen = ({ navigation }) => {
               color="#00A86B"
             />
             <View style={{ flex: 1, marginLeft: 14 }}>
-              <Text style={styles.tipsTitle}>Need Help?</Text>
-              <Text style={styles.tipsText}>
-                Visit our Help & Support section for guides and FAQs
-              </Text>
+              <Text style={styles.tipsTitle}>Help & Support</Text>
+              <Text style={styles.tipsText}>Guides and FAQs</Text>
             </View>
             <MaterialCommunityIcons
               name="chevron-right"
@@ -915,7 +878,7 @@ const styles = StyleSheet.create({
   },
   navActions: { flexDirection: "row", alignItems: "center", gap: 10 },
   greetingText: { fontSize: 13, color: "#94a3b8", fontWeight: "500" },
-  userNameText: { fontSize: 20, color: "#0f172a", fontWeight: "800" },
+  userNameText: { fontSize: 20, color: "#2D3748", fontWeight: "800" },
   navIconBtn: {
     width: 40,
     height: 40,
@@ -941,120 +904,139 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "#0f172a",
+    backgroundColor: "#2D3748",
     justifyContent: "center",
     alignItems: "center",
   },
   profileInitials: { fontSize: 14, fontWeight: "800", color: "#fff" },
 
-  // Hero
-  heroSection: {
-    paddingHorizontal: 24,
-    paddingTop: 30,
-    paddingBottom: 28,
-    alignItems: "center",
-  },
-  heroLabel: {
-    color: "#94a3b8",
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-    marginBottom: 20,
-  },
-  heroPointsRing: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    borderWidth: 2,
-    borderColor: "rgba(0,168,107,0.15)",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#fff",
+  // Payment Card Style
+  paymentCard: {
+    borderRadius: 20,
+    padding: 28,
+    minHeight: 200,
     shadowColor: "#00A86B",
-    shadowOpacity: 0.08,
-    shadowRadius: 20,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 12,
+    overflow: "hidden",
+    justifyContent: "center",
   },
-  heroPointsInner: { alignItems: "center" },
-  pointsValue: {
-    fontSize: 52,
-    fontWeight: "900",
-    color: "#0f172a",
-    letterSpacing: -2,
+  cardPattern: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    left: 0,
+    bottom: 0,
   },
-  pointsCurrency: {
-    fontSize: 16,
+  cardCircle1: {
+    position: "absolute",
+    top: -50,
+    right: -50,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  cardCircle2: {
+    position: "absolute",
+    bottom: -40,
+    left: -40,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+  cardPointsContent: {
+    zIndex: 1,
+  },
+  cardLabel: {
+    fontSize: 11,
     fontWeight: "700",
-    color: "#00A86B",
-    marginTop: -4,
+    color: "rgba(255,255,255,0.75)",
+    letterSpacing: 1.5,
+    marginBottom: 12,
   },
-  rewardPill: {
+  cardPointsRow: {
     flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(0,168,107,0.08)",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginTop: 20,
-    gap: 6,
+    alignItems: "baseline",
+    marginBottom: 12,
   },
-  earnPointsPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255,152,0,0.08)",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginTop: 20,
-    gap: 6,
+  cardPoints: {
+    fontSize: 48,
+    fontWeight: "900",
+    color: "#fff",
+    letterSpacing: 1,
   },
-  rewardText: { color: "#00A86B", fontSize: 13, fontWeight: "700" },
-  earnPointsText: { color: "#FF9800", fontSize: 13, fontWeight: "700" },
+  cardPointsSuffix: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.8)",
+    marginLeft: 8,
+    letterSpacing: 0.5,
+  },
+  cardSubtext: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.7)",
+    fontWeight: "500",
+  },
 
-  // Grid
+  // Grid - Improved Quick Actions
   gridContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
-    paddingHorizontal: 20,
-    justifyContent: "space-between",
-    marginBottom: 20,
+    paddingHorizontal: 24,
+    gap: 12,
+    marginBottom: 24,
   },
   card: {
     width: "31%",
     backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#f1f5f9",
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  primaryCard: { borderColor: "rgba(0,168,107,0.2)" },
+  primaryCard: { backgroundColor: "rgba(0,168,107,0.05)" },
   cardIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: "#f8fafc",
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: "rgba(0,168,107,0.1)",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 12,
     position: "relative",
   },
-  primaryIconBox: { backgroundColor: "rgba(0,168,107,0.1)" },
+  primaryIconBox: { backgroundColor: "rgba(0,168,107,0.15)" },
   cardBadge: {
     position: "absolute",
-    top: -5,
-    right: -5,
-    backgroundColor: "#00A86B",
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 8,
-    minWidth: 18,
+    top: -6,
+    right: -6,
+    backgroundColor: "#DC2626",
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
     alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
   },
-  cardBadgeText: { fontSize: 9, fontWeight: "800", color: "#fff" },
-  cardTitle: { fontSize: 12, fontWeight: "700", color: "#64748b" },
-  primaryCardTitle: { color: "#0f172a" },
+  cardBadgeText: { fontSize: 10, fontWeight: "800", color: "#fff" },
+  cardTitle: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#64748b",
+    textAlign: "center",
+  },
+  primaryCardTitle: { color: "#2D3748" },
 
   // Discount cap card
   discountCapCard: {
@@ -1075,7 +1057,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   capTitleContainer: { flex: 1, marginLeft: 12 },
-  capTitle: { fontSize: 15, fontWeight: "800", color: "#0f172a" },
+  capTitle: { fontSize: 15, fontWeight: "800", color: "#2D3748" },
   capSubtitle: { fontSize: 12, color: "#94a3b8", marginTop: 2 },
   capAmountWrap: { alignItems: "flex-end" },
   capAmountValue: { fontSize: 20, fontWeight: "900" },
@@ -1123,7 +1105,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     alignItems: "center",
   },
-  sectionTitle: { fontSize: 18, fontWeight: "800", color: "#0f172a" },
+  sectionTitle: { fontSize: 18, fontWeight: "800", color: "#2D3748" },
   seeAll: { color: "#00A86B", fontWeight: "700", fontSize: 13 },
 
   // Eligibility card
@@ -1149,7 +1131,7 @@ const styles = StyleSheet.create({
   eligibilityTitle: {
     fontSize: 17,
     fontWeight: "800",
-    color: "#0f172a",
+    color: "#2D3748",
     marginBottom: 8,
   },
   eligibilityText: {
@@ -1188,7 +1170,7 @@ const styles = StyleSheet.create({
   quickTipsTitle: {
     fontSize: 15,
     fontWeight: "800",
-    color: "#0f172a",
+    color: "#2D3748",
     marginLeft: 10,
   },
   tipsContainer: { gap: 14 },
@@ -1218,7 +1200,7 @@ const styles = StyleSheet.create({
   emptyScansTitle: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#0f172a",
+    color: "#2D3748",
     marginTop: 14,
     marginBottom: 6,
   },
@@ -1250,7 +1232,7 @@ const styles = StyleSheet.create({
     borderStyle: "dashed",
   },
   emptyCartContent: { flex: 1, marginLeft: 12 },
-  emptyCartTitle: { fontSize: 14, fontWeight: "700", color: "#0f172a" },
+  emptyCartTitle: { fontSize: 14, fontWeight: "700", color: "#2D3748" },
   emptyCartText: { fontSize: 12, color: "#94a3b8", marginTop: 2 },
 
   // Offers
@@ -1301,9 +1283,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   eligibleIcon: { backgroundColor: "rgba(0,168,107,0.1)" },
-  transProduct: { fontSize: 14, fontWeight: "700", color: "#0f172a" },
+  transProduct: { fontSize: 14, fontWeight: "700", color: "#2D3748" },
   transDate: { fontSize: 12, color: "#94a3b8", marginTop: 2 },
-  transPrice: { fontSize: 14, fontWeight: "700", color: "#0f172a" },
+  transPrice: { fontSize: 14, fontWeight: "700", color: "#2D3748" },
   eligibleBadge: {
     fontSize: 10,
     color: "#00A86B",
@@ -1327,10 +1309,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#f1f5f9",
   },
+  helpCardContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   tipsTitle: {
     fontSize: 14,
     fontWeight: "800",
-    color: "#0f172a",
+    color: "#2D3748",
     marginBottom: 2,
   },
   tipsText: { fontSize: 12, color: "#64748b" },

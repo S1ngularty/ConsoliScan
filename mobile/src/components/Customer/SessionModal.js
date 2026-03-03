@@ -56,12 +56,6 @@ const SessionModal = ({ visible, onStartSession, onCancel }) => {
               onPress={onStartSession}
               activeOpacity={0.7}
             >
-              <Ionicons
-                name="play-circle-outline"
-                size={20}
-                color="#fff"
-                style={styles.buttonIcon}
-              />
               <Text style={styles.startButtonText}>Start Session</Text>
             </TouchableOpacity>
           </View>
