@@ -1230,7 +1230,7 @@ const styles = StyleSheet.create({
   permissionBtnText: { color: "#fff", fontSize: 14, fontWeight: "700" },
 
   // Camera overlay — flex-based
-  dimTop: { height: "18%", backgroundColor: "rgba(0,0,0,0.65)" },
+  dimTop: { height: "13%", backgroundColor: "rgba(0,0,0,0.65)" },
   dimMiddle: { flexDirection: "row", height: FRAME_SIZE },
   dimSide: { flex: 1, backgroundColor: "rgba(0,0,0,0.65)" },
   dimBottom: {
