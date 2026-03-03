@@ -1,6 +1,11 @@
 import axios from "axios";
 import { API_URL } from "../../../constants/config";
-import { removeToken, storeEligibilityStatus, storeToken, storeUser } from "../../../utils/authUtil";
+import {
+  removeToken,
+  storeEligibilityStatus,
+  storeToken,
+  storeUser,
+} from "../../../utils/authUtil";
 
 export async function loginApi({ email, password }) {
   if (!email.trim()) throw new Error("Email is required");
@@ -19,7 +24,8 @@ export async function loginApi({ email, password }) {
   const data = result.data.result;
   const isStored = await storeToken(data.token);
   storeUser(data.user);
-  if (data.user.role === "user") storeEligibilityStatus(data.eligibilityStatus);
+  if (data?.user?.role === "user")
+    storeEligibilityStatus(data.eligibilityStatus);
   if (!isStored) throw new Error("failed to store the user token");
   return data;
 }
@@ -40,7 +46,8 @@ export async function verifyTokenApi(token) {
   const data = result.data.result;
 
   storeUser(data.user);
-  if (data.user.role === "user") storeEligibilityStatus(data.eligibilityStatus);
+  if (data?.user?.role === "user")
+    storeEligibilityStatus(data.eligibilityStatus);
 
   return data;
 }

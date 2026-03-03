@@ -34,7 +34,6 @@ exports.register = async (request) => {
 
 exports.login = async (request, response) => {
   const { email, password } = request.body;
-  console.log(password)
   let userData = await User.findOne({ email }).select(
     "+password role email name status",
   );
@@ -46,7 +45,6 @@ exports.login = async (request, response) => {
   if (userData.role === "user") {
     eligibilityStatus = await Eligible.findOne({ user: userData._id });
   }
-  console.log(password, userData.password)
   const isMatched = await bcrypt.compare(password, userData.password);
   if (!isMatched) throw new Error("password does not match");
   const jwtToken = await userData.getToken();

@@ -3,6 +3,7 @@ import { login, register, verifyToken, logout } from "./authThunks";
 
 function pendingState(state) {
   state.loading = true;
+  state.error = null;
 }
 
 function fulfilledState(state, action) {
@@ -15,7 +16,7 @@ function fulfilledState(state, action) {
 
 function rejectedState(state, action) {
   state.loading = false;
-  state.error = action.error.message;
+  state.error = "Something went wrong. Please try again.";
 }
 
 const initialState = {
@@ -40,6 +41,9 @@ const authSlice = createSlice({
       state.eligible = payload.eligibilityStatus || null;
       state.isLoggedIn = true;
     },
+    completeOnboarding: (state) => {
+      state.isNewUser = false;
+    },
     guestMode: (state, action) => {
       state.role = "guest";
     },
@@ -60,12 +64,20 @@ const authSlice = createSlice({
 
       .addCase(register.pending, pendingState)
       .addCase(register.fulfilled, (state, action) => {
-        state.user = action.payload.user;
-        state.role = action.payload.user.role;
+        // console.log("Register fulfilled with payload:", action.payload);
+        // Register API returns flat user object, not nested under 'user'
+        const userData = {
+          email: action.payload.email,
+          name: action.payload.name,
+          role: action.payload.role,
+          status: action.payload.status,
+          userId: action.payload.userId,
+        };
+        state.user = userData;
+        state.role = action.payload.role;
         state.isLoggedIn = true;
         state.loading = false;
         state.isNewUser = true;
-        state.loading = false;
         state.eligible = null;
       })
       .addCase(register.rejected, rejectedState)
@@ -84,6 +96,7 @@ const authSlice = createSlice({
   },
 });
 
-export const { guestMode, resetState, authMode } = authSlice.actions;
+export const { guestMode, resetState, authMode, completeOnboarding } =
+  authSlice.actions;
 
 export default authSlice.reducer;

@@ -1556,7 +1556,7 @@ const CartScreen = ({ navigation, route }) => {
 
       {/* ── Checkout Bar ── */}
       {cart.length > 0 && (
-        <View style={[styles.checkoutBar, { bottom: tabBarHeight + 8 }]}>
+        <View style={[styles.checkoutBar, { bottom: userState.role !== "user" ? tabBarHeight - 15 : tabBarHeight + 40 }]}>
           <View>
             <Text style={styles.checkoutLabel}>Total</Text>
             <Text style={styles.checkoutTotal}>

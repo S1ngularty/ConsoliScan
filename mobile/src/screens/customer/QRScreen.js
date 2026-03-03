@@ -236,8 +236,8 @@ export default function CheckoutQRScreen({ route, navigation }) {
           <Text style={styles.codeText}>{checkoutCode}</Text>
         </View>
 
-        {/* Totals Display */}
-        {renderTotals()}
+        {/* Totals Display
+        {renderTotals()} */}
 
         {/* Spacer */}
         <View style={{ flex: 1 }} />

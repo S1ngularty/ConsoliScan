@@ -17,6 +17,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useSelector } from "react-redux";
+import { lockedOrder } from "../../api/checkout.api";
 
 const FRAME_SIZE = 240;
 const CORNER_LEN = 26;
@@ -97,6 +98,12 @@ const QRScanValidationScreen = () => {
   const [quantityInput, setQuantityInput] = useState("1");
 
   const catalogProducts = useSelector((state) => state.product?.products || []);
+
+  useEffect(()=>{
+    (async()=>{
+      const res = await lockedOrder(checkoutCode);
+    })()
+  },[])
 
   const getProductByBarcode = useCallback(
     (barcode) =>
@@ -800,16 +807,16 @@ const QRScanValidationScreen = () => {
               </View>
             </View>
 
-            {remainingItems.length > 0 ? (
+            {allOrderItems.length > 0 ? (
               <View style={styles.itemsList}>
-                {remainingItems.map((item, i) => {
+                {allOrderItems.map((item, i) => {
                   const prog = getItemProgress(item);
                   return (
                     <View
                       key={`${item.sku}_${i}`}
                       style={[
                         styles.itemRow,
-                        i === remainingItems.length - 1 && {
+                        i === allOrderItems.length - 1 && {
                           borderBottomWidth: 0,
                         },
                       ]}
@@ -896,7 +903,12 @@ const QRScanValidationScreen = () => {
                 contentContainerStyle={styles.chipsRow}
               >
                 {scannedItems.map((item, i) => (
-                  <View key={`chip_${i}`} style={styles.chip}>
+                  <TouchableOpacity
+                    key={`chip_${i}`}
+                    style={styles.chip}
+                    onPress={() => handleOpenAdjustModal(item)}
+                    activeOpacity={0.7}
+                  >
                     <MaterialCommunityIcons
                       name="check-circle"
                       size={13}
@@ -908,7 +920,7 @@ const QRScanValidationScreen = () => {
                     <Text style={styles.chipQty}>
                       {item.scannedQuantity}/{item.quantity}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </ScrollView>
             </View>
@@ -1225,7 +1237,7 @@ const styles = StyleSheet.create({
   permissionBtnText: { color: "#fff", fontSize: 14, fontWeight: "700" },
 
   // Camera overlay — flex-based
-  dimTop: { height: "18%", backgroundColor: "rgba(0,0,0,0.65)" },
+  dimTop: { height: "13%", backgroundColor: "rgba(0,0,0,0.65)" },
   dimMiddle: { flexDirection: "row", height: FRAME_SIZE },
   dimSide: { flex: 1, backgroundColor: "rgba(0,0,0,0.65)" },
   dimBottom: {

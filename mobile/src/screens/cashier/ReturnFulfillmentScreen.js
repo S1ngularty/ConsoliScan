@@ -38,10 +38,12 @@ const ReturnFulfillmentScreen = ({ navigation, route }) => {
     0;
   const parsedPrice = Number(rawUnitPrice);
   const safeUnitPrice = Number.isFinite(parsedPrice) ? parsedPrice : 0;
-  const rawQuantity = item?.quantity ?? item?.qty ?? 1;
-  const parsedQuantity = Number(rawQuantity);
-  const safeQuantity =
-    Number.isFinite(parsedQuantity) && parsedQuantity > 0 ? parsedQuantity : 1;
+  const rawReturnQuantity = item?.returnQuantity ?? item?.quantity ?? 1;
+  const parsedReturnQuantity = Number(rawReturnQuantity);
+  const safeReturnQuantity =
+    Number.isFinite(parsedReturnQuantity) && parsedReturnQuantity > 0
+      ? parsedReturnQuantity
+      : 1;
   const originalBarcode = item?.barcode || item?.productBarcode || item?.sku;
   const originalItemId =
     item?.productId || item?.originalItemId || item?._id || item?.id;
@@ -51,8 +53,13 @@ const ReturnFulfillmentScreen = ({ navigation, route }) => {
     item?.category?.id ||
     item?.category;
 
-  // Calculate loyalty points
-  const loyaltyPoints = Math.round(safeUnitPrice * safeQuantity * 10);
+  // Calculate loyalty points based on return quantity
+  // Formula: (price × quantity × earnRate) / 100
+  // earnRate defaults to 10% (per LoyaltyConfig)
+  const loyaltyEarnRate = 10; // Default earn rate, matches backend default
+  const loyaltyPoints = Math.round(
+    (safeUnitPrice * safeReturnQuantity * loyaltyEarnRate) / 100,
+  );
 
   const handleSelectOption = async (option) => {
     setSelectedOption(option);
@@ -161,6 +168,7 @@ const ReturnFulfillmentScreen = ({ navigation, route }) => {
       } else {
         result = await completeItemSwap(returnId, {
           replacementBarcode: selectedReplacement.barcode,
+          returnQuantity: safeReturnQuantity,
         });
       }
 
@@ -239,7 +247,7 @@ const ReturnFulfillmentScreen = ({ navigation, route }) => {
             <View style={styles.itemInfo}>
               <Text style={styles.itemName}>{itemName}</Text>
               <Text style={styles.itemSubtext}>
-                Qty: {safeQuantity} × ₱{safeUnitPrice.toFixed(2)}
+                Qty: {safeReturnQuantity} × ₱{safeUnitPrice.toFixed(2)}
               </Text>
               <Text style={styles.itemSubtext}>
                 Status: Inspection Passed ✓

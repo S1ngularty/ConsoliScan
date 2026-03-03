@@ -15,6 +15,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { MACHINE_SERVICE } from "../../constants/config";
+import { lockedOrder } from "../../api/checkout.api";
 
 const { width, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const RESULTS_PANEL_HEIGHT = SCREEN_HEIGHT * 0.45;
@@ -36,6 +37,13 @@ export default function ObjectDetectionScreen() {
   const [scans, setScans] = useState([]);
   const [validationComplete, setValidationComplete] = useState(false);
   const cameraRef = useRef(null);
+
+  useEffect(()=>{
+      (async()=>{
+        const res = await lockedOrder(checkoutCode);
+      })()
+    },[])
+  
 
   // Get total items expected from order
   const totalExpectedItems = orderItems.reduce(

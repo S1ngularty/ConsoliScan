@@ -936,7 +936,7 @@ const OrderDetailsModal = ({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 const OrderHistoryScreen = ({ navigation }) => {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [downloadingId, setDownloadingId] = useState(null);
   const [orders, setOrders] = useState([]);
@@ -959,7 +959,7 @@ const OrderHistoryScreen = ({ navigation }) => {
       // console.log("orders data:", data)
       setOrders(data || []);
     } catch {
-      Alert.alert("Error", "Failed to load orders. Please try again.");
+      // Alert.alert("Error", "Failed to load orders. Please try again.");
       setOrders([]);
     } finally {
       setLoading(false);
@@ -1081,14 +1081,15 @@ const OrderHistoryScreen = ({ navigation }) => {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
-        {isOffline || isServerDown ? (
-          <OfflineIndicator />
-        ) : (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#00A86B" />
-            <Text style={styles.loadingText}>Loading orders…</Text>
-          </View>
-        )}
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#00A86B" />
+          <Text style={styles.loadingText}>Loading orders…</Text>
+          {(isOffline || isServerDown) && (
+            <Text style={styles.loadingSubtext}>
+              Offline mode: trying to reconnect…
+            </Text>
+          )}
+        </View>
       </SafeAreaView>
     );
   }
@@ -1098,7 +1099,7 @@ const OrderHistoryScreen = ({ navigation }) => {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
-        <OfflineIndicator />
+        <OfflineIndicator onRetry={onRefresh} />
       </SafeAreaView>
     );
   }
@@ -1251,6 +1252,7 @@ const styles = StyleSheet.create({
   scrollContent: { paddingBottom: 100 },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   loadingText: { fontSize: 14, color: "#64748b", marginTop: 12 },
+  loadingSubtext: { fontSize: 12, color: "#94a3b8", marginTop: 8 },
 
   statsGrid: {
     flexDirection: "row",

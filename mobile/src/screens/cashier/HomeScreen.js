@@ -205,7 +205,7 @@ const HomeScreen = ({ navigation }) => {
       ) : (
         <>
           {/* Offline Banner */}
-          {(isOffline || isServerDown) && (
+          {/* {(isOffline || isServerDown) && (
             <View style={styles.offlineBannerHome}>
               <MaterialCommunityIcons name="wifi-off" size={16} color="#fff" />
               <Text style={styles.offlineBannerText}>
@@ -215,7 +215,7 @@ const HomeScreen = ({ navigation }) => {
                 {isServerDown ? "Using local data" : "No connection"}
               </Text>
             </View>
-          )}
+          )} */}
           <ScrollView
             style={styles.content}
             showsVerticalScrollIndicator={false}

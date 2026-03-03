@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   Animated,
+  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
@@ -15,7 +16,8 @@ import { initiateReturn } from "../../api/return.api";
 
 const ReturnScreen = ({ navigation, route }) => {
   const { order, itemId } = route.params || {};
-  const [selectedItem, setSelectedItem] = useState(null);
+  const [selectedItemIndex, setSelectedItemIndex] = useState(null); // Use index instead of item object
+  const [returnQuantity, setReturnQuantity] = useState(1);
   const [returnReason, setReturnReason] = useState(null);
   const [returnNotes, setReturnNotes] = useState("");
   const [initiating, setInitiating] = useState(false);
@@ -33,24 +35,42 @@ const ReturnScreen = ({ navigation, route }) => {
   /* ── Auto-select item if provided ── */
   useEffect(() => {
     if (!order || !itemId) return;
-    const item = order.items?.find(
+    const index = order.items?.findIndex(
       (i) => i.product === itemId || i._id === itemId,
     );
-    if (item && item.status === "SOLD") {
-      handleSelectItem(item);
+    if (index !== undefined && index >= 0) {
+      const item = order.items[index];
+      if (item && item.status === "SOLD") {
+        handleSelectItem(index);
+      }
     }
   }, [order, itemId]);
 
-  const handleSelectItem = (item) => {
-    if (item.status !== "SOLD") {
+  const handleSelectItem = (index) => {
+    const item = order.items?.[index];
+    if (!item || item.status !== "SOLD") {
       Alert.alert("Not Eligible", "This item cannot be returned");
       return;
     }
-    setSelectedItem(item);
+    setSelectedItemIndex(index);
+    setReturnQuantity(1); // Reset quantity when selecting a new item
+  };
+
+  const handleIncreaseQuantity = () => {
+    const selectedItem = order.items?.[selectedItemIndex];
+    if (selectedItem && returnQuantity < selectedItem.quantity) {
+      setReturnQuantity(returnQuantity + 1);
+    }
+  };
+
+  const handleDecreaseQuantity = () => {
+    if (returnQuantity > 1) {
+      setReturnQuantity(returnQuantity - 1);
+    }
   };
 
   const handleInitiateReturn = async () => {
-    if (!selectedItem) {
+    if (selectedItemIndex === null) {
       Alert.alert("Error", "Please select an item");
       return;
     }
@@ -62,10 +82,14 @@ const ReturnScreen = ({ navigation, route }) => {
     setInitiating(true);
 
     try {
+      const selectedItem = order.items?.[selectedItemIndex];
+      if (!selectedItem) throw new Error("Item not found");
+
       // API call to initiate return
       const returnData = await initiateReturn({
         orderId: order._id,
         itemId: selectedItem.product || selectedItem._id,
+        returnQuantity: returnQuantity,
         returnReason: returnReason,
         returnReasonNotes: returnNotes,
       });
@@ -148,19 +172,19 @@ const ReturnScreen = ({ navigation, route }) => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Select Item to Return</Text>
             <View style={styles.itemsList}>
-              {order.items?.map((item) => {
+              {order.items?.map((item, index) => {
                 const isEligible = item.status === "SOLD";
-                const isSelected = selectedItem?._id === item._id;
+                const isSelected = selectedItemIndex === index;
 
                 return (
                   <TouchableOpacity
-                    key={item._id}
+                    key={`${item._id}-${index}`}
                     style={[
                       styles.itemCard,
                       isSelected && styles.itemCardSelected,
                       !isEligible && styles.itemCardDisabled,
                     ]}
-                    onPress={() => isEligible && handleSelectItem(item)}
+                    onPress={() => isEligible && handleSelectItem(index)}
                     disabled={!isEligible}
                   >
                     <View style={styles.itemCheckbox}>
@@ -201,8 +225,49 @@ const ReturnScreen = ({ navigation, route }) => {
             </View>
           </View>
 
+          {/* Return Quantity */}
+          {selectedItemIndex !== null && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Return Quantity</Text>
+              <View style={styles.quantityContainer}>
+                <View style={styles.quantityInfo}>
+                  <Text style={styles.quantityLabel}>
+                    Total Qty of Item:{" "}
+                    {order.items?.[selectedItemIndex]?.quantity}
+                  </Text>
+                  <Text style={styles.quantitySubtext}>
+                    How many unit(s) do you want to return?
+                  </Text>
+                </View>
+                <View style={styles.quantitySelector}>
+                  <TouchableOpacity
+                    style={styles.quantityBtn}
+                    onPress={handleDecreaseQuantity}
+                  >
+                    <MaterialCommunityIcons
+                      name="minus"
+                      size={20}
+                      color="#64748B"
+                    />
+                  </TouchableOpacity>
+                  <Text style={styles.quantityValue}>{returnQuantity}</Text>
+                  <TouchableOpacity
+                    style={styles.quantityBtn}
+                    onPress={handleIncreaseQuantity}
+                  >
+                    <MaterialCommunityIcons
+                      name="plus"
+                      size={20}
+                      color="#00A86B"
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          )}
+
           {/* Return Reason */}
-          {selectedItem && (
+          {selectedItemIndex !== null && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Reason for Return</Text>
               <View style={styles.reasonsList}>
@@ -238,19 +303,23 @@ const ReturnScreen = ({ navigation, route }) => {
                 <Text style={styles.notesLabel}>
                   Additional Notes (Optional)
                 </Text>
-                <View style={styles.notesInput}>
-                  {/* Using a placeholder since TextInput isn't shown */}
-                  <Text style={styles.notesPlaceholder}>
-                    {returnNotes || "Add any details about your return..."}
-                  </Text>
-                </View>
+                <TextInput
+                  style={styles.notesInput}
+                  placeholder="Add any details about your return..."
+                  placeholderTextColor="#9CA3AF"
+                  multiline
+                  numberOfLines={4}
+                  value={returnNotes}
+                  onChangeText={setReturnNotes}
+                  textAlignVertical="top"
+                />
               </View>
             </View>
           )}
         </ScrollView>
 
         {/* Action Button */}
-        {selectedItem && returnReason && (
+        {selectedItemIndex !== null && returnReason && (
           <View style={styles.footer}>
             <TouchableOpacity
               style={[
@@ -430,11 +499,53 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    minHeight: 80,
-  },
-  notesPlaceholder: {
+    minHeight: 100,
     fontSize: 13,
-    color: "#9CA3AF",
+    color: "#1E293B",
+  },
+  quantityContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    gap: 16,
+  },
+  quantityInfo: {
+    gap: 4,
+  },
+  quantityLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1E293B",
+  },
+  quantitySubtext: {
+    fontSize: 12,
+    color: "#6B7280",
+  },
+  quantitySelector: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#F8FAFC",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  quantityBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  quantityValue: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#1E293B",
   },
   footer: {
     padding: 16,

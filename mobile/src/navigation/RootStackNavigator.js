@@ -10,6 +10,7 @@ import CustomerStackNavigator from "./CustomerStackNavigator";
 import CashierStackNavigator from "./CashierStackNavigator";
 import SplashScreen from "../screens/SplashScreen";
 import GuestNavigator from "./GuestNavigator";
+import OnboardingScreen from "../screens/auth/OnboardingScreen";
 import productThunks from "../features/slices/product/productThunks";
 import OfflineBanner from "../components/Common/OfflineBanner";
 import {
@@ -33,7 +34,9 @@ const ROLES = {
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
-  const { loading, isLoggedIn, role } = useSelector((state) => state.auth);
+  const { loading, isLoggedIn, role, isNewUser } = useSelector(
+    (state) => state.auth,
+  );
   const network = useSelector((state) => state.network);
   const dispatch = useDispatch();
 
@@ -186,8 +189,11 @@ export default function RootNavigator() {
 
   return (
     <View style={{ flex: 1 }}>
+      <OfflineBanner />
       <Stack.Navigator id="RootStack" screenOptions={{ headerShown: false }}>
-        {role === ROLES.Customer ? (
+        {role === ROLES.Customer && isNewUser ? (
+          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+        ) : role === ROLES.Customer ? (
           <>
             <Stack.Screen name="Customer" component={CustomerStackNavigator} />
           </>
@@ -201,7 +207,6 @@ export default function RootNavigator() {
           <Stack.Screen name="Auth" component={AuthNavigation} />
         )}
       </Stack.Navigator>
-      <OfflineBanner />
     </View>
   );
 }
