@@ -20,7 +20,7 @@
       "package": "com.tupt.ConsoliScan",
       "adaptiveIcon": {
         "foregroundImage": "./assets/ConsoliScan-icon.png",
-        "backgroundColor": " #00A86B"
+        "backgroundColor": "#00A86B"
       },
       "splash": {
         "image": "./assets/ConsoliScan-icon.png",
