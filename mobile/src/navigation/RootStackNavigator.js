@@ -8,7 +8,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import AuthNavigation from "./AuthNavigator";
 import CustomerStackNavigator from "./CustomerStackNavigator";
 import CashierStackNavigator from "./CashierStackNavigator";
-import SplashScreen from "../screens/SplashScreen";
 import GuestNavigator from "./GuestNavigator";
 import OnboardingScreen from "../screens/auth/OnboardingScreen";
 import productThunks from "../features/slices/product/productThunks";
@@ -183,12 +182,8 @@ export default function RootNavigator() {
     setNetworkDispatch(dispatch);
   }, [dispatch]);
 
-  if (!appIsReady) {
-    return <SplashScreen onReady={() => setAppIsReady(true)} />;
-  }
-
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: "#00A86B" }}>
       <OfflineBanner />
       <Stack.Navigator id="RootStack" screenOptions={{ headerShown: false }}>
         {role === ROLES.Customer && isNewUser ? (

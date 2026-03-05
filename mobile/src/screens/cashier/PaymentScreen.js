@@ -136,7 +136,9 @@ const PaymentScreen = ({ route, navigation }) => {
 
   // State for cashier inputs
   const [bookletUsedInput, setBookletUsedInput] = useState(
-    systemVerified && (systemDiscountApplied > 0 || serverBnpcDiscount > 0)
+    (systemVerified && (systemDiscountApplied > 0 || serverBnpcDiscount > 0)) ||
+      (appUser && userEligibilityType !== "regular") ||
+      systemBookletUsedBefore > 0
       ? systemBookletUsedBefore.toString()
       : "0",
   );
@@ -162,8 +164,10 @@ const PaymentScreen = ({ route, navigation }) => {
   });
 
   // Effect to auto-apply eligibility when appUser changes or eligibility data loads
+  // BUT: respect manual overrides - don't reset if user has manually changed type
   useEffect(() => {
-    if (appUser && userEligibilityType) {
+    // Only auto-set if not manually overridden by user
+    if (appUser && userEligibilityType && !manualVerification.override) {
       setManualVerification({
         verified: true,
         type: userEligibilityType,
@@ -190,6 +194,7 @@ const PaymentScreen = ({ route, navigation }) => {
     userEligibilityType,
     bnpcEligibleSubtotal,
     systemBookletUsedBefore,
+    manualVerification.override,
   ]);
 
   // Calculate 5% discount based on CURRENT verification status
@@ -294,6 +299,7 @@ const PaymentScreen = ({ route, navigation }) => {
                 override: true,
               });
               setBookletUsedInput("0");
+              setBookletUpdated(false);
             },
           },
         ],
@@ -318,9 +324,8 @@ const PaymentScreen = ({ route, navigation }) => {
               });
 
               // Set booklet to zero for regular customers
-              if (bookletUsedInput !== "0") {
-                setBookletUsedInput("0");
-              }
+              setBookletUsedInput("0");
+              setBookletUpdated(false);
             },
           },
         ],
@@ -334,9 +339,8 @@ const PaymentScreen = ({ route, navigation }) => {
       });
 
       // Set booklet to zero for regular customers
-      if (bookletUsedInput !== "0") {
-        setBookletUsedInput("0");
-      }
+      setBookletUsedInput("0");
+      setBookletUpdated(false);
     }
   };
 
@@ -361,10 +365,10 @@ const PaymentScreen = ({ route, navigation }) => {
               override: true,
             });
 
-            // Reset booklet input
-            if (bookletUsedInput !== systemBookletUsedBefore.toString()) {
-              setBookletUsedInput(systemBookletUsedBefore.toString() || "0");
-            }
+            // Reset booklet input to 0 when changing customer type
+            setBookletUsedInput("0");
+            // Reset booklet updated checkbox
+            setBookletUpdated(false);
           },
         },
       ],
@@ -570,37 +574,37 @@ const PaymentScreen = ({ route, navigation }) => {
       (systemVerificationType === "senior" || systemVerificationType === "pwd");
 
   // Determine if we should show verification options
-  const showVerificationOptions =
-    !manualVerification.verified || manualVerification.type === "regular";
+  const showVerificationOptions = !manualVerification.verified;
 
-  // Show app user badge with eligibility
+  // Show app user badge with eligibility - reflects current verification type
   const renderAppUserBadge = () => {
     if (!appUser) return null;
+
+    // Use current verification type, not the initial one
+    const displayType = manualVerification.type || userEligibilityType;
 
     return (
       <View
         style={[
           styles.appUserBadge,
-          userEligibilityType !== "regular" && styles.appUserEligibleBadge,
+          displayType !== "regular" && styles.appUserEligibleBadge,
         ]}
       >
         <Ionicons
-          name={
-            userEligibilityType !== "regular" ? "checkmark-circle" : "person"
-          }
+          name={displayType !== "regular" ? "checkmark-circle" : "person"}
           size={16}
-          color={userEligibilityType !== "regular" ? "#10B981" : "#6B7280"}
+          color={displayType !== "regular" ? "#10B981" : "#6B7280"}
         />
         <Text
           style={[
             styles.appUserBadgeText,
-            userEligibilityType !== "regular" && styles.appUserEligibleText,
+            displayType !== "regular" && styles.appUserEligibleText,
           ]}
         >
           App User:{" "}
-          {userEligibilityType === "senior"
+          {displayType === "senior"
             ? "Senior Citizen"
-            : userEligibilityType === "pwd"
+            : displayType === "pwd"
               ? "PWD"
               : "Regular Customer"}
         </Text>
@@ -852,9 +856,20 @@ const PaymentScreen = ({ route, navigation }) => {
                 editable={true} // Always editable for cashier input
               />
               {appUser && (
-                <Text style={styles.inputNote}>
-                  Previous usage: ₱{systemBookletUsedBefore.toFixed(2)}
-                </Text>
+                <View style={styles.usageTracker}>
+                  <Text style={styles.inputNote}>
+                    Previous usage: ₱{systemBookletUsedBefore.toFixed(2)} / ₱
+                    {WEEKLY_CAP.toFixed(2)}
+                  </Text>
+                  <Text style={styles.inputNote}>
+                    After transaction: ₱
+                    {(systemBookletUsedBefore + fivePercentDiscount).toFixed(2)}{" "}
+                    / ₱{WEEKLY_CAP.toFixed(2)}
+                  </Text>
+                  <Text style={styles.inputNote}>
+                    Remaining cap: ₱{remainingDiscountCap.toFixed(2)}
+                  </Text>
+                </View>
               )}
             </View>
 
@@ -1313,6 +1328,15 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     marginTop: 4,
     fontStyle: "italic",
+  },
+  usageTracker: {
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: "#F0FDF4",
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: "#DCFCE7",
   },
   checkboxContainer: {
     flexDirection: "row",

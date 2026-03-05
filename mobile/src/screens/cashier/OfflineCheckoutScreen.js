@@ -991,7 +991,8 @@ export default function OfflineCheckoutScreen({ route, navigation }) {
         {/* Items List */}
         <ScrollView
           style={styles.itemsList}
-          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled={true}
+          showsVerticalScrollIndicator={true}
         >
           {customerCart?.items.map((cartItem) => {
             const scanned = scannedItems.find(
@@ -1694,6 +1695,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 1,
     borderColor: "#E2E8F0",
+    maxHeight: "40%",
+    overflow: "hidden",
   },
   progressHeader: {
     flexDirection: "row",
@@ -1722,7 +1725,8 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   itemsList: {
-    maxHeight: 200,
+    flex: 1,
+    minHeight: 100,
   },
   itemRow: {
     flexDirection: "row",
@@ -1920,9 +1924,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   primaryButton: {
-    flex: 1,
     backgroundColor: "#00A86B",
-    paddingVertical: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
@@ -1940,7 +1944,7 @@ const styles = StyleSheet.create({
   secondaryButton: {
     flex: 1,
     backgroundColor: "#fff",
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
@@ -1957,7 +1961,7 @@ const styles = StyleSheet.create({
   completeButton: {
     flex: 1,
     backgroundColor: "#10B981",
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
