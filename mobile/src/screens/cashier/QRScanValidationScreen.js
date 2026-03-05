@@ -99,11 +99,11 @@ const QRScanValidationScreen = () => {
 
   const catalogProducts = useSelector((state) => state.product?.products || []);
 
-  useEffect(()=>{
-    (async()=>{
+  useEffect(() => {
+    (async () => {
       const res = await lockedOrder(checkoutCode);
-    })()
-  },[])
+    })();
+  }, []);
 
   const getProductByBarcode = useCallback(
     (barcode) =>
@@ -1343,16 +1343,18 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // Bottom sheet — fixed height, ~55% of screen
+  // Bottom sheet — responsive height, scrollable on smaller devices
   sheet: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    height: "55%",
+    maxHeight: "70%",
+    minHeight: "45%",
     backgroundColor: "#fff",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
+    overflow: "hidden",
   },
   dragHandle: {
     width: 40,
@@ -1363,7 +1365,12 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 4,
   },
-  sheetContent: { paddingHorizontal: 20, paddingBottom: 32, gap: 12 },
+  sheetContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 32,
+    gap: 12,
+    flexGrow: 1,
+  },
 
   // Cards — matches design system
   card: {

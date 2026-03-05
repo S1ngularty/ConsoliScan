@@ -525,6 +525,7 @@ const OrderDetailsModal = ({
         <ScrollView
           style={styles.modalContent}
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 20 }}
         >
           {/* Info */}
           <View style={styles.modalSection}>
@@ -872,7 +873,7 @@ const OrderDetailsModal = ({
           <View style={{ height: 8 }} />
         </ScrollView>
 
-        {/* ── Modal actions: Close + Download + Exchange all items ── */}
+        {/* ── Modal actions: Close + Download + Receipt ── */}
         <View style={styles.modalActions}>
           <TouchableOpacity
             style={styles.closeModalButton}
@@ -882,26 +883,6 @@ const OrderDetailsModal = ({
             <MaterialCommunityIcons name="close" size={18} color="#64748b" />
             <Text style={styles.closeModalText}>Close</Text>
           </TouchableOpacity>
-
-          {/* Exchange button (full order → navigate, let exchange screen pick item) */}
-          {isConfirmed &&
-            order.items?.some((i) => i.status !== "EXCHANGED") && (
-              <TouchableOpacity
-                style={styles.exchangeModalButton}
-                onPress={() => {
-                  handleClose();
-                  setTimeout(() => onExchangeItem(order, null), 280);
-                }}
-                activeOpacity={0.8}
-              >
-                <MaterialCommunityIcons
-                  name="swap-horizontal"
-                  size={18}
-                  color="#3B82F6"
-                />
-                <Text style={styles.exchangeModalButtonText}>Exchange</Text>
-              </TouchableOpacity>
-            )}
 
           <TouchableOpacity
             style={[
@@ -1569,8 +1550,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    maxHeight: "90%",
-    paddingBottom: 8,
+    maxHeight: "85%",
+    marginBottom: 72,
   },
   dragHandle: {
     width: 40,
@@ -1835,9 +1816,11 @@ const styles = StyleSheet.create({
   modalActions: {
     flexDirection: "row",
     padding: 20,
+    paddingBottom: 24,
     gap: 8,
     borderTopWidth: 1,
     borderTopColor: "#f1f5f9",
+    backgroundColor: "#fff",
   },
   closeModalButton: {
     flex: 1,
@@ -1851,25 +1834,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   closeModalText: { fontSize: 13, fontWeight: "700", color: "#64748b" },
-  exchangeModalButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
-    backgroundColor: "rgba(59,130,246,0.1)",
-    borderRadius: 12,
-    gap: 6,
-    borderWidth: 1,
-    borderColor: "rgba(59,130,246,0.2)",
-  },
-  exchangeModalButtonText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#3B82F6",
-  },
   downloadReceiptButton: {
-    flex: 1,
+    flex: 1.5,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

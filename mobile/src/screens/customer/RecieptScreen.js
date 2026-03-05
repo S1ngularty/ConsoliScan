@@ -332,7 +332,7 @@ const ReceiptScreen = ({ route, navigation }) => {
           </View>
         </View>
 
-        {/* Cash Transaction */}
+        {/* Cash Transaction
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>CASH TRANSACTION</Text>
@@ -352,7 +352,7 @@ const ReceiptScreen = ({ route, navigation }) => {
               </Text>
             </View>
           </View>
-        </View>
+        </View> */}
 
         {/* BNPC Information */}
         {bnpcData && (
@@ -438,12 +438,11 @@ const ReceiptScreen = ({ route, navigation }) => {
               {(receiptData.pointsEarned > 0 ||
                 receiptData.loyaltyDiscount?.pointsEarned > 0) && (
                 <View style={styles.pointsRow}>
-                  <Text style={styles.pointsLabel}>Points Earned</Text>
+                  <Text style={styles.pointsLabel}>Total Points</Text>
                   <Text style={styles.pointsValue}>
-                    +
                     {receiptData.pointsEarned ||
                       receiptData.loyaltyDiscount?.pointsEarned ||
-                      0}
+                      0} pts
                   </Text>
                 </View>
               )}

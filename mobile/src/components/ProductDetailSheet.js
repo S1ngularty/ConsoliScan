@@ -123,6 +123,8 @@ const ProductDetailSheet = ({ product, onConfirm, onCancel }) => {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        scrollEnabled={true}
+        nestedScrollEnabled={true}
       >
         {/* Product Images Row */}
         <View style={styles.imagesRow}>
@@ -267,6 +269,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
+    flexDirection: "column",
   },
   header: {
     flexDirection: "row",
@@ -304,22 +307,24 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    minHeight: 0, // Allows flex to work properly in column
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 100, // Space for bottom bar
+    paddingBottom: 140, // Increased space for bottom bar on smaller devices
   },
   imagesRow: {
     flexDirection: "row",
     marginBottom: 20,
     gap: 12,
+    maxHeight: "40%", // Prevent images from taking too much space
   },
   mainImageContainer: {
     flex: 2,
   },
   mainImage: {
     width: "100%",
-    height: 160,
+    height: 140,
     borderRadius: 16,
     backgroundColor: "#f5f5f5",
   },
@@ -328,7 +333,7 @@ const styles = StyleSheet.create({
   },
   secondaryImage: {
     width: "100%",
-    height: 160,
+    height: 140,
     borderRadius: 12,
     backgroundColor: "#f5f5f5",
   },
