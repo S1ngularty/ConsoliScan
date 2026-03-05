@@ -6,7 +6,12 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/ConsoliScan-icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/ConsoliScan-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#00A86B"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.tupt.ConsoliScan"
@@ -16,6 +21,11 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/ConsoliScan-icon.png",
         "backgroundColor": " #00A86B"
+      },
+      "splash": {
+        "image": "./assets/ConsoliScan-icon.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#00A86B"
       },
       "permissions": [
         "android.permission.CAMERA"
