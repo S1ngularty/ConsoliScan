@@ -12,27 +12,37 @@
 }
 
 .filters-section {
-  background: white;
+  background: #ffffff;
   border-radius: 12px;
-  border: 1px solid #eef0f2;
-  padding: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  border: 1px solid #e5e7eb; /* Slightly softer border color */
+  padding: 24px; /* A bit more breathing room */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); /* Smoother, modern shadow */
 }
 
 .filter-row {
   display: flex;
-  gap: 12px;
+  gap: 16px;
   flex-wrap: wrap;
   align-items: center;
+  width: 100%; /* Ensure the row takes full width */
 }
 
+/* 1. The Search Bar - Gets priority spacing */
 .search-field {
-  flex: 1;
-  min-width: 250px;
+  /* flex-grow: 2 makes it take up twice as much free space as the dropdowns */
+  flex: 2 1 280px; 
 }
 
+/* 2. The Dropdowns (Status, Customer Type) */
+.dropdown-field {
+  /* flex-grow: 1 allows them to stretch to fill awkward gaps when wrapping */
+  flex: 1 1 160px; 
+}
+
+/* 3. The Date Fields */
 .filter-field {
-  min-width: 160px;
+  /* Also allowed to grow, keeping the right edge perfectly aligned */
+  flex: 1 1 160px; 
 }
 
 .table-card {
