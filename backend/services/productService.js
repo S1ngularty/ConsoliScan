@@ -246,6 +246,35 @@ const getBarcode = async (request) => {
   return scannedProduct;
 };
 
+// Merchandiser-specific scan that doesn't throw error for new products
+const getBarcodeForMerchandiser = async (request) => {
+  // console.log("[MERCHANDISER SCAN]", request.query);
+  const { type, data } = request.query;
+
+  if (!data) {
+    return { found: false, message: "Barcode data is required" };
+  }
+
+  const scannedProduct = await Product.findOne({
+    barcode: data,
+  }).populate("category");
+
+  if (!scannedProduct) {
+    // console.log(`[MERCHANDISER SCAN] Product not found: ${data}`);
+    return {
+      found: false,
+      barcode: data,
+      message: "Product not found. Ready to add new product.",
+    };
+  }
+
+  // console.log(`[MERCHANDISER SCAN] Product found: ${scannedProduct.name}`);
+  return {
+    found: true,
+    product: scannedProduct,
+  };
+};
+
 module.exports = {
   create,
   getAll,
@@ -259,4 +288,5 @@ module.exports = {
   restore,
   updateStock,
   getBarcode,
+  getBarcodeForMerchandiser,
 };

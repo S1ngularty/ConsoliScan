@@ -8,6 +8,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import AuthNavigation from "./AuthNavigator";
 import CustomerStackNavigator from "./CustomerStackNavigator";
 import CashierStackNavigator from "./CashierStackNavigator";
+import MerchandiserStackNavigator from "./MerchandiserStackNavigator";
 import GuestNavigator from "./GuestNavigator";
 import OnboardingScreen from "../screens/auth/OnboardingScreen";
 import productThunks from "../features/slices/product/productThunks";
@@ -27,6 +28,7 @@ import { writePromos } from "../utils/promoStorage";
 const ROLES = {
   Customer: "user",
   Cashier: "checker",
+  Merchandiser: "merchandiser",
   Guest: "guest",
 };
 
@@ -194,6 +196,11 @@ export default function RootNavigator() {
           </>
         ) : role === ROLES.Cashier ? (
           <Stack.Screen name="Cashier" component={CashierStackNavigator} />
+        ) : role === ROLES.Merchandiser ? (
+          <Stack.Screen
+            name="Merchandiser"
+            component={MerchandiserStackNavigator}
+          />
         ) : role === ROLES.Guest ? (
           <>
             <Stack.Screen name="Guest" component={GuestNavigator} />
