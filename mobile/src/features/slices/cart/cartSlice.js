@@ -14,6 +14,17 @@ const normalizeQuantities = (items) =>
     return item;
   });
 
+const getCartItemKey = (item) => {
+  if (!item) return null;
+  return (
+    item._id ||
+    item.id ||
+    item.barcode ||
+    item.sku ||
+    (item.name ? `name:${String(item.name).toLowerCase()}` : null)
+  );
+};
+
 const cartSlice = createSlice({
   name: "cart",
   initialState: {
@@ -52,16 +63,28 @@ const cartSlice = createSlice({
 
     addToCart: (state, action) => {
       const addedItem = action.payload;
+      const addedQty = Number(addedItem?.selectedQuantity || 1);
+      const addedKey = getCartItemKey(addedItem);
 
-      const existingItem = state.cart.find((i) => i._id === addedItem._id);
+      if (!addedKey) return;
+
+      const existingItem = state.cart.find(
+        (i) => getCartItemKey(i) === addedKey,
+      );
 
       if (existingItem) {
-        const oldQty = existingItem.qty;
-        existingItem.qty += addedItem.selectedQuantity;
+        existingItem.qty = Number(existingItem.qty || 0) + addedQty;
+        existingItem.selectedQuantity = existingItem.qty;
       } else {
-        state.cart.push({
+        const normalizedItem = {
           ...addedItem,
-          qty: addedItem.selectedQuantity || 1,
+          _id: addedItem._id || addedItem.id || addedItem.barcode || addedKey,
+        };
+
+        state.cart.push({
+          ...normalizedItem,
+          qty: addedQty,
+          selectedQuantity: addedQty,
         });
       }
 

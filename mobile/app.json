@@ -25,7 +25,9 @@
       "splash": {
         "image": "./assets/ConsoliScan-icon.png",
         "resizeMode": "contain",
-        "backgroundColor": "#00A86B"
+        "backgroundColor": "#ffffff",
+        "text": "ConsoliScan",
+        "textColor": "#ba0000"
       },
       "permissions": [
         "android.permission.CAMERA"
