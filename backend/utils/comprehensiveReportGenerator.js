@@ -97,6 +97,27 @@ function summaryRow(doc, y, label, value, labelW = 140) {
   return y + 14;
 }
 
+function tableHeader(doc, y, columns) {
+  doc
+    .save()
+    .rect(PAGE_MARGIN, y - 2, CONTENT_W, 14)
+    .fillColor(C.green)
+    .fill()
+    .restore();
+
+  doc.font("Helvetica-Bold").fontSize(7.5).fillColor(C.white);
+
+  columns.forEach((col) => {
+    doc.text(col.label, col.x, y, {
+      width: col.width,
+      align: col.align || "left",
+      lineBreak: false,
+    });
+  });
+
+  return y + 14;
+}
+
 // ─────────────────────────────────────────────
 //  Main Generator
 // ─────────────────────────────────────────────
@@ -285,6 +306,14 @@ exports.generateComprehensiveReportPDF = async (req, res) => {
     rule(doc, y, C.grayLight);
     y += 6;
 
+    // Table header
+    y = tableHeader(doc, y, [
+      { label: "Date", x: PAGE_MARGIN + 4, width: 100 },
+      { label: "Orders", x: PAGE_MARGIN + 110, width: 60, align: "right" },
+      { label: "Total Sales", x: PAGE_MARGIN + 180, width: 90, align: "right" },
+      { label: "Avg Value", x: RIGHT_EDGE - 90, width: 90, align: "right" },
+    ]);
+
     const topDays = (sales.data || [])
       .sort((a, b) => (b.totalSales || 0) - (a.totalSales || 0))
       .slice(0, 10);
@@ -337,6 +366,13 @@ exports.generateComprehensiveReportPDF = async (req, res) => {
 
     y = sectionHeader(doc, y, "Top Products", C.orange);
 
+    // Table header
+    y = tableHeader(doc, y, [
+      { label: "Product", x: PAGE_MARGIN + 4, width: 180 },
+      { label: "Units Sold", x: PAGE_MARGIN + 200, width: 50, align: "right" },
+      { label: "Revenue", x: RIGHT_EDGE - 90, width: 90, align: "right" },
+    ]);
+
     const topProds = (products.data || []).slice(0, 8);
     topProds.forEach((prod, idx) => {
       if (idx % 2 === 0) {
@@ -375,6 +411,13 @@ exports.generateComprehensiveReportPDF = async (req, res) => {
 
     // ── CATEGORIES SECTION ─────────────────────
     y = sectionHeader(doc, y, "Revenue by Category", C.teal);
+
+    // Table header
+    y = tableHeader(doc, y, [
+      { label: "Category", x: PAGE_MARGIN + 4, width: 180 },
+      { label: "Quantity", x: PAGE_MARGIN + 200, width: 50, align: "right" },
+      { label: "Revenue", x: RIGHT_EDGE - 90, width: 90, align: "right" },
+    ]);
 
     const topCats = (categories || []).slice(0, 6);
     topCats.forEach((cat, idx) => {
@@ -449,6 +492,13 @@ exports.generateComprehensiveReportPDF = async (req, res) => {
         .fillColor(C.dark)
         .text("Top Spenders", PAGE_MARGIN, y);
       y += 10;
+
+      // Table header
+      y = tableHeader(doc, y, [
+        { label: "Customer", x: PAGE_MARGIN + 4, width: 140 },
+        { label: "Orders", x: PAGE_MARGIN + 160, width: 60, align: "right" },
+        { label: "Total Spent", x: RIGHT_EDGE - 90, width: 90, align: "right" },
+      ]);
 
       topSpenders.forEach((spender, idx) => {
         if (idx % 2 === 0) {
@@ -526,6 +576,18 @@ exports.generateComprehensiveReportPDF = async (req, res) => {
         .fillColor(C.dark)
         .text("Most Used Promotions", PAGE_MARGIN, y);
       y += 10;
+
+      // Table header
+      y = tableHeader(doc, y, [
+        { label: "Promo Code", x: PAGE_MARGIN + 4, width: 80 },
+        { label: "Uses", x: PAGE_MARGIN + 100, width: 60, align: "right" },
+        {
+          label: "Discount Given",
+          x: RIGHT_EDGE - 90,
+          width: 90,
+          align: "right",
+        },
+      ]);
 
       topPromos.forEach((promo, idx) => {
         if (idx % 2 === 0) {
@@ -611,28 +673,6 @@ exports.generateComprehensiveReportPDF = async (req, res) => {
 
     rule(doc, footerY, C.green, 1.5);
     footerY += 16;
-
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(12)
-      .fillColor(C.green)
-      .text("Report Summary", PAGE_MARGIN, footerY);
-
-    footerY += 16;
-
-    doc
-      .font("Helvetica")
-      .fontSize(8.5)
-      .fillColor(C.gray)
-      .text(
-        "This comprehensive report provides a complete overview of all business operations during the selected period. Data includes sales performance, product analytics, customer insights, inventory status, promotion effectiveness, and return metrics.",
-        PAGE_MARGIN,
-        footerY,
-        { width: CONTENT_W, align: "left" },
-      );
-
-    footerY += 50;
-
     doc
       .font("Helvetica")
       .fontSize(8)
