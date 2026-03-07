@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   StatusBar,
-  Switch,
   Platform,
   Alert,
 } from "react-native";
@@ -26,19 +25,6 @@ const MenuScreen = ({ navigation }) => {
     memberSince: "January 2024",
   });
 
-  const [preferences, setPreferences] = useState({
-    notifications: true,
-    emailUpdates: true,
-    promoNotifications: true,
-  });
-
-  const [loyaltyInfo] = useState({
-    points: 1250,
-    tier: "Gold",
-    nextTier: "Platinum",
-    pointsNeeded: 250,
-  });
-
   const dispatch = useDispatch();
 
   // Local sub-component for Menu Items
@@ -54,22 +40,6 @@ const MenuScreen = ({ navigation }) => {
       <Text style={styles.menuText}>{title}</Text>
       <MaterialCommunityIcons name="chevron-right" size={18} color="#64748b" />
     </TouchableOpacity>
-  );
-
-  // Local sub-component for Preference Items
-  const PreferenceItem = ({ title, description, value, onToggle }) => (
-    <View style={styles.preferenceItem}>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.preferenceTitle}>{title}</Text>
-        <Text style={styles.preferenceDesc}>{description}</Text>
-      </View>
-      <Switch
-        value={value}
-        onValueChange={onToggle}
-        trackColor={{ false: "#e2e8f0", true: "#00A86B" }}
-        thumbColor="#fff"
-      />
-    </View>
   );
 
   const menuItems = [
@@ -174,97 +144,116 @@ const MenuScreen = ({ navigation }) => {
               />
             </TouchableOpacity>
           </View>
+        </View>
 
-          {/* --- LOYALTY STATUS --- */}
-          <View style={styles.loyaltySection}>
-            <View style={styles.loyaltyHeader}>
+        {/* --- QUICK ACTIONS ---
+        <View style={styles.quickActionsContainer}>
+          <TouchableOpacity
+            style={styles.quickActionCard}
+            onPress={() => navigation.navigate("Scanning")}
+          >
+            <View style={styles.quickActionIcon}>
               <MaterialCommunityIcons
-                name="trophy-outline"
-                size={18}
-                color="#0f172a"
+                name="barcode-scan"
+                size={24}
+                color="#00A86B"
               />
-              <Text style={styles.loyaltyTitle}>{loyaltyInfo.tier} Member</Text>
             </View>
+            <Text style={styles.quickActionLabel}>Start Shopping</Text>
+          </TouchableOpacity>
 
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBar}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    {
-                      width: `${(loyaltyInfo.points / (loyaltyInfo.points + loyaltyInfo.pointsNeeded)) * 100}%`,
-                    },
-                  ]}
-                />
-              </View>
-              <View style={styles.progressLabels}>
-                <Text style={styles.progressText}>
-                  {loyaltyInfo.points.toLocaleString()} pts
-                </Text>
-                <Text style={styles.progressText}>
-                  {loyaltyInfo.pointsNeeded} to {loyaltyInfo.nextTier}
-                </Text>
-              </View>
+          <TouchableOpacity
+            style={styles.quickActionCard}
+            onPress={() => navigation.navigate("Cart")}
+          >
+            <View style={styles.quickActionIcon}>
+              <MaterialCommunityIcons
+                name="cart-outline"
+                size={24}
+                color="#00A86B"
+              />
+            </View>
+            <Text style={styles.quickActionLabel}>View Cart</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.quickActionCard}
+            onPress={() => navigation.navigate("History")}
+          >
+            <View style={styles.quickActionIcon}>
+              <MaterialCommunityIcons
+                name="receipt"
+                size={24}
+                color="#00A86B"
+              />
+            </View>
+            <Text style={styles.quickActionLabel}>Orders</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.quickActionCard}
+            onPress={() => navigation.navigate("Saved")}
+          >
+            <View style={styles.quickActionIcon}>
+              <MaterialCommunityIcons
+                name="heart-outline"
+                size={24}
+                color="#00A86B"
+              />
+            </View>
+            <Text style={styles.quickActionLabel}>Saved</Text>
+          </TouchableOpacity>
+        </View> */}
+
+        {/* --- APP FEATURES --- */}
+        <View style={styles.featuresCard}>
+          <View style={styles.featureItem}>
+            <View style={styles.featureIconContainer}>
+              <MaterialCommunityIcons
+                name="lightning-bolt"
+                size={20}
+                color="#00A86B"
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.featureTitle}>Fast Mode Scanning</Text>
+              <Text style={styles.featureDesc}>
+                Quick checkout with continuous barcode scanning
+              </Text>
             </View>
           </View>
-        </View>
 
-        {/* --- QUICK STATS --- */}
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>
-              {loyaltyInfo.points.toLocaleString()}
-            </Text>
-            <Text style={styles.statLabel}>Total Points</Text>
+          <View style={styles.featureItem}>
+            <View style={styles.featureIconContainer}>
+              <MaterialCommunityIcons
+                name="tag-outline"
+                size={20}
+                color="#00A86B"
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.featureTitle}>Exclusive Discounts</Text>
+              <Text style={styles.featureDesc}>
+                Check eligibility for special pricing
+              </Text>
+            </View>
           </View>
-          <View style={styles.divider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>18</Text>
-            <Text style={styles.statLabel}>Transactions</Text>
-          </View>
-          <View style={styles.divider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>2</Text>
-            <Text style={styles.statLabel}>Rewards</Text>
-          </View>
-        </View>
 
-        {/* --- PREFERENCES --- */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Preferences</Text>
-          <PreferenceItem
-            title="Push Notifications"
-            description="Receive app notifications"
-            value={preferences.notifications}
-            onToggle={() =>
-              setPreferences({
-                ...preferences,
-                notifications: !preferences.notifications,
-              })
-            }
-          />
-          <PreferenceItem
-            title="Email Updates"
-            description="Receive email newsletters"
-            value={preferences.emailUpdates}
-            onToggle={() =>
-              setPreferences({
-                ...preferences,
-                emailUpdates: !preferences.emailUpdates,
-              })
-            }
-          />
-          <PreferenceItem
-            title="Promotional Notifications"
-            description="Get special offers & deals"
-            value={preferences.promoNotifications}
-            onToggle={() =>
-              setPreferences({
-                ...preferences,
-                promoNotifications: !preferences.promoNotifications,
-              })
-            }
-          />
+          <View style={[styles.featureItem, { borderBottomWidth: 0 }]}>
+            <View style={styles.featureIconContainer}>
+              <MaterialCommunityIcons
+                name="clock-fast"
+                size={20}
+                color="#00A86B"
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.featureTitle}>Skip the Line</Text>
+              <Text style={styles.featureDesc}>
+                Scan, pay, and go without waiting
+              </Text>
+            </View>
+          </View>
         </View>
 
         {/* --- MENU --- */}
@@ -277,7 +266,7 @@ const MenuScreen = ({ navigation }) => {
               icon={item.icon}
               isLast={index === menuItems.length - 1}
               onPress={() =>
-                item.path === "Help" || item.path ==="About"
+                item.path === "Help" || item.path === "About"
                   ? navigation.navigate("Shared", {
                       screen: item.path,
                     })
@@ -350,7 +339,6 @@ const styles = StyleSheet.create({
   profileHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 24,
   },
   avatar: {
     width: 64,
@@ -392,79 +380,74 @@ const styles = StyleSheet.create({
     borderColor: "#f1f5f9",
   },
 
-  // Loyalty Section
-  loyaltySection: {
-    paddingTop: 24,
-    borderTopWidth: 1,
-    borderTopColor: "#f1f5f9",
-  },
-  loyaltyHeader: {
+  // Quick Actions
+  quickActionsContainer: {
     flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  loyaltyTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#0f172a",
-    marginLeft: 8,
-  },
-  progressContainer: {
-    marginBottom: 8,
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: "#f1f5f9",
-    borderRadius: 4,
-    overflow: "hidden",
-    marginBottom: 8,
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: "#00A86B",
-    borderRadius: 4,
-  },
-  progressLabels: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  progressText: {
-    fontSize: 11,
-    color: "#64748b",
-    fontWeight: "700",
-  },
-
-  // Stats Row
-  statsRow: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
     marginHorizontal: 24,
     marginTop: 16,
-    padding: 20,
-    borderRadius: 24,
+    gap: 12,
+  },
+  quickActionCard: {
+    flex: 1,
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 20,
+    alignItems: "center",
     borderWidth: 1,
     borderColor: "#f1f5f9",
   },
-  statItem: {
-    flex: 1,
+  quickActionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: "#f0fdf9",
+    justifyContent: "center",
     alignItems: "center",
+    marginBottom: 8,
   },
-  statValue: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#0f172a",
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: "#64748b",
+  quickActionLabel: {
+    fontSize: 12,
     fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
+    color: "#0f172a",
+    textAlign: "center",
   },
-  divider: {
-    width: 1,
-    backgroundColor: "#f1f5f9",
+
+  // Features Card
+  featuresCard: {
+    backgroundColor: "#fff",
+    marginHorizontal: 24,
+    marginTop: 16,
+    padding: 24,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
+  },
+  featureItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
+  },
+  featureIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#f0fdf9",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  featureTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#0f172a",
+    marginBottom: 2,
+  },
+  featureDesc: {
+    fontSize: 12,
+    color: "#64748b",
+    lineHeight: 16,
   },
 
   // Section Card
@@ -482,25 +465,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#0f172a",
     marginBottom: 20,
-  },
-
-  // Preference Item
-  preferenceItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 14,
-    borderTopWidth: 1,
-    borderTopColor: "#f1f5f9",
-  },
-  preferenceTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#0f172a",
-    marginBottom: 2,
-  },
-  preferenceDesc: {
-    fontSize: 12,
-    color: "#64748b",
   },
 
   // Menu Item
