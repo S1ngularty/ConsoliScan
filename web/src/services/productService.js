@@ -79,3 +79,10 @@ export const getCategories = async () => {
   const categories = result.data.result;
   return categories;
 };
+
+export const searchProducts = async (query) => {
+  const result = await axios.get(`/api/v1/product/search`, {
+    params: { q: query },
+  });
+  return result.data.result;
+};

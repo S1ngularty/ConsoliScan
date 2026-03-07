@@ -1,5 +1,36 @@
+const mongoose = require("mongoose");
 const Product = require("../models/productModel");
 const Category = require("../models/categoryModel");
+
+// Helper function to resolve product identifiers (barcode, name, or ID) to IDs
+const resolveProductIdentifiers = async (identifiers) => {
+  const productIds = [];
+  const notFound = [];
+
+  for (const identifier of identifiers) {
+    const trimmedId = identifier.trim();
+    if (!trimmedId) continue;
+
+    // Try to find by ID, barcode, or name
+    let product = await Product.findOne({
+      $or: [
+        { _id: mongoose.Types.ObjectId.isValid(trimmedId) ? trimmedId : null },
+        { barcode: trimmedId },
+        { name: { $regex: new RegExp(`^${trimmedId}$`, "i") } },
+        { sku: trimmedId },
+      ],
+      deletedAt: null,
+    });
+
+    if (product) {
+      productIds.push(product._id);
+    } else {
+      notFound.push(trimmedId);
+    }
+  }
+
+  return { productIds, notFound };
+};
 
 // ═══════════════════════════════════════════════
 //  BULK PRICE UPDATE
@@ -13,9 +44,19 @@ exports.bulkPriceUpdate = async (req, res) => {
       return res.status(400).json({ message: "Products array is required" });
     }
 
+    // Resolve product identifiers to IDs
+    const { productIds, notFound } = await resolveProductIdentifiers(products);
+
+    if (productIds.length === 0) {
+      return res.status(404).json({
+        message: "No products found",
+        notFound,
+      });
+    }
+
     const updates = [];
 
-    for (const productId of products) {
+    for (const productId of productIds) {
       const product = await Product.findById(productId);
       if (!product) continue;
 
@@ -53,6 +94,7 @@ exports.bulkPriceUpdate = async (req, res) => {
     res.status(200).json({
       message: `Successfully updated ${updates.length} products`,
       updates,
+      notFound: notFound.length > 0 ? notFound : undefined,
     });
   } catch (error) {
     res.status(500).json({
@@ -67,35 +109,45 @@ exports.bulkPriceUpdate = async (req, res) => {
 // ═══════════════════════════════════════════════
 exports.bulkStockUpdate = async (req, res) => {
   try {
-    const { updates } = req.body;
-    // updates: [{ productId, quantity, operation: 'SET' | 'ADD' | 'SUBTRACT' }]
+    const { products, quantity, operation } = req.body;
+    // operation: 'SET' | 'ADD' | 'SUBTRACT'
 
-    if (!updates || !Array.isArray(updates)) {
-      return res.status(400).json({ message: "Updates array is required" });
+    if (!products || !Array.isArray(products)) {
+      return res.status(400).json({ message: "Products array is required" });
+    }
+
+    // Resolve product identifiers to IDs
+    const { productIds, notFound } = await resolveProductIdentifiers(products);
+
+    if (productIds.length === 0) {
+      return res.status(404).json({
+        message: "No products found",
+        notFound,
+      });
     }
 
     const results = [];
 
-    for (const update of updates) {
-      const product = await Product.findById(update.productId);
+    for (const productId of productIds) {
+      const product = await Product.findById(productId);
       if (!product) continue;
 
-      const oldStock = product.stock;
+      const oldStock = product.stockQuantity;
       let newStock = oldStock;
 
-      switch (update.operation) {
+      switch (operation) {
         case "SET":
-          newStock = update.quantity;
+          newStock = quantity;
           break;
         case "ADD":
-          newStock = oldStock + update.quantity;
+          newStock = oldStock + quantity;
           break;
         case "SUBTRACT":
-          newStock = Math.max(0, oldStock - update.quantity);
+          newStock = Math.max(0, oldStock - quantity);
           break;
       }
 
-      product.stock = newStock;
+      product.stockQuantity = newStock;
       await product.save();
 
       results.push({
@@ -109,6 +161,7 @@ exports.bulkStockUpdate = async (req, res) => {
     res.status(200).json({
       message: `Successfully updated stock for ${results.length} products`,
       results,
+      notFound: notFound.length > 0 ? notFound : undefined,
     });
   } catch (error) {
     res.status(500).json({
@@ -129,6 +182,16 @@ exports.bulkCategoryAssignment = async (req, res) => {
       return res.status(400).json({ message: "Products array is required" });
     }
 
+    // Resolve product identifiers to IDs
+    const { productIds, notFound } = await resolveProductIdentifiers(products);
+
+    if (productIds.length === 0) {
+      return res.status(404).json({
+        message: "No products found",
+        notFound,
+      });
+    }
+
     // Verify category exists
     const category = await Category.findById(categoryId);
     if (!category) {
@@ -136,13 +199,14 @@ exports.bulkCategoryAssignment = async (req, res) => {
     }
 
     const result = await Product.updateMany(
-      { _id: { $in: products } },
+      { _id: { $in: productIds } },
       { $set: { category: categoryId } },
     );
 
     res.status(200).json({
       message: `Successfully updated category for ${result.modifiedCount} products`,
       modifiedCount: result.modifiedCount,
+      notFound: notFound.length > 0 ? notFound : undefined,
     });
   } catch (error) {
     res.status(500).json({
@@ -163,15 +227,26 @@ exports.bulkDelete = async (req, res) => {
       return res.status(400).json({ message: "Products array is required" });
     }
 
+    // Resolve product identifiers to IDs
+    const { productIds, notFound } = await resolveProductIdentifiers(products);
+
+    if (productIds.length === 0) {
+      return res.status(404).json({
+        message: "No products found",
+        notFound,
+      });
+    }
+
     // Soft delete by setting deletedAt
     const result = await Product.updateMany(
-      { _id: { $in: products } },
+      { _id: { $in: productIds } },
       { $set: { deletedAt: new Date() } },
     );
 
     res.status(200).json({
       message: `Successfully deleted ${result.modifiedCount} products`,
       deletedCount: result.modifiedCount,
+      notFound: notFound.length > 0 ? notFound : undefined,
     });
   } catch (error) {
     res.status(500).json({

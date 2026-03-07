@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   Truck,
   Plus,
@@ -186,6 +187,177 @@ const SupplierManagementPage = () => {
     amount: supplier.totalSpent,
   }));
 
+  const modalNode = showModal
+    ? createPortal(
+        <div className="supplier-modal-root">
+          <div className="supplier-modal-overlay" onClick={resetForm}>
+            <div
+              className="supplier-modal-content"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="supplier-modal-header">
+                <h2>
+                  {editingSupplier ? "Edit Supplier" : "Add New Supplier"}
+                </h2>
+                <button className="close-btn" onClick={resetForm}>
+                  <X size={20} />
+                </button>
+              </div>
+              <form onSubmit={handleSubmit}>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Name *</label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Contact Person</label>
+                    <input
+                      type="text"
+                      name="contactPerson"
+                      value={formData.contactPerson}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Email</label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Phone</label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Address</label>
+                  <input
+                    type="text"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                  />
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Business Type *</label>
+                    <select
+                      name="businessType"
+                      value={formData.businessType}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      {businessTypes.map((type) => (
+                        <option key={type} value={type}>
+                          {type.replace("_", " ").charAt(0).toUpperCase() +
+                            type.replace("_", " ").slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Rating *</label>
+                    <select
+                      name="rating"
+                      value={formData.rating}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      {[1, 2, 3, 4, 5].map((num) => (
+                        <option key={num} value={num}>
+                          {num} Star{num > 1 ? "s" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Payment Terms *</label>
+                    <select
+                      name="paymentTerms"
+                      value={formData.paymentTerms}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      <option value="cod">COD</option>
+                      <option value="net_30">Net 30</option>
+                      <option value="net_60">Net 60</option>
+                      <option value="net_90">Net 90</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Credit Limit</label>
+                    <input
+                      type="number"
+                      name="creditLimit"
+                      value={formData.creditLimit}
+                      onChange={handleInputChange}
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Tax ID</label>
+                  <input
+                    type="text"
+                    name="taxId"
+                    value={formData.taxId}
+                    onChange={handleInputChange}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Notes</label>
+                  <textarea
+                    name="notes"
+                    value={formData.notes}
+                    onChange={handleInputChange}
+                    rows={3}
+                  />
+                </div>
+
+                <div className="modal-actions">
+                  <button
+                    type="button"
+                    className="cancel-btn"
+                    onClick={resetForm}
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" className="submit-btn">
+                    {editingSupplier ? "Update" : "Create"} Supplier
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )
+    : null;
+
   return (
     <div className="supplier-management-page">
       <Toast
@@ -253,7 +425,7 @@ const SupplierManagementPage = () => {
         </div>
       </div>
 
-      {/* Top Suppliers Chart */}
+      {/* Top Suppliers Chart
       <div className="analytics-card">
         <div className="card-header">
           <TrendingUp size={20} />
@@ -281,7 +453,7 @@ const SupplierManagementPage = () => {
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </div>
+      </div> */}
 
       {/* Search */}
       <div className="search-section">
@@ -377,167 +549,7 @@ const SupplierManagementPage = () => {
         ))}
       </div>
 
-      {/* Modal */}
-      {showModal && (
-        <div className="modal-overlay" onClick={resetForm}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{editingSupplier ? "Edit Supplier" : "Add New Supplier"}</h2>
-              <button className="close-btn" onClick={resetForm}>
-                <X size={20} />
-              </button>
-            </div>
-            <form onSubmit={handleSubmit}>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Name *</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Contact Person</label>
-                  <input
-                    type="text"
-                    name="contactPerson"
-                    value={formData.contactPerson}
-                    onChange={handleInputChange}
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Email</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Phone</label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Address</label>
-                <input
-                  type="text"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Business Type *</label>
-                  <select
-                    name="businessType"
-                    value={formData.businessType}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    {businessTypes.map((type) => (
-                      <option key={type} value={type}>
-                        {type.replace("_", " ").charAt(0).toUpperCase() +
-                          type.replace("_", " ").slice(1)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Rating *</label>
-                  <select
-                    name="rating"
-                    value={formData.rating}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    {[1, 2, 3, 4, 5].map((num) => (
-                      <option key={num} value={num}>
-                        {num} Star{num > 1 ? "s" : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Payment Terms *</label>
-                  <select
-                    name="paymentTerms"
-                    value={formData.paymentTerms}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="cod">COD</option>
-                    <option value="net_30">Net 30</option>
-                    <option value="net_60">Net 60</option>
-                    <option value="net_90">Net 90</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Credit Limit</label>
-                  <input
-                    type="number"
-                    name="creditLimit"
-                    value={formData.creditLimit}
-                    onChange={handleInputChange}
-                    step="0.01"
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Tax ID</label>
-                <input
-                  type="text"
-                  name="taxId"
-                  value={formData.taxId}
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Notes</label>
-                <textarea
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleInputChange}
-                  rows={3}
-                />
-              </div>
-
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="cancel-btn"
-                  onClick={resetForm}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="submit-btn">
-                  {editingSupplier ? "Update" : "Create"} Supplier
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {modalNode}
     </div>
   );
 };

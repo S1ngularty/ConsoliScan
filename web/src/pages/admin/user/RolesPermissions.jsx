@@ -160,6 +160,8 @@ function RolePermissions() {
         return "#00A86B";
       case "checker":
         return "#3b82f6";
+      case "merchandiser":
+        return "#f59e0b";
       case "user":
         return "#6b7280";
       default:
@@ -173,6 +175,8 @@ function RolePermissions() {
         return <Shield size={16} />;
       case "checker":
         return <CheckCircle size={16} />;
+      case "merchandiser":
+        return <Users size={16} />;
       case "user":
         return <User size={16} />;
       default:
@@ -219,6 +223,7 @@ function RolePermissions() {
     const totalUsers = users.length;
     const admins = users.filter((u) => u.role === "admin").length;
     const checkers = users.filter((u) => u.role === "checker").length;
+    const merchandisers = users.filter((u) => u.role === "merchandiser").length;
     const regularUsers = users.filter((u) => u.role === "user").length;
     const activeUsers = users.filter((u) => u.status === "active").length;
     const inactiveUsers = users.filter((u) => u.status === "inactive").length;
@@ -227,6 +232,7 @@ function RolePermissions() {
       totalUsers,
       admins,
       checkers,
+      merchandisers,
       regularUsers,
       activeUsers,
       inactiveUsers,
@@ -428,6 +434,7 @@ function RolePermissions() {
                 <MenuItem value="user">User</MenuItem>
                 <MenuItem value="admin">Admin</MenuItem>
                 <MenuItem value="checker">Checker</MenuItem>
+                <MenuItem value="merchandiser">Merchandiser</MenuItem>
               </Select>
             </FormControl>
 
@@ -454,6 +461,10 @@ function RolePermissions() {
                   </li>
                   <li>
                     <strong>Checker:</strong> Can review and verify content
+                  </li>
+                  <li>
+                    <strong>Merchandiser:</strong> Can scan, edit, and add
+                    products
                   </li>
                   <li>
                     <strong>User:</strong> Basic access only
@@ -496,7 +507,8 @@ function RolePermissions() {
             User Roles Management
           </Typography>
           <Typography variant="body2" color="#6b7280">
-            Manage user roles and account status (User, Admin, Checker)
+            Manage user roles and account status (User, Admin, Checker,
+            Merchandiser)
           </Typography>
         </Box>
         <Box display="flex" gap={2}>
@@ -578,6 +590,24 @@ function RolePermissions() {
           </CardContent>
         </Card>
 
+        <Card className="stat-card merchandiser">
+          <CardContent>
+            <Box display="flex" alignItems="center" gap={2}>
+              <Avatar sx={{ bgcolor: "#fef3c7", color: "#f59e0b" }}>
+                <Users size={20} />
+              </Avatar>
+              <Box>
+                <Typography variant="h6" fontWeight={700} color="#f59e0b">
+                  {stats.merchandisers}
+                </Typography>
+                <Typography variant="body2" color="#6b7280">
+                  Merchandisers
+                </Typography>
+              </Box>
+            </Box>
+          </CardContent>
+        </Card>
+
         <Card className="stat-card user">
           <CardContent>
             <Box display="flex" alignItems="center" gap={2}>
@@ -615,6 +645,7 @@ function RolePermissions() {
               <MenuItem value="">All Roles</MenuItem>
               <MenuItem value="admin">Admin</MenuItem>
               <MenuItem value="checker">Checker</MenuItem>
+              <MenuItem value="merchandiser">Merchandiser</MenuItem>
               <MenuItem value="user">User</MenuItem>
             </Select>
           </FormControl>
@@ -656,8 +687,8 @@ function RolePermissions() {
           <Typography variant="body2">
             <strong>Role Guidelines:</strong>
             <Box component="span" sx={{ ml: 1 }}>
-              Admins have full access, Checkers can review content, Users have
-              basic access only.
+              Admins have full access, Checkers can review content,
+              Merchandisers manage products, Users have basic access only.
             </Box>
           </Typography>
           <Chip
@@ -729,6 +760,12 @@ function RolePermissions() {
             label={`${stats.checkers} checkers`}
             size="small"
             sx={{ bgcolor: "#eff6ff", color: "#3b82f6" }}
+          />
+          <Chip
+            icon={<Users size={14} />}
+            label={`${stats.merchandisers} merchandisers`}
+            size="small"
+            sx={{ bgcolor: "#fef3c7", color: "#f59e0b" }}
           />
         </Box>
       </Box>

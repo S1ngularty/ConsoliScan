@@ -69,6 +69,28 @@ const getById = async (request = {}) => {
   return product;
 };
 
+const search = async (request = {}) => {
+  const { q } = request.query;
+  if (!q || q.trim().length < 2) {
+    return { products: [] };
+  }
+
+  const searchTerm = q.trim();
+  const products = await Product.find({
+    deletedAt: null,
+    $or: [
+      { barcode: { $regex: searchTerm, $options: "i" } },
+      { name: { $regex: searchTerm, $options: "i" } },
+      { sku: { $regex: searchTerm, $options: "i" } },
+    ],
+  })
+    .populate("category")
+    .limit(20)
+    .select("_id name barcode sku price stockQuantity images category");
+
+  return { products };
+};
+
 const update = async (request = {}) => {
   const { productId } = request.params;
 
@@ -246,12 +268,42 @@ const getBarcode = async (request) => {
   return scannedProduct;
 };
 
+// Merchandiser-specific scan that doesn't throw error for new products
+const getBarcodeForMerchandiser = async (request) => {
+  // console.log("[MERCHANDISER SCAN]", request.query);
+  const { type, data } = request.query;
+
+  if (!data) {
+    return { found: false, message: "Barcode data is required" };
+  }
+
+  const scannedProduct = await Product.findOne({
+    barcode: data,
+  }).populate("category");
+
+  if (!scannedProduct) {
+    // console.log(`[MERCHANDISER SCAN] Product not found: ${data}`);
+    return {
+      found: false,
+      barcode: data,
+      message: "Product not found. Ready to add new product.",
+    };
+  }
+
+  // console.log(`[MERCHANDISER SCAN] Product found: ${scannedProduct.name}`);
+  return {
+    found: true,
+    product: scannedProduct,
+  };
+};
+
 module.exports = {
   create,
   getAll,
   getCatalog,
   getCatalogVersion,
   getById,
+  search,
   update,
   removeImg,
   softDelete,
@@ -259,4 +311,5 @@ module.exports = {
   restore,
   updateStock,
   getBarcode,
+  getBarcodeForMerchandiser,
 };

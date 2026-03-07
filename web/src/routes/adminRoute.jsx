@@ -19,7 +19,6 @@ import FinancialReportsPage from "../pages/admin/FinancialReportsPage";
 import PredictiveAnalyticsPage from "../pages/admin/PredictiveAnalyticsPage";
 import ExpenseManagementPage from "../pages/admin/ExpenseManagementPage";
 import SupplierManagementPage from "../pages/admin/SupplierManagementPage";
-import InventoryPage from "../pages/admin/InventoryPage";
 import BulkOperationsPage from "../pages/admin/BulkOperationsPage";
 import ProductPerformancePage from "../pages/admin/ProductPerformancePage";
 
@@ -128,11 +127,6 @@ function adminRoute() {
     {
       component: <SupplierManagementPage></SupplierManagementPage>,
       path: "/admin/suppliers",
-      index: false,
-    },
-    {
-      component: <InventoryPage></InventoryPage>,
-      path: "/admin/inventory",
       index: false,
     },
     {

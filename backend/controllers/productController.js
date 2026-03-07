@@ -6,6 +6,7 @@ exports.getAllProduct = controllerWrapper(productService.getAll);
 exports.getCatalog = controllerWrapper(productService.getCatalog);
 exports.getCatalogVersion = controllerWrapper(productService.getCatalogVersion);
 exports.getProductById = controllerWrapper(productService.getById);
+exports.searchProducts = controllerWrapper(productService.search);
 exports.updateProduct = controllerWrapper(productService.update);
 exports.deleteImg = controllerWrapper(productService.removeImg);
 exports.temporaryDelete = controllerWrapper(productService.softDelete);
@@ -13,3 +14,6 @@ exports.permanentDelete = controllerWrapper(productService.hardDelete);
 exports.restoreProduct = controllerWrapper(productService.restore);
 exports.updateProductStock = controllerWrapper(productService.updateStock);
 exports.getScannedProduct = controllerWrapper(productService.getBarcode);
+exports.getMerchandiserScannedProduct = controllerWrapper(
+  productService.getBarcodeForMerchandiser,
+);
