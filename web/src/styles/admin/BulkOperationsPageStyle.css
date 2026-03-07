@@ -165,6 +165,154 @@
   resize: vertical;
 }
 
+/* Search Input Styles */
+.search-container {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.search-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: white;
+  transition: all 0.2s;
+}
+
+.search-input-wrapper:focus-within {
+  border-color: #5c6f2b;
+  box-shadow: 0 0 0 3px rgba(92, 111, 43, 0.1);
+}
+
+.search-input-wrapper svg {
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  padding: 0;
+  font-family: inherit;
+}
+
+.search-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-item:hover {
+  background: #f9fafb;
+}
+
+.product-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.product-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.product-barcode {
+  font-size: 12px;
+  color: #6b7280;
+  font-family: "Courier New", monospace;
+}
+
+.product-price {
+  font-size: 14px;
+  font-weight: 600;
+  color: #5c6f2b;
+}
+
+/* Selected Products */
+.selected-products {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.selected-count {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.selected-products-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.selected-product-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #1f2937;
+}
+
+.selected-product-tag span {
+  font-weight: 500;
+}
+
+.remove-product-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  background: none;
+  border: none;
+  color: #dc2626;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.remove-product-btn:hover {
+  background: #fee2e2;
+}
+
 .help-text {
   margin: 8px 0 0 0;
   font-size: 13px;

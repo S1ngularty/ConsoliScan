@@ -253,7 +253,7 @@ const SupplierManagementPage = () => {
         </div>
       </div>
 
-      {/* Top Suppliers Chart */}
+      {/* Top Suppliers Chart
       <div className="analytics-card">
         <div className="card-header">
           <TrendingUp size={20} />
@@ -281,7 +281,7 @@ const SupplierManagementPage = () => {
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </div>
+      </div> */}
 
       {/* Search */}
       <div className="search-section">
@@ -296,78 +296,78 @@ const SupplierManagementPage = () => {
         </div>
       </div>
 
-      {/* Suppliers Grid */}
-      <div className="suppliers-grid">
-        {filteredSuppliers.map((supplier) => (
-          <div key={supplier._id} className="supplier-card">
-            <div className="supplier-header">
-              <div className="supplier-avatar">
-                {supplier.name?.charAt(0).toUpperCase()}
+        {/* Suppliers Grid */}
+        <div className="suppliers-grid">
+          {filteredSuppliers.map((supplier) => (
+            <div key={supplier._id} className="supplier-card">
+              <div className="supplier-header">
+                <div className="supplier-avatar">
+                  {supplier.name?.charAt(0).toUpperCase()}
+                </div>
+                <div className="supplier-info">
+                  <h3>{supplier.name}</h3>
+                  <p className="business-type">
+                    {supplier.businessType.replace("_", " ")}
+                  </p>
+                </div>
+                <div className="rating">
+                  <Star size={16} fill="#fbbf24" color="#fbbf24" />
+                  <span>{supplier.rating}</span>
+                </div>
               </div>
-              <div className="supplier-info">
-                <h3>{supplier.name}</h3>
-                <p className="business-type">
-                  {supplier.businessType.replace("_", " ")}
-                </p>
-              </div>
-              <div className="rating">
-                <Star size={16} fill="#fbbf24" color="#fbbf24" />
-                <span>{supplier.rating}</span>
-              </div>
-            </div>
 
-            <div className="supplier-details">
-              {supplier.contactPerson && (
-                <div className="detail-item">
-                  <Phone size={16} />
-                  <span>{supplier.contactPerson}</span>
-                </div>
-              )}
-              {supplier.email && (
-                <div className="detail-item">
-                  <Mail size={16} />
-                  <span>{supplier.email}</span>
-                </div>
-              )}
-              {supplier.phone && (
-                <div className="detail-item">
-                  <Phone size={16} />
-                  <span>{supplier.phone}</span>
-                </div>
-              )}
-              {supplier.address && (
-                <div className="detail-item">
-                  <MapPin size={16} />
-                  <span>{supplier.address}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="supplier-meta">
-              <div className="meta-item">
-                <span className="label">Payment Terms</span>
-                <span className="value">
-                  {supplier.paymentTerms.replace("_", " ")}
-                </span>
+              <div className="supplier-details">
+                {supplier.contactPerson && (
+                  <div className="detail-item">
+                    <Phone size={16} />
+                    <span>{supplier.contactPerson}</span>
+                  </div>
+                )}
+                {supplier.email && (
+                  <div className="detail-item">
+                    <Mail size={16} />
+                    <span>{supplier.email}</span>
+                  </div>
+                )}
+                {supplier.phone && (
+                  <div className="detail-item">
+                    <Phone size={16} />
+                    <span>{supplier.phone}</span>
+                  </div>
+                )}
+                {supplier.address && (
+                  <div className="detail-item">
+                    <MapPin size={16} />
+                    <span>{supplier.address}</span>
+                  </div>
+                )}
               </div>
-              {supplier.creditLimit > 0 && (
+
+              <div className="supplier-meta">
                 <div className="meta-item">
-                  <span className="label">Credit Limit</span>
+                  <span className="label">Payment Terms</span>
                   <span className="value">
-                    ₱{supplier.creditLimit.toLocaleString("en-PH")}
+                    {supplier.paymentTerms.replace("_", " ")}
                   </span>
                 </div>
-              )}
-            </div>
+                {supplier.creditLimit > 0 && (
+                  <div className="meta-item">
+                    <span className="label">Credit Limit</span>
+                    <span className="value">
+                      ₱{supplier.creditLimit.toLocaleString("en-PH")}
+                    </span>
+                  </div>
+                )}
+              </div>
 
-            <div className="supplier-actions">
-              <button className="edit-btn" onClick={() => handleEdit(supplier)}>
-                <Edit size={16} />
-                Edit
-              </button>
-              <button
-                className="delete-btn"
-                onClick={() => handleDelete(supplier._id)}
+              <div className="supplier-actions">
+                <button className="edit-btn" onClick={() => handleEdit(supplier)}>
+                  <Edit size={16} />
+                  Edit
+                </button>
+                <button
+                  className="delete-btn"
+                  onClick={() => handleDelete(supplier._id)}
               >
                 <Trash2 size={16} />
                 Delete

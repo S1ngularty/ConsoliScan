@@ -4,7 +4,7 @@ exports.createSupplier = async (req, res) => {
   try {
     const supplierData = {
       ...req.body,
-      addedBy: req.user.id,
+      addedBy: req.user.userId,
     };
 
     const supplier = await supplierService.createSupplier(supplierData);

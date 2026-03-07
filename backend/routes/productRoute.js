@@ -15,6 +15,9 @@ router
   )
   .get(productController.getAllProduct);
 
+// Search route must come before :productId to avoid treating 'search' as an ID
+router.route("/product/search").get(productController.searchProducts);
+
 router
   .route("/product/:productId")
   .get(productController.getProductById)

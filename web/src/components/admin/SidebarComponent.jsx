@@ -409,12 +409,6 @@ const managementItems = [
             location: "Admin / Supply Chain / Suppliers",
           },
           {
-            name: "Inventory & Stock",
-            icon: <Package size={18} />,
-            navigate: "/admin/inventory",
-            location: "Admin / Supply Chain / Inventory",
-          },
-          {
             name: "Bulk Operations",
             icon: <Layers size={18} />,
             navigate: "/admin/bulk-operations",
@@ -422,12 +416,12 @@ const managementItems = [
           },
         ],
       },
-      {
-        name: "Expense Management",
-        icon: <HandCoins size={22} />,
-        navigate: "/admin/expenses",
-        location: "Admin / Expenses",
-      },
+      // {
+      //   name: "Expense Management",
+      //   icon: <HandCoins size={22} />,
+      //   navigate: "/admin/expenses",
+      //   location: "Admin / Expenses",
+      // },
     ],
   },
 ];
@@ -436,43 +430,43 @@ const otherItems = [
   {
     section: "System",
     items: [
-      {
-        name: "Analytics & Reports",
-        icon: <BarChart3 size={22} />,
-        hasDropdown: true,
-        dropdown: [
-          {
-            name: "Customer Insights",
-            icon: <Users size={18} />,
-            navigate: "/admin/analytics/customer-insights",
-            location: "Admin / Analytics / Customer Insights",
-          },
-          {
-            name: "Staff Performance",
-            icon: <BarChart3 size={18} />,
-            navigate: "/admin/analytics/staff-performance",
-            location: "Admin / Analytics / Staff Performance",
-          },
-          {
-            name: "Financial Reports",
-            icon: <FileText size={18} />,
-            navigate: "/admin/reports/financial",
-            location: "Admin / Reports / Financial",
-          },
-          {
-            name: "Predictive Analytics",
-            icon: <LineChart size={18} />,
-            navigate: "/admin/analytics/predictive",
-            location: "Admin / Analytics / Predictive",
-          },
-          {
-            name: "Product Performance",
-            icon: <ShoppingBag size={18} />,
-            navigate: "/admin/reports/product-performance",
-            location: "Admin / Reports / Product Performance",
-          },
-        ],
-      },
+      // {
+      //   name: "Analytics & Reports",
+      //   icon: <BarChart3 size={22} />,
+      //   hasDropdown: true,
+      //   dropdown: [
+      //     {
+      //       name: "Customer Insights",
+      //       icon: <Users size={18} />,
+      //       navigate: "/admin/analytics/customer-insights",
+      //       location: "Admin / Analytics / Customer Insights",
+      //     },
+      //     {
+      //       name: "Staff Performance",
+      //       icon: <BarChart3 size={18} />,
+      //       navigate: "/admin/analytics/staff-performance",
+      //       location: "Admin / Analytics / Staff Performance",
+      //     },
+      //     {
+      //       name: "Financial Reports",
+      //       icon: <FileText size={18} />,
+      //       navigate: "/admin/reports/financial",
+      //       location: "Admin / Reports / Financial",
+      //     },
+      //     {
+      //       name: "Predictive Analytics",
+      //       icon: <LineChart size={18} />,
+      //       navigate: "/admin/analytics/predictive",
+      //       location: "Admin / Analytics / Predictive",
+      //     },
+      //     {
+      //       name: "Product Performance",
+      //       icon: <ShoppingBag size={18} />,
+      //       navigate: "/admin/reports/product-performance",
+      //       location: "Admin / Reports / Product Performance",
+      //     },
+      //   ],
+      // },
       {
         name: "Business Reports",
         icon: <FileText size={22} />,

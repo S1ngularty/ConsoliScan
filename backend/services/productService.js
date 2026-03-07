@@ -69,6 +69,28 @@ const getById = async (request = {}) => {
   return product;
 };
 
+const search = async (request = {}) => {
+  const { q } = request.query;
+  if (!q || q.trim().length < 2) {
+    return { products: [] };
+  }
+
+  const searchTerm = q.trim();
+  const products = await Product.find({
+    deletedAt: null,
+    $or: [
+      { barcode: { $regex: searchTerm, $options: "i" } },
+      { name: { $regex: searchTerm, $options: "i" } },
+      { sku: { $regex: searchTerm, $options: "i" } },
+    ],
+  })
+    .populate("category")
+    .limit(20)
+    .select("_id name barcode sku price stockQuantity images category");
+
+  return { products };
+};
+
 const update = async (request = {}) => {
   const { productId } = request.params;
 
@@ -281,6 +303,7 @@ module.exports = {
   getCatalog,
   getCatalogVersion,
   getById,
+  search,
   update,
   removeImg,
   softDelete,

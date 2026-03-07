@@ -6,6 +6,7 @@ exports.getAllProduct = controllerWrapper(productService.getAll);
 exports.getCatalog = controllerWrapper(productService.getCatalog);
 exports.getCatalogVersion = controllerWrapper(productService.getCatalogVersion);
 exports.getProductById = controllerWrapper(productService.getById);
+exports.searchProducts = controllerWrapper(productService.search);
 exports.updateProduct = controllerWrapper(productService.update);
 exports.deleteImg = controllerWrapper(productService.removeImg);
 exports.temporaryDelete = controllerWrapper(productService.softDelete);

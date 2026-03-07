@@ -9,6 +9,8 @@ import {
   Layers,
   AlertTriangle,
   CheckCircle,
+  Search,
+  X,
 } from "lucide-react";
 import {
   bulkPriceUpdate,
@@ -18,12 +20,19 @@ import {
   exportProducts,
   importProducts,
 } from "../../services/bulkOperationsService";
+import { searchProducts } from "../../services/productService";
+import { fetchCategories } from "../../services/categoryService";
 import Toast from "../../components/common/SnackbarComponent";
 import "../../styles/admin/BulkOperationsPageStyle.css";
 
 const BulkOperationsPage = () => {
   const [selectedOperation, setSelectedOperation] = useState("price");
-  const [productIds, setProductIds] = useState("");
+  const [productIdentifiers, setProductIdentifiers] = useState("");
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({
     open: false,
@@ -55,8 +64,60 @@ const BulkOperationsPage = () => {
     setToast({ open: true, message, severity });
   };
 
-  const getProductIdsArray = () => {
-    return productIds
+  // Fetch categories on mount
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const data = await fetchCategories();
+        console.log("Fetched categories:", data);
+        setCategories(data);
+      } catch (error) {
+        console.error("Failed to load categories:", error);
+      }
+    };
+    loadCategories();
+  }, []);
+
+  // Search products as user types
+  useEffect(() => {
+    const searchProductsDebounced = async () => {
+      if (searchQuery.trim().length < 2) {
+        setSearchResults([]);
+        setShowSearchDropdown(false);
+        return;
+      }
+
+      try {
+        const results = await searchProducts(searchQuery);
+        setSearchResults(results.products || []);
+        setShowSearchDropdown(true);
+      } catch (error) {
+        console.error("Search error:", error);
+      }
+    };
+
+    const timeoutId = setTimeout(searchProductsDebounced, 300);
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
+
+  const handleSelectProduct = (product) => {
+    if (!selectedProducts.find((p) => p._id === product._id)) {
+      setSelectedProducts([...selectedProducts, product]);
+    }
+    setSearchQuery("");
+    setShowSearchDropdown(false);
+  };
+
+  const handleRemoveProduct = (productId) => {
+    setSelectedProducts(selectedProducts.filter((p) => p._id !== productId));
+  };
+
+  const getProductIdentifiersArray = () => {
+    // Use selected products if available, otherwise parse text input
+    if (selectedProducts.length > 0) {
+      return selectedProducts.map((p) => p.barcode || p._id);
+    }
+    return productIdentifiers
       .split(",")
       .map((id) => id.trim())
       .filter((id) => id.length > 0);
@@ -65,18 +126,24 @@ const BulkOperationsPage = () => {
   const handlePriceUpdate = async () => {
     try {
       setLoading(true);
-      const ids = getProductIdsArray();
-      if (ids.length === 0) {
-        showToast("Please enter at least one product ID", "error");
+      const identifiers = getProductIdentifiersArray();
+      if (identifiers.length === 0) {
+        showToast("Please enter at least one product barcode or name", "error");
         return;
       }
-      await bulkPriceUpdate({
-        productIds: ids,
-        strategy: priceForm.strategy,
+      const result = await bulkPriceUpdate({
+        products: identifiers,
+        updateType: priceForm.strategy,
         value: parseFloat(priceForm.value),
       });
-      showToast(`Successfully updated prices for ${ids.length} products`);
-      setProductIds("");
+
+      let message = `Successfully updated prices for ${result.updates?.length || 0} products`;
+      if (result.notFound && result.notFound.length > 0) {
+        message += `. Not found: ${result.notFound.join(", ")}`;
+      }
+      showToast(message, result.notFound?.length > 0 ? "warning" : "success");
+      setProductIdentifiers("");
+      setSelectedProducts([]);
       setPriceForm({ strategy: "SET", value: "" });
     } catch (error) {
       showToast(
@@ -91,18 +158,24 @@ const BulkOperationsPage = () => {
   const handleStockUpdate = async () => {
     try {
       setLoading(true);
-      const ids = getProductIdsArray();
-      if (ids.length === 0) {
-        showToast("Please enter at least one product ID", "error");
+      const identifiers = getProductIdentifiersArray();
+      if (identifiers.length === 0) {
+        showToast("Please enter at least one product barcode or name", "error");
         return;
       }
-      await bulkStockUpdate({
-        productIds: ids,
-        action: stockForm.action,
+      const result = await bulkStockUpdate({
+        products: identifiers,
+        operation: stockForm.action,
         quantity: parseInt(stockForm.quantity),
       });
-      showToast(`Successfully updated stock for ${ids.length} products`);
-      setProductIds("");
+
+      let message = `Successfully updated stock for ${result.results?.length || 0} products`;
+      if (result.notFound && result.notFound.length > 0) {
+        message += `. Not found: ${result.notFound.join(", ")}`;
+      }
+      showToast(message, result.notFound?.length > 0 ? "warning" : "success");
+      setProductIdentifiers("");
+      setSelectedProducts([]);
       setStockForm({ action: "ADD", quantity: "" });
     } catch (error) {
       showToast(
@@ -117,17 +190,23 @@ const BulkOperationsPage = () => {
   const handleCategoryAssign = async () => {
     try {
       setLoading(true);
-      const ids = getProductIdsArray();
-      if (ids.length === 0) {
-        showToast("Please enter at least one product ID", "error");
+      const identifiers = getProductIdentifiersArray();
+      if (identifiers.length === 0) {
+        showToast("Please enter at least one product barcode or name", "error");
         return;
       }
-      await bulkCategoryAssign({
-        productIds: ids,
-        category: categoryForm.category,
+      const result = await bulkCategoryAssignment({
+        products: identifiers,
+        categoryId: categoryForm.category,
       });
-      showToast(`Successfully assigned category to ${ids.length} products`);
-      setProductIds("");
+
+      let message = `Successfully assigned category to ${result.modifiedCount || 0} products`;
+      if (result.notFound && result.notFound.length > 0) {
+        message += `. Not found: ${result.notFound.join(", ")}`;
+      }
+      showToast(message, result.notFound?.length > 0 ? "warning" : "success");
+      setProductIdentifiers("");
+      setSelectedProducts([]);
       setCategoryForm({ category: "" });
     } catch (error) {
       showToast(
@@ -140,23 +219,28 @@ const BulkOperationsPage = () => {
   };
 
   const handleBulkDelete = async () => {
-    const ids = getProductIdsArray();
-    if (ids.length === 0) {
-      showToast("Please enter at least one product ID", "error");
+    const identifiers = getProductIdentifiersArray();
+    if (identifiers.length === 0) {
+      showToast("Please enter at least one product barcode or name", "error");
       return;
     }
     if (
       !window.confirm(
-        `Are you sure you want to delete ${ids.length} products? This action cannot be undone.`,
+        `Are you sure you want to delete ${identifiers.length} products? This action cannot be undone.`,
       )
     )
       return;
 
     try {
       setLoading(true);
-      await bulkDelete({ productIds: ids });
-      showToast(`Successfully deleted ${ids.length} products`);
-      setProductIds("");
+      const result = await bulkDelete({ products: identifiers });
+
+      let message = `Successfully deleted ${result.deletedCount || 0} products`;
+      if (result.notFound && result.notFound.length > 0) {
+        message += `. Not found: ${result.notFound.join(", ")}`;
+      }
+      showToast(message, result.notFound?.length > 0 ? "warning" : "success");
+      setProductIdentifiers("");
     } catch (error) {
       showToast(error.response?.data?.message || "Bulk delete failed", "error");
     } finally {
@@ -290,16 +374,91 @@ const BulkOperationsPage = () => {
         <div className="operation-form">
           {selectedOperation !== "export" && selectedOperation !== "import" && (
             <div className="form-section">
-              <label>Product IDs (comma-separated) *</label>
-              <textarea
-                value={productIds}
-                onChange={(e) => setProductIds(e.target.value)}
-                placeholder="e.g., 507f1f77bcf86cd799439011, 507f1f77bcf86cd799439012"
-                rows={4}
-              />
+              <label>Select Products *</label>
+
+              {/* Search Input */}
+              <div
+                className="search-container"
+                style={{ position: "relative" }}
+              >
+                <div className="search-input-wrapper">
+                  <Search size={18} />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onFocus={() =>
+                      searchQuery.length >= 2 && setShowSearchDropdown(true)
+                    }
+                    placeholder="Search by barcode or product name..."
+                    className="search-input"
+                  />
+                </div>
+
+                {/* Search Results Dropdown */}
+                {showSearchDropdown && searchResults.length > 0 && (
+                  <div className="search-dropdown">
+                    {searchResults.slice(0, 10).map((product) => (
+                      <div
+                        key={product._id}
+                        className="search-result-item"
+                        onClick={() => handleSelectProduct(product)}
+                      >
+                        <div className="product-info">
+                          <span className="product-name">{product.name}</span>
+                          <span className="product-barcode">
+                            {product.barcode}
+                          </span>
+                        </div>
+                        <span className="product-price">
+                          ₱{product.price.toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Selected Products */}
+              {selectedProducts.length > 0 && (
+                <div className="selected-products">
+                  <p className="selected-count">
+                    {selectedProducts.length} product(s) selected
+                  </p>
+                  <div className="selected-products-list">
+                    {selectedProducts.map((product) => (
+                      <div key={product._id} className="selected-product-tag">
+                        <span>{product.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveProduct(product._id)}
+                          className="remove-product-btn"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Manual Input Option */}
+              <details style={{ marginTop: "1rem" }}>
+                <summary style={{ cursor: "pointer", color: "#666" }}>
+                  Or enter manually (advanced)
+                </summary>
+                <textarea
+                  value={productIdentifiers}
+                  onChange={(e) => setProductIdentifiers(e.target.value)}
+                  placeholder="e.g., 1234567890123, Coca Cola, 9876543210987"
+                  rows={3}
+                  style={{ marginTop: "0.5rem" }}
+                />
+              </details>
+
               <p className="help-text">
-                Enter product IDs separated by commas. You can enter multiple
-                IDs to perform bulk operations.
+                Search and select products to perform bulk operations. You can
+                search by product name or barcode.
               </p>
             </div>
           )}
@@ -404,15 +563,20 @@ const BulkOperationsPage = () => {
                 Category Assignment
               </h3>
               <div className="form-group">
-                <label>Category ID *</label>
-                <input
-                  type="text"
+                <label>Category *</label>
+                <select
                   value={categoryForm.category}
                   onChange={(e) =>
                     setCategoryForm({ category: e.target.value })
                   }
-                  placeholder="Enter category ID"
-                />
+                >
+                  <option value="">Select a category</option>
+                  {categories.map((cat) => (
+                    <option key={cat._id} value={cat._id}>
+                      {cat.categoryName}
+                    </option>
+                  ))}
+                </select>
               </div>
               <button
                 className="submit-btn"
@@ -537,8 +701,9 @@ const BulkOperationsPage = () => {
               price, stock, category, description.
             </li>
             <li>
-              <strong>Product IDs:</strong> Copy IDs directly from your product
-              list for accuracy.
+              <strong>Product Identifiers:</strong> You can use barcodes,
+              product names, SKUs, or IDs. The system searches all fields
+              automatically.
             </li>
           </ul>
         </div>

@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Supplier = require("../models/supplierModel");
 const Expense = require("../models/expenseModel");
 
@@ -58,7 +59,7 @@ exports.getSupplierById = async (id) => {
   const totalSpent = await Expense.aggregate([
     {
       $match: {
-        supplier: mongoose.Types.ObjectId(id),
+        supplier: new mongoose.Types.ObjectId(id),
         status: { $ne: "CANCELLED" },
       },
     },
@@ -127,10 +128,49 @@ exports.getSupplierAnalytics = async () => {
     },
   ]);
 
+  // Top suppliers by spending
+  const topSuppliers = await Expense.aggregate([
+    {
+      $match: {
+        supplier: { $ne: null },
+        status: { $ne: "CANCELLED" },
+      },
+    },
+    {
+      $group: {
+        _id: "$supplier",
+        totalSpent: { $sum: "$amount" },
+        expenseCount: { $sum: 1 },
+      },
+    },
+    {
+      $lookup: {
+        from: "suppliers",
+        localField: "_id",
+        foreignField: "_id",
+        as: "supplierInfo",
+      },
+    },
+    {
+      $unwind: "$supplierInfo",
+    },
+    {
+      $project: {
+        _id: 1,
+        name: "$supplierInfo.name",
+        totalSpent: 1,
+        expenseCount: 1,
+      },
+    },
+    { $sort: { totalSpent: -1 } },
+    { $limit: 10 },
+  ]);
+
   return {
     total,
     active,
     byType,
     averageRating: ratingStats[0]?.avgRating || 0,
+    topSuppliers: topSuppliers || [],
   };
 };

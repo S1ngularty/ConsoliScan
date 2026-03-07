@@ -1,14 +1,12 @@
 import axios from "axios";
 
+axios.defaults.baseURL = import.meta.env.VITE_APP_API;
+
 const BASE_URL = "/api/v1/admin/bulk-operations";
 
-export async function bulkPriceUpdate(products, updateType, value) {
+export async function bulkPriceUpdate(data) {
   try {
-    const response = await axios.post(`${BASE_URL}/price-update`, {
-      products,
-      updateType,
-      value,
-    });
+    const response = await axios.post(`${BASE_URL}/price-update`, data);
     return response.data;
   } catch (error) {
     console.error("Error bulk updating prices:", error);
@@ -16,11 +14,9 @@ export async function bulkPriceUpdate(products, updateType, value) {
   }
 }
 
-export async function bulkStockUpdate(updates) {
+export async function bulkStockUpdate(data) {
   try {
-    const response = await axios.post(`${BASE_URL}/stock-update`, {
-      updates,
-    });
+    const response = await axios.post(`${BASE_URL}/stock-update`, data);
     return response.data;
   } catch (error) {
     console.error("Error bulk updating stock:", error);
@@ -28,12 +24,9 @@ export async function bulkStockUpdate(updates) {
   }
 }
 
-export async function bulkCategoryAssignment(products, categoryId) {
+export async function bulkCategoryAssignment(data) {
   try {
-    const response = await axios.post(`${BASE_URL}/category-assignment`, {
-      products,
-      categoryId,
-    });
+    const response = await axios.post(`${BASE_URL}/category-assignment`, data);
     return response.data;
   } catch (error) {
     console.error("Error bulk assigning category:", error);
@@ -41,11 +34,9 @@ export async function bulkCategoryAssignment(products, categoryId) {
   }
 }
 
-export async function bulkDelete(products) {
+export async function bulkDelete(data) {
   try {
-    const response = await axios.post(`${BASE_URL}/delete`, {
-      products,
-    });
+    const response = await axios.post(`${BASE_URL}/delete`, data);
     return response.data;
   } catch (error) {
     console.error("Error bulk deleting products:", error);
