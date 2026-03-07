@@ -35,6 +35,7 @@ const allowedOrigins = [
   "http://192.168.1.11:5173",
   "https://your-backend-name.onrender.com",
   "https://consoli-scan.vercel.app",
+  "https://consoli-scan.asherxd10245.workers.dev",
 ];
 
 app.use(
