@@ -69,7 +69,6 @@ const BulkOperationsPage = () => {
     const loadCategories = async () => {
       try {
         const data = await fetchCategories();
-        console.log("Fetched categories:", data);
         setCategories(data);
       } catch (error) {
         console.error("Failed to load categories:", error);
@@ -88,7 +87,7 @@ const BulkOperationsPage = () => {
       }
 
       try {
-        const results = await searchProducts(searchQuery);
+        const results = await searchProducts(searchQuery.trim());
         setSearchResults(results.products || []);
         setShowSearchDropdown(true);
       } catch (error) {
@@ -195,6 +194,10 @@ const BulkOperationsPage = () => {
         showToast("Please enter at least one product barcode or name", "error");
         return;
       }
+      if (!categoryForm.category) {
+        showToast("Please select a category", "error");
+        return;
+      }
       const result = await bulkCategoryAssignment({
         products: identifiers,
         categoryId: categoryForm.category,
@@ -241,6 +244,7 @@ const BulkOperationsPage = () => {
       }
       showToast(message, result.notFound?.length > 0 ? "warning" : "success");
       setProductIdentifiers("");
+      setSelectedProducts([]);
     } catch (error) {
       showToast(error.response?.data?.message || "Bulk delete failed", "error");
     } finally {
@@ -417,6 +421,23 @@ const BulkOperationsPage = () => {
                     ))}
                   </div>
                 )}
+
+                {showSearchDropdown &&
+                  searchQuery.trim().length >= 2 &&
+                  searchResults.length === 0 && (
+                    <div className="search-dropdown">
+                      <div className="search-result-item">
+                        <div className="product-info">
+                          <span className="product-name">
+                            No matching products found
+                          </span>
+                          <span className="product-barcode">
+                            Try barcode, name, or SKU
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
               </div>
 
               {/* Selected Products */}
@@ -577,6 +598,11 @@ const BulkOperationsPage = () => {
                     </option>
                   ))}
                 </select>
+                {categories.length === 0 && (
+                  <p className="help-text">
+                    No categories loaded yet. Please add categories first.
+                  </p>
+                )}
               </div>
               <button
                 className="submit-btn"

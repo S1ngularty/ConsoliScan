@@ -14,9 +14,10 @@ exports.getSettings = async (req, res) => {
 
 exports.updateSettings = async (req, res) => {
   try {
+    const userId = req.user?.userId || req.user?._id || req.user?.id;
     const settings = await storeSettingsService.updateSettings(
       req.body,
-      req.user.id,
+      userId,
     );
 
     res.status(200).json({
@@ -33,9 +34,10 @@ exports.updateSettings = async (req, res) => {
 
 exports.updateBusinessHours = async (req, res) => {
   try {
+    const userId = req.user?.userId || req.user?._id || req.user?.id;
     const settings = await storeSettingsService.updateBusinessHours(
       req.body,
-      req.user.id,
+      userId,
     );
 
     res.status(200).json({
@@ -52,9 +54,10 @@ exports.updateBusinessHours = async (req, res) => {
 
 exports.updateReceiptSettings = async (req, res) => {
   try {
+    const userId = req.user?.userId || req.user?._id || req.user?.id;
     const settings = await storeSettingsService.updateReceiptSettings(
       req.body,
-      req.user.id,
+      userId,
     );
 
     res.status(200).json({
@@ -71,9 +74,10 @@ exports.updateReceiptSettings = async (req, res) => {
 
 exports.updateTaxSettings = async (req, res) => {
   try {
+    const userId = req.user?.userId || req.user?._id || req.user?.id;
     const settings = await storeSettingsService.updateTaxSettings(
       req.body,
-      req.user.id,
+      userId,
     );
 
     res.status(200).json({

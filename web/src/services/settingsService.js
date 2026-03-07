@@ -1,5 +1,8 @@
 import axios from "axios";
 
+axios.defaults.withCredentials = true;
+axios.defaults.baseURL = import.meta.env.VITE_APP_API;
+
 const BASE_URL = "/api/v1/admin/settings";
 
 export async function getSettings() {
