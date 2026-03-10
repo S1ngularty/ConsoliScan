@@ -51,7 +51,7 @@ const supplierSchema = new mongoose.Schema(
     paymentTerms: {
       type: String,
       default: "NET_30",
-      enum: ["IMMEDIATE", "NET_15", "NET_30", "NET_60", "NET_90", "CUSTOM"],
+      enum: ["COD", "NET_15", "NET_30", "NET_60", "NET_90", "CUSTOM"],
     },
 
     // =========================
