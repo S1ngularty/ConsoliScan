@@ -37,15 +37,15 @@
   background: white;
   padding: 32px;
   border-radius: 24px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-  border: 1px solid rgba(0,0,0,0.03);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.03);
   text-align: center;
   transition: transform 0.3s ease;
 }
 
 .stat-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0,0,0,0.08);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
 }
 
 .stat-value {
@@ -59,7 +59,7 @@
 
 .stat-label {
   font-size: 0.9rem;
-  color: #5C6F2B;
+  color: #5c6f2b;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -98,7 +98,7 @@
   background: #1a1a1a;
   color: white;
   border-color: #1a1a1a;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 /* Orders List */
@@ -112,15 +112,15 @@
   background: white;
   border-radius: 30px;
   padding: 32px;
-  border: 1px solid rgba(0,0,0,0.03);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+  border: 1px solid rgba(0, 0, 0, 0.03);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
 }
 
 .order-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
   border-color: rgba(92, 111, 43, 0.2);
 }
 
@@ -147,7 +147,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #5C6F2B;
+  color: #5c6f2b;
 }
 
 .order-id {
@@ -176,7 +176,7 @@
 .points-earned {
   font-size: 0.85rem;
   font-weight: 700;
-  color: #5C6F2B;
+  color: #5c6f2b;
   background: rgba(92, 111, 43, 0.1);
   padding: 4px 10px;
   border-radius: 100px;
@@ -251,19 +251,23 @@
   border-radius: 100px;
   font-size: 0.9rem;
   font-weight: 700;
-  color: #00A86B;
+  color: #00a86b;
 }
 
 .status-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #00A86B;
+  background: #00a86b;
 }
 
 .card-actions {
   display: flex;
-  gap: 12px;
+  gap: 3rem;
+  min-width: 200px;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
 }
 
 .action-btn {
@@ -295,7 +299,7 @@
 
 .action-btn.primary:hover {
   background: #333;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 /* Empty State */
@@ -304,7 +308,7 @@
   padding: 80px 20px;
   background: white;
   border-radius: 30px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
 }
 
 .empty-icon {
@@ -343,13 +347,19 @@
   border-radius: 30px;
   overflow-y: auto;
   padding: 0;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
   animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes modalSlideUp {
-  from { opacity: 0; transform: translateY(40px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .modal-header {
