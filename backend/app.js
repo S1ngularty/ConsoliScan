@@ -81,4 +81,8 @@ app.use("/api/v1/admin/purchase-orders", purchaseOrder);
 app.use("/api/v1/admin/settings", storeSettings);
 app.use("/api/v1/admin/bulk-operations", bulkOperations);
 
+app.get("/ping",(req,res)=>{
+   res.send("ConsoliScan server is alive")
+})
+
 module.exports = app;
