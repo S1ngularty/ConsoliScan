@@ -14,6 +14,6 @@ router.post(
 );
 router.post("/delete", bulkOperationsController.bulkDelete);
 router.get("/export", bulkOperationsController.exportProducts);
-router.post("/import", bulkOperationsController.importProducts);
+// router.post("/import", bulkOperationsController.importProducts);
 
 module.exports = router;
