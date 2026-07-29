@@ -53,7 +53,7 @@ async def detect(file: UploadFile = File(...)) -> Dict[str, Any]:
         # Run detection
         results = model.predict(
             source=image, 
-            conf=0.4, 
+            conf=0.5, 
             save=False,
             verbose=False  # Disable verbose output for cleaner logs
         )

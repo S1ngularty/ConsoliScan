@@ -52,21 +52,20 @@ const SupplierManagementPage = () => {
     email: "",
     phone: "",
     address: "",
-    businessType: "manufacturer",
+    businessType: "MANUFACTURER",
     rating: 5,
     creditLimit: "",
-    paymentTerms: "net_30",
+    paymentTerms: "NET_30",
     taxId: "",
     notes: "",
   });
 
   const businessTypes = [
-    "manufacturer",
-    "wholesaler",
-    "distributor",
-    "importer",
-    "service_provider",
-    "other",
+    "WHOLESALER",
+    "MANUFACTURER",
+    "DISTRIBUTOR",
+    "SERVICE_PROVIDER",
+    "OTHER",
   ];
 
   useEffect(() => {
@@ -300,10 +299,11 @@ const SupplierManagementPage = () => {
                       onChange={handleInputChange}
                       required
                     >
-                      <option value="cod">COD</option>
-                      <option value="net_30">Net 30</option>
-                      <option value="net_60">Net 60</option>
-                      <option value="net_90">Net 90</option>
+                      <option value="COD">COD</option>
+                      <option value="NET_30">Net 30</option>
+                      <option value="NET_60">Net 60</option>
+                      <option value="NET_90">Net 90</option>
+                      <option value="CUSTOM">Custom</option>
                     </select>
                   </div>
                   <div className="form-group">
