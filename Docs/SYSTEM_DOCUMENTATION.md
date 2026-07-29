@@ -55,7 +55,7 @@
 
 1. Customer enters store
 2. System verifies BNPC eligibility status
-3. Customer scans products or enters manually
+3. Customer scans products barcode or enters manually
 4. System shows product details and availability
 5. Customer adds items to cart
 6. Customer proceeds to checkout
