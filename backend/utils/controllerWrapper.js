@@ -24,7 +24,7 @@ function controllerWrapper(fn) {
       if(error.code === 11000) return res.status(201)
       console.error(`=== Controller ${fn.name} ERROR ===`);
       console.error("Error message:", error.message);
-      console.error("Error stack:", error.stack);
+      // console.error("Error stack:", error.stack);
       console.log(error.message, error.line, error);
       return res.status(500).json(error);
     }
