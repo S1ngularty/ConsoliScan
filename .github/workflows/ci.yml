@@ -1,0 +1,72 @@
+name: Node CI
+
+on:
+  push:
+    branches:
+      - master
+      - v1.1.0
+
+  pull_request:
+    branches:
+      - master
+      - v1.1.0
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Backend Dependecies
+        working-directory: backend
+        run: npm ci
+
+      # - name: Build Backend
+      #   working-directory: backend
+      #   run: npm run build
+
+      # - name: Test Backend
+      #   working-directory: backend
+      #   run: npm test
+
+  web:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Website Dependencies
+        working-directory: web
+        run: npm ci
+
+      # - name: Build Website
+      #   working-directory: web
+      #   run: npm run build
+
+  mobile:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Mobile Dependencies
+        working-directory: mobile
+        run: npm ci
