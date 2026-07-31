@@ -30,3 +30,13 @@ export const getAll = async (user: CurrUser): Promise<UserDocument[]> => {
 
   return users;
 };
+
+export const getById = async (user: CurrUser): Promise<UserDocument> => {
+  const { userId } = user;
+
+  const fetchedUser = await User.findById(userId);
+
+  if (!fetchedUser) throw new Error("User not found!");
+
+  return fetchedUser;
+};
