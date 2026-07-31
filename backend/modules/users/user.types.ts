@@ -24,9 +24,9 @@ export interface IUser {
   email: string;
   password?: string | null;
 
-  sex: "male" | "female" | null;
+  sex?: "male" | "female" | null;
   age?: number;
-  birthDate: Date;
+  birthDate?: Date;
 
   address?: string;
   street?: string;
@@ -41,16 +41,16 @@ export interface IUser {
 
   role: "user" | "admin" | "super_admin" | "checker" | "merchandiser";
 
-  loyaltyPoints: number;
+  loyaltyPoints?: number;
 
-  loyaltyHistory: ILoyaltyHistory[];
-  eligibilityDiscountUsage: IEligibilityDiscountUsage;
+  loyaltyHistory?: ILoyaltyHistory[];
+  eligibilityDiscountUsage?: IEligibilityDiscountUsage;
 
-  savedItems: mongoose.Schema.Types.ObjectId[];
+  savedItems?: mongoose.Schema.Types.ObjectId[];
 
-  status: "active" | "inactive";
+  status?: "active" | "inactive";
 
-  lastLogin: Date;
+  lastLogin?: Date;
 
   resetPasswordToken?: string;
   resetPasswordExpire?: Date;
@@ -62,4 +62,17 @@ export interface IUser {
 export interface IUserMethods {
   getToken(): string | null;
   updateLastLogin(): Promise<void>;
+}
+
+interface AuthUser {
+  userId: string;
+  email: string;
+  role: string;
+}
+
+export interface UpdateUserFields {
+  userId: string;
+  body: Record<string, unknown>;
+  actor: AuthUser;
+  file: object;
 }

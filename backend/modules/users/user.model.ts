@@ -155,6 +155,6 @@ userSchema.method("updateLastLogin", function () {
   this.save();
 });
 
-export type UserDocument = HydratedDocument<IUser, UserModel>;
+export type UserDocument = HydratedDocument<IUser, IUserMethods>;
 
 export const User = mongoose.model<IUser, UserModel>("User", userSchema);
