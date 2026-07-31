@@ -1,5 +1,5 @@
 import { User, type UserDocument } from "./user.model.js";
-import type { UpdateUserFields } from "./user.types.js";
+import type { UpdateUserFields, CurrUser } from "./user.types.js";
 // import { uploadImage, deleteAssets } from "../../utils/cloundinaryUtil.js";
 // const Eligibility = require("../models/eligibleModel");
 // const Cart = require("../models/cartModel");
@@ -21,4 +21,12 @@ export const update = async (
   // if (user?.avatar?.public_id) deleteAssets([user.avatar.public_id]);
 
   return user;
+};
+
+export const getAll = async (user: CurrUser): Promise<UserDocument[]> => {
+  const { userId } = user;
+
+  const users = await User.find({ _id: { $ne: userId } });
+
+  return users;
 };

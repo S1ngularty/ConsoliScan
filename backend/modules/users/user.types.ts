@@ -64,7 +64,7 @@ export interface IUserMethods {
   updateLastLogin(): Promise<void>;
 }
 
-interface AuthUser {
+export interface CurrUser {
   userId: string;
   email: string;
   role: string;
@@ -73,6 +73,6 @@ interface AuthUser {
 export interface UpdateUserFields {
   userId: string;
   body: Record<string, unknown>;
-  actor: AuthUser;
+  actor: CurrUser;
   file: object;
 }
