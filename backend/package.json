@@ -4,7 +4,7 @@
   "description": "",
   "license": "ISC",
   "author": "",
-  "type": "commonjs",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "dev": "nodemon server.js",
@@ -32,5 +32,9 @@
     "socket.io": "^4.8.3",
     "validator": "^13.15.26"
   },
-  "keywords": []
+  "keywords": [],
+  "devDependencies": {
+    "@types/validator": "^13.15.10",
+    "typescript": "^7.0.2"
+  }
 }
