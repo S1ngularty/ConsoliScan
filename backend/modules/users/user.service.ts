@@ -3,6 +3,7 @@ import type {
   UpdateUserFields,
   CurrUser,
   CreateUserFields,
+  IUser,
 } from "./user.types.js";
 // import { uploadImage, deleteAssets } from "../../utils/cloundinaryUtil.js";
 // const Eligibility = require("../models/eligibleModel");
@@ -27,31 +28,39 @@ export const update = async (
   return user;
 };
 
-export const getAll = async (user: CurrUser): Promise<UserDocument[]> => {
+export const getAll = async (user: CurrUser): Promise<IUser[]> => {
   const { userId } = user;
 
-  const users = await User.find({ _id: { $ne: userId } });
+  const users = await User.find({ _id: { $ne: userId } }).lean();
 
   return users;
 };
 
-export const getById = async (user: CurrUser): Promise<UserDocument> => {
+export const getById = async (user: CurrUser): Promise<IUser> => {
   const { userId } = user;
 
   const fetchedUser = await User.findById(userId);
 
   if (!fetchedUser) throw new Error("User not found!");
 
-  return fetchedUser;
+  return fetchedUser.toObject();
 };
 
-export const create = async (
-  payload: CreateUserFields,
-): Promise<UserDocument> => {
+export const create = async (payload: CreateUserFields): Promise<IUser> => {
   if (!payload) throw new Error("Missing payload");
 
   const user: UserDocument | null = await User.create(payload);
   if (!user) throw new Error("Failed to create the user");
-  return user;
+  return user.toObject();
 };
 
+export const deleteUser = async (userId: string): Promise<IUser> => {
+  if (!userId) throw new Error("Missing userId");
+
+  const deletedUser = await User.findByIdAndDelete(userId);
+  if (!deletedUser) throw new Error("Failed to delete the user");
+  // if (deletedUser.avatar?.public_id)
+  //   deleteAssets([deletedUser.avatar.public_id]);
+
+  return deletedUser.toObject();
+};

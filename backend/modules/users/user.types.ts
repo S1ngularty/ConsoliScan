@@ -77,7 +77,7 @@ export interface UpdateUserFields {
   file: object;
 }
 
-export interface CreateUserFields {
+export interface CreateUserFields  {
   name: string;
   email: string;
   password?: string | null;
