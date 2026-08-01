@@ -37,9 +37,7 @@ export const getAll = async (user: CurrUser): Promise<IUser[]> => {
   return users;
 };
 
-export const getById = async (user: CurrUser): Promise<IUser> => {
-  const { userId } = user;
-
+export const getById = async (userId: string): Promise<IUser> => {
   const fetchedUser = await User.findById(userId);
 
   if (!fetchedUser) throw new Error("User not found!");
@@ -79,3 +77,25 @@ export const rolesAndPermission = async (
   if (!user) throw new Error("Failed to update user role and permission");
   return user.toObject();
 };
+
+// exports.getHomeScreenData = async (request) => {
+//   const { userId } = request.user;
+//   const [userInfo, eligibilityInfo, cartInfo, orderCount] = await Promise.all([
+//     User.findById(userId).lean(),
+//     Eligibility.findOne({ user: userId }).lean(),
+//     Cart.findOne({ user: userId }).lean(),
+//     Order.find({ user: userId }).countDocuments(),
+//   ]);
+
+//   const user = {
+//     firstName: userInfo.firstName,
+//     lastName: userInfo.lastName,
+//     eligibilityDiscountUsage: userInfo.eligibiltyDiscountUsage || {},
+//     loyaltyPoints: userInfo.loyaltyPoints || 0,
+//     is_eligibility_verified: eligibilityInfo?.isVerified || false,
+//     cartItemCount: cartInfo?.items.length || 0,
+//     orderCount,
+//   };
+//   // console.log(user);
+//   return user;
+// };

@@ -4,8 +4,8 @@ declare module "express-serve-static-core" {
   interface Request {
     user?: {
       userId: string;
-      role: string;
-      email: string;    
+      role: "user" | "admin" | "super_admin" | "checker" | "merchandiser";
+      email: string;
     };
 
     file?: Express.Multer.File;

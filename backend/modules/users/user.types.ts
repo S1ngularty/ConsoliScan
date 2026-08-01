@@ -74,7 +74,7 @@ export interface UpdateUserFields {
   userId: string;
   body: Record<string, unknown>;
   actor: CurrUser;
-  file: object;
+  file?: object;
 }
 
 export interface CreateUserFields {
