@@ -1,5 +1,9 @@
 import { User, type UserDocument } from "./user.model.js";
-import type { UpdateUserFields, CurrUser } from "./user.types.js";
+import type {
+  UpdateUserFields,
+  CurrUser,
+  CreateUserFields,
+} from "./user.types.js";
 // import { uploadImage, deleteAssets } from "../../utils/cloundinaryUtil.js";
 // const Eligibility = require("../models/eligibleModel");
 // const Cart = require("../models/cartModel");
@@ -40,3 +44,14 @@ export const getById = async (user: CurrUser): Promise<UserDocument> => {
 
   return fetchedUser;
 };
+
+export const create = async (
+  payload: CreateUserFields,
+): Promise<UserDocument> => {
+  if (!payload) throw new Error("Missing payload");
+
+  const user: UserDocument | null = await User.create(payload);
+  if (!user) throw new Error("Failed to create the user");
+  return user;
+};
+

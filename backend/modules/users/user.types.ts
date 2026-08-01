@@ -76,3 +76,22 @@ export interface UpdateUserFields {
   actor: CurrUser;
   file: object;
 }
+
+export interface CreateUserFields {
+  name: string;
+  email: string;
+  password?: string | null;
+
+  sex?: "male" | "female" | null;
+  age?: number;
+  birthDate?: Date;
+
+  address?: string;
+  street?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  zipCode?: string;
+
+  contactNumber?: string;
+}
