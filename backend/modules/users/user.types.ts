@@ -67,7 +67,7 @@ export interface IUserMethods {
 export interface CurrUser {
   userId: string;
   email: string;
-  role: string;
+  role: IUser["role"];
 }
 
 export interface UpdateUserFields {
@@ -77,7 +77,7 @@ export interface UpdateUserFields {
   file: object;
 }
 
-export interface CreateUserFields  {
+export interface CreateUserFields {
   name: string;
   email: string;
   password?: string | null;
@@ -95,3 +95,5 @@ export interface CreateUserFields  {
 
   contactNumber?: string;
 }
+
+export type RolesAndInformationTypes = Omit<CurrUser, "email">;

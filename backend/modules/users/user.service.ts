@@ -4,6 +4,7 @@ import type {
   CurrUser,
   CreateUserFields,
   IUser,
+  RolesAndInformationTypes,
 } from "./user.types.js";
 // import { uploadImage, deleteAssets } from "../../utils/cloundinaryUtil.js";
 // const Eligibility = require("../models/eligibleModel");
@@ -63,4 +64,18 @@ export const deleteUser = async (userId: string): Promise<IUser> => {
   //   deleteAssets([deletedUser.avatar.public_id]);
 
   return deletedUser.toObject();
+};
+
+export const rolesAndPermission = async (
+  data: RolesAndInformationTypes,
+): Promise<IUser> => {
+  const { role, userId } = data;
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { role: role },
+    { new: true, runValidators: true },
+  );
+
+  if (!user) throw new Error("Failed to update user role and permission");
+  return user.toObject();
 };
