@@ -2,23 +2,23 @@ import {
   type Request,
   type Response,
   type NextFunction,
-  response,
 } from "express";
 import * as UserService from "./user.service.js";
 import type { ApiResponse } from "../../types/api.js";
-import type { CreateUserFields, IUser } from "./user.types.js";
+import type {
+  EditableUserProperties,
+  IUser,
+  systemRoles,
+  UpdateUserFields,
+} from "./user.types.js";
 
 export const update = async (
-  req: Request<{ userId: string }>,
+  req: Request<{ userId: string }, {}, UpdateUserFields>,
   res: Response<ApiResponse<IUser | null>>,
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const result = await UserService.update({
-      userId: req.params.userId,
-      body: req.body,
-      actor: req.user!,
-    });
+    const result = await UserService.update(req.params.userId, req.body);
 
     res.status(201).json({
       success: true,
@@ -66,7 +66,7 @@ export const getById = async (
 };
 
 export const create = async (
-  req: Request<{}, {}, CreateUserFields>,
+  req: Request<{}, {}, EditableUserProperties>,
   res: Response<ApiResponse<IUser | null>>,
   next: NextFunction,
 ): Promise<void> => {
@@ -100,13 +100,13 @@ export const deleteUser = async (
 };
 
 export const rolesAndPermission = async (
-  req: Request<{ userId: string }>,
+  req: Request<{ userId: string }, {}, { role: systemRoles }>,
   res: Response<ApiResponse<IUser | null>>,
   next: NextFunction,
 ): Promise<void> => {
   try {
     const role = req.body.role;
-    const userId = req.params.userId || req.body.userId;
+    const userId = req.params.userId;
 
     const user = await UserService.rolesAndPermission({ role, userId });
 

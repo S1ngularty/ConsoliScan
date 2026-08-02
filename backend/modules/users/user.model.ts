@@ -126,6 +126,14 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
 userSchema.method("getToken", function () {
   const secret: string | undefined = process.env.JWT_SECRET;
   const exp: string | undefined = process.env.JWT_EXP;
+  const payload = {
+    userId: this._id,
+    name: this.name,
+    role: this.role,
+    status: this.status,
+    email: this.email,
+    createdAt: this.createdAt,
+  };
 
   const options: jwt.SignOptions = {
     expiresIn: "7d",
@@ -136,23 +144,12 @@ userSchema.method("getToken", function () {
     return null;
   }
 
-  return jwt.sign(
-    {
-      userId: this._id,
-      name: this.name,
-      role: this.role,
-      status: this.status,
-      email: this.email,
-      createdAt: this.createdAt,
-    },
-    process.env.JWT_SECRET!,
-    options,
-  );
+  return jwt.sign(payload, secret, options);
 });
 
-userSchema.method("updateLastLogin", function () {
+userSchema.method("updateLastLogin", async function () {
   this.lastLogin = new Date();
-  this.save();
+  await this.save();
 });
 
 export type UserDocument = HydratedDocument<IUser, IUserMethods>;

@@ -1,5 +1,12 @@
 import mongoose from "mongoose";
 
+export type systemRoles =
+  | "user"
+  | "admin"
+  | "super_admin"
+  | "checker"
+  | "merchandiser";
+
 interface IAvatar<T> {
   public_id: T;
   url: T;
@@ -39,7 +46,7 @@ export interface IUser {
 
   avatar?: IAvatar<string>;
 
-  role: "user" | "admin" | "super_admin" | "checker" | "merchandiser";
+  role: systemRoles;
 
   loyaltyPoints?: number;
 
@@ -70,14 +77,14 @@ export interface CurrUser {
   role: IUser["role"];
 }
 
-export interface UpdateUserFields {
-  userId: string;
-  body: Record<string, unknown>;
-  actor: CurrUser;
-  file?: object;
-}
+// export interface UpdateUserFields {
+//   userId: string;
+//   body: Record<string, unknown>;
+//   actor: CurrUser;
+//   file?: object;
+// }
 
-export interface CreateUserFields {
+export interface EditableUserProperties {
   name: string;
   email: string;
   password?: string | null;
@@ -95,5 +102,7 @@ export interface CreateUserFields {
 
   contactNumber?: string;
 }
+
+export type UpdateUserFields = Omit<EditableUserProperties, "email">;
 
 export type RolesAndInformationTypes = Omit<CurrUser, "email">;
