@@ -4,6 +4,7 @@ import type {
   LoginPayload,
   RegisterPayload,
   ReturnAuthPayload,
+  UserAuthProperties,
 } from "./auth.types.js";
 import * as AuthRepository from "./auth.repository.js";
 import * as bcrypt from "bcrypt";
@@ -76,4 +77,20 @@ export const verifyToken = async (
   if (!token) throw new Error("Failed to refresh token");
 
   return { user, token };
+};
+
+export const logout = async (payload: UserAuthProperties): Promise<void> => {
+  // response.clearCookie("token", {
+  //   httpOnly: true,
+  //   secure: true,
+  //   sameSite: "none",
+  //   path: "/",
+  // });
+
+  // createLog(
+  //   request.user.userId,
+  //   "LOGOUT",
+  //   "SUCCESS",
+  //   `${request.user.name} logged out to the system as ${request.user.role}`,
+  // );
 };

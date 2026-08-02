@@ -15,10 +15,9 @@ export interface RegisterPayload {
 
 export type LoginPayload = Pick<RegisterPayload, "email" | "password">;
 
-interface UserAuthProperties {
+export interface UserAuthProperties {
   userId: string;
   email: string;
-  password?: string;
   name: string;
   role: systemRoles;
   status: "active" | "inactive" | undefined;
@@ -30,5 +29,4 @@ export interface ReturnAuthPayload {
   eligibilityStatus?: unknown;
 }
 
-export type JWTtokenProperties = Omit<UserAuthProperties, "password">;
-
+export type JWTtokenProperties = UserAuthProperties;
