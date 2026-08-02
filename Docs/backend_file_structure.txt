@@ -1,0 +1,71 @@
+backend/
+│
+├── src/
+│   ├── app.js                 # Express app configuration
+│   ├── server.js              # Entry point
+│   │
+│   ├── config/
+│   │   ├── database.js
+│   │   ├── env.js
+│   │   └── logger.js
+│   │
+│   ├── modules/
+│   │   ├── auth/
+│   │   │   ├── auth.controller.js
+│   │   │   ├── auth.service.js
+│   │   │   ├── auth.repository.js
+│   │   │   ├── auth.routes.js
+│   │   │   ├── auth.validation.js
+│   │   │   └── auth.middleware.js
+│   │   │
+│   │   ├── users/
+│   │   │   ├── user.controller.js
+│   │   │   ├── user.service.js
+│   │   │   ├── user.repository.js
+│   │   │   ├── user.routes.js
+│   │   │   ├── user.validation.js
+│   │   │   └── user.model.js
+│   │   │
+│   │   └── products/
+│   │       ├── product.controller.js
+│   │       ├── product.service.js
+│   │       ├── product.repository.js
+│   │       ├── product.routes.js
+│   │       ├── product.validation.js
+│   │       └── product.model.js
+│   │
+│   ├── middlewares/
+│   │   ├── auth.js
+│   │   ├── errorHandler.js
+│   │   ├── validate.js
+│   │   └── notFound.js
+│   │
+│   ├── utils/
+│   │   ├── jwt.js
+│   │   ├── hash.js
+│   │   ├── response.js
+│   │   └── asyncHandler.js
+│   │
+│   ├── routes/
+│   │   └── index.js
+│   │
+│   ├── database/
+│   │   ├── migrations/
+│   │   ├── seeders/
+│   │   └── schema/
+│   │
+│   └── constants/
+│       ├── roles.js
+│       └── statusCodes.js
+│
+├── tests/
+│   ├── unit/
+│   └── integration/
+│
+├── uploads/
+├── logs/
+│
+├── .env
+├── .env.example
+├── package.json
+└── README.md
