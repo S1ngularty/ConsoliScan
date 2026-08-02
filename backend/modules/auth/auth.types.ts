@@ -18,6 +18,7 @@ export type LoginPayload = Pick<RegisterPayload, "email" | "password">;
 interface UserAuthProperties {
   userId: string;
   email: string;
+  password?: string;
   name: string;
   role: systemRoles;
   status: "active" | "inactive" | undefined;

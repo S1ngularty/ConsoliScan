@@ -8,3 +8,13 @@ export const registerUser = async (
 
   return result;
 };
+
+export const findUserByEmail = async (
+  email: string,
+): Promise<UserDocument | null> => {
+  const result = await User.findOne({ email }).select(
+    "+password role email name status createdAt",
+  );
+
+  return result;
+};
