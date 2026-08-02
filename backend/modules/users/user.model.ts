@@ -152,6 +152,16 @@ userSchema.method("updateLastLogin", async function () {
   await this.save();
 });
 
+userSchema.method("buildAUthReturnObject", function () {
+  return {
+    userId: String(this._id),
+    name: this.name,
+    email: this.email,
+    role: this.role,
+    status: this.status,
+  };
+});
+
 export type UserDocument = HydratedDocument<IUser, IUserMethods>;
 
 export const User = mongoose.model<IUser, UserModel>("User", userSchema);

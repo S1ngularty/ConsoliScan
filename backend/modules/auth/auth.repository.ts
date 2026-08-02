@@ -18,3 +18,10 @@ export const findUserByEmail = async (
 
   return result;
 };
+
+export const findAuthUserById = async (
+  userId: string,
+): Promise<UserDocument | null> => {
+  const result = await User.findById(userId);
+  return result;
+};

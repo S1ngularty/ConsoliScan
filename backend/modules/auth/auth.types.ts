@@ -29,3 +29,6 @@ export interface ReturnAuthPayload {
   token: string;
   eligibilityStatus?: unknown;
 }
+
+export type JWTtokenProperties = Omit<UserAuthProperties, "password">;
+

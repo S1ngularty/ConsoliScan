@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { type Require_id } from "mongoose";
 
 export type systemRoles =
   | "user"
@@ -69,6 +69,11 @@ export interface IUser {
 export interface IUserMethods {
   getToken(): string | null;
   updateLastLogin(): Promise<void>;
+  buildAuthReturnObject(): Required<
+    Pick<IUser, "email" | "role" | "status" | "name"> & {
+      userId: string;
+    }
+  >;
 }
 
 export interface CurrUser {
