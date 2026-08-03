@@ -1,4 +1,4 @@
-export type systemRoles =
+type systemRoles =
   | "user"
   | "admin"
   | "super_admin"

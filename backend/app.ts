@@ -35,7 +35,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
 
-app.use("/api/v1", routes.auth);
+app.use("/api", routes.auth);
 app.use("/api/v1", routes.user);
 
 app.get("/ping", async (req, res): Promise<void> => {

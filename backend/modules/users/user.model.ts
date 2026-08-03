@@ -1,7 +1,7 @@
 import mongoose, { type HydratedDocument, Schema, Model } from "mongoose";
 import type { IUser, IUserMethods } from "./user.types.js";
 import validator from "validator";
-import * as jwt from "jsonwebtoken";
+import jwt from "jsonwebtoken"
 
 type UserModel = Model<IUser, {}, IUserMethods>;
 
@@ -143,8 +143,8 @@ userSchema.method("getToken", function () {
     console.log("Missing JWT Secret");
     return null;
   }
-
-  return jwt.sign(payload, secret, options);
+  const token = jwt.sign(payload, secret, options);
+  return token;
 });
 
 userSchema.method("updateLastLogin", async function () {
@@ -152,7 +152,7 @@ userSchema.method("updateLastLogin", async function () {
   await this.save();
 });
 
-userSchema.method("buildAUthReturnObject", function () {
+userSchema.method("buildAuthReturnObject", function () {
   return {
     userId: String(this._id),
     name: this.name,

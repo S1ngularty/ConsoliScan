@@ -52,10 +52,10 @@ export const login = async (
 
   const isMatched = await bcrypt.compare(password, userData.password!);
   if (!isMatched) throw new Error("password does not match");
+
   const token = userData.getToken();
-
   if (!token) throw new Error("failed to generate user token");
-
+ 
   const user = userData.buildAuthReturnObject();
 
   return { user, token };
@@ -86,7 +86,6 @@ export const logout = async (payload: UserAuthProperties): Promise<void> => {
   //   sameSite: "none",
   //   path: "/",
   // });
-
   // createLog(
   //   request.user.userId,
   //   "LOGOUT",
