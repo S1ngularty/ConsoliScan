@@ -2,9 +2,9 @@ import dotenv from "dotenv";
 dotenv.config({ path: "./configs/.env" });
 import app from "./app.js";
 import http from "http";
+import connectToDatabase from "./configs/database.js";
 // const initSocket = require("./initSocket");
-// require("./configs/database")();
-
+connectToDatabase();
 const server = http.createServer(app);
 
 const port = Number(process.env.PORT) || 3000;

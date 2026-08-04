@@ -1,7 +1,9 @@
 import user from "../modules/users/user.route.js";
+import auth from "../modules/auth/auth.route.js";
 
 export default {
   user,
+  auth,
 };
 
 // const product = require("./productRoute");
