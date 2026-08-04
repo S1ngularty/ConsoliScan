@@ -2,8 +2,8 @@ export interface ICategory {
   categoryName: string;
   isBNPC?: boolean;
 
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export type CategoryListReturn = Required<
