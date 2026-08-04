@@ -26,12 +26,12 @@ export const categoryList = async (
 };
 
 export const create = async (
-  req: Request<{}, {}, ICategory[]>,
+  req: Request<{}, {}, { categories: ICategory[] }>,
   res: Response<ApiResponse<ICategory[]>>,
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const categories = req.body;
+    const { categories } = req.body;
     const result = await CategoryService.create(categories);
 
     res.status(200).json({
@@ -72,7 +72,7 @@ export const deleteCategories = async (
   try {
     const { categoryIds } = req.body;
     const result = await CategoryService.deleteCategories(categoryIds);
-    
+
     res.status(200).json({
       message: "OK",
       success: true,
