@@ -1,5 +1,5 @@
 import { type CategoryDocument, Category } from "./category.model.js";
-import type { CategoryListReturn } from "./category.types.js";
+import type { CategoryListReturn, ICategory } from "./category.types.js";
 
 export const fetchCategoryList = async (): Promise<CategoryListReturn[]> => {
   const result = await Category.aggregate([
@@ -24,6 +24,14 @@ export const fetchCategoryList = async (): Promise<CategoryListReturn[]> => {
       $sort: { categoryName: 1 },
     },
   ]);
+
+  return result;
+};
+
+export const createManyCategories = async (
+  categories: ICategory[],
+): Promise<CategoryDocument[]> => {
+  const result = await Category.insertMany(categories,{ordered:false})
 
   return result;
 };
