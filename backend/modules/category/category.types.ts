@@ -13,3 +13,7 @@ export type CategoryListReturn = Required<
     count: number;
   }
 >;
+
+export type EditableCategoryFields = Partial<
+  Omit<ICategory, "createdAt" | "updatedAt">
+>;
