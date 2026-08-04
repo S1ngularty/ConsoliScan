@@ -6,3 +6,10 @@ export interface ICategory {
   updatedAt: Date;
 }
 
+export type CategoryListReturn = Required<
+  Pick<ICategory, "categoryName" | "isBNPC"> & {
+    bnpcCategory?: 1;
+    applicableTo?: 1;
+    count: number;
+  }
+>;
