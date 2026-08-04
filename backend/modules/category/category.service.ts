@@ -35,3 +35,14 @@ export const update = async (
 
   return updateCategory.toObject();
 };
+
+export const deleteCategories = async (
+  categoryIds: string[],
+): Promise<{ acknowledged: boolean; deletedCount: number }> => {
+  if (!Array.isArray) throw new Error("Argument must be category list");
+
+  const deletedCategories =
+    await CategoryRepository.deleteCatogories(categoryIds);
+
+  return deletedCategories;
+};

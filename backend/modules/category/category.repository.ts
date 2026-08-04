@@ -1,4 +1,5 @@
 import { type CategoryDocument, Category } from "./category.model.js";
+import type { DeleteResult } from "mongoose";
 import type {
   CategoryListReturn,
   EditableCategoryFields,
@@ -47,6 +48,14 @@ export const updateCategory = async (
   const result = await Category.findByIdAndUpdate(categoryId, updateFields, {
     new: true,
   });
+
+  return result;
+};
+
+export const deleteCatogories = async (
+  categoryIds: string[],
+): Promise<DeleteResult> => {
+  const result = await Category.deleteMany({ _id: { $in: categoryIds } });
 
   return result;
 };
