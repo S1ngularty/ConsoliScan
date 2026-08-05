@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 const app = express();
 
 import routes from "./routes/index.js";
+import requestLogger from "./middlewares/requestLogger.middleware.js";
 
 const allowedOrigins: string[] = [
   "http://localhost:3000",
@@ -30,6 +31,8 @@ app.use(
     credentials: true,
   }),
 );
+
+app.use(requestLogger);
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
