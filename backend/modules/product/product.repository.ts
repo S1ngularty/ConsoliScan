@@ -9,7 +9,14 @@ export const createProduct = async (
   return result;
 };
 
-export const productList = async () => {
+export const productList = async (): Promise<ProductDocument[]> => {
   const result = await Product.find({ deletedAt: null });
+  return result;
+};
+
+export const getProductById = async (
+  productId: string,
+): Promise<ProductDocument | null> => {
+  const result = await Product.findById(productId);
   return result;
 };

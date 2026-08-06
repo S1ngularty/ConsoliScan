@@ -1,4 +1,8 @@
-import { createProduct, productList } from "./product.repository.js";
+import {
+  createProduct,
+  getProductById,
+  productList,
+} from "./product.repository.js";
 import type {
   EditableProductFields,
   IProduct,
@@ -56,4 +60,11 @@ export const create = async (
 export const getAll = async (): Promise<IProduct[]> => {
   const products = (await productList()).map((product) => product.toObject());
   return products;
+};
+
+export const getById = async (productId: string): Promise<IProduct> => {
+  const product = await getProductById(productId);
+  if (!product) throw new Error("product is not found");
+
+  return product?.toObject();
 };
