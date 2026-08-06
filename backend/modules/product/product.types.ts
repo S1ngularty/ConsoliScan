@@ -1,3 +1,5 @@
+import mongoose, { mongo } from "mongoose";
+
 type Barcodes =
   | "UPC"
   | "EAN_13"
@@ -9,12 +11,12 @@ type Barcodes =
 
 type Units = "kg" | "g" | "pc" | "liter" | "ml" | "pack";
 
-interface IProductImage {
-  public_id: string;
-  url: string;
+export interface IProductImage {
+  public_id?: string;
+  url?: string;
 }
 
-interface IProduct {
+export interface IProduct {
   name: string;
   slug: string;
   sku: string;
@@ -23,11 +25,11 @@ interface IProduct {
   barcode: string;
   barcodeType: Barcodes;
 
-  category: unknown;
+  category: mongoose.Types.ObjectId;
 
   price: number;
-  srp: number;
-  salePrice: number;
+  srp: number | null;
+  salePrice: number | null;
   saleActive: boolean;
 
   stockQuantity: number;
