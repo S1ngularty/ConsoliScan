@@ -2,11 +2,13 @@ import {
   createProduct,
   getProductById,
   productList,
+  searchProduct,
 } from "./product.repository.js";
 import type {
   EditableProductFields,
   IProduct,
   IProductImage,
+  SearchProductResult,
 } from "./product.types.js";
 import slugify from "slugify";
 // const CatalogVersion = require("../models/catalogVersionModel"); TODO
@@ -67,4 +69,14 @@ export const getById = async (productId: string): Promise<IProduct> => {
   if (!product) throw new Error("product is not found");
 
   return product?.toObject();
+};
+
+export const search = async (word: string): Promise<SearchProductResult[]> => {
+  if (!word || word.trim().length < 2) return [];
+
+  const searchTerm = word.trim();
+
+  const products = await searchProduct(searchTerm);
+
+  return products;
 };

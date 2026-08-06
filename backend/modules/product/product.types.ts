@@ -1,4 +1,6 @@
-import mongoose, { mongo } from "mongoose";
+import mongoose from "mongoose";
+import type { ProductDocument } from "./product.model.js";
+import type { ICategory } from "../category/category.types.js";
 
 type Barcodes =
   | "UPC"
@@ -47,3 +49,16 @@ export type EditableProductFields = Omit<
   IProduct,
   "createdAt" | "updatedAt" | "deletedAt"
 >;
+
+export type SearchProductResult = Pick<
+  ProductDocument,
+  | "_id"
+  | "name"
+  | "barcode"
+  | "sku"
+  | "price"
+  | "stockQuantity"
+  | "images"
+> & {
+  category: ICategory;
+};

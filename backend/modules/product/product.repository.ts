@@ -1,5 +1,9 @@
+import type { ICategory } from "../category/category.types.js";
 import { type ProductDocument, Product } from "./product.model.js";
-import type { EditableProductFields } from "./product.types.js";
+import type {
+  EditableProductFields,
+  SearchProductResult,
+} from "./product.types.js";
 
 export const createProduct = async (
   payload: EditableProductFields,
@@ -18,5 +22,24 @@ export const getProductById = async (
   productId: string,
 ): Promise<ProductDocument | null> => {
   const result = await Product.findById(productId);
+  return result;
+};
+
+export const searchProduct = async (
+  searchTerm: string,
+): Promise<SearchProductResult[]> => {
+  const result = await Product.find({
+    deletedAt: null,
+    $or: [
+      { barcode: { $regex: searchTerm, $options: "i" } },
+      { name: { $regex: searchTerm, $options: "i" } },
+      { sku: { $regex: searchTerm, $options: "i" } },
+    ],
+  })
+    .populate<{ category: ICategory }>("category")
+    .limit(20)
+    .select("_id name barcode sku price stockQuantity images category")
+    .lean();
+
   return result;
 };
