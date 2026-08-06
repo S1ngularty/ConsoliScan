@@ -1,4 +1,4 @@
-import { createProduct } from "./product.repository.js";
+import { createProduct, productList } from "./product.repository.js";
 import type {
   EditableProductFields,
   IProduct,
@@ -51,4 +51,9 @@ export const create = async (
   const product = await createProduct(completePayload);
 
   return product.toObject();
+};
+
+export const getAll = async (): Promise<IProduct[]> => {
+  const products = (await productList()).map((product) => product.toObject());
+  return products;
 };

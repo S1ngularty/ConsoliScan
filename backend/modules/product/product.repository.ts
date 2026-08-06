@@ -8,3 +8,8 @@ export const createProduct = async (
 
   return result;
 };
+
+export const productList = async () => {
+  const result = await Product.find({ deletedAt: null });
+  return result;
+};
