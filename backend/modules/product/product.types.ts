@@ -42,3 +42,8 @@ export interface IProduct {
   updatedAt: Date;
   deletedAt: Date | null;
 }
+
+export type EditableProductFields = Omit<
+  IProduct,
+  "createdAt" | "updatedAt" | "deletedAt"
+>;
