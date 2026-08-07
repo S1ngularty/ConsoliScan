@@ -2,6 +2,7 @@ import {
   createProduct,
   getProductById,
   productList,
+  ProductSoftDelete,
   searchProduct,
   updateProduct,
 } from "./product.repository.js";
@@ -99,4 +100,31 @@ export const update = async (
   if (!product) throw new Error("failed to update the product");
 
   return product;
+};
+
+// export const removeImg =  async(publicId:string, productId:string):Promise<boolean>=>{
+//    const { publicId } = request.query;
+//     const { productId } = request.params;
+//     const result = await deleteAssets([publicId]);
+//     const deletionStatus = result?.deleted?.[publicId];
+//     if (deletionStatus !== "deleted" && deletionStatus !== "not_found") {
+//       throw new Error("failed to delete image from Cloudinary");
+//     }
+//     if (!result) throw new Error("failed to delete the image");
+//     const updateProductImage = await Product.findById(productId);
+//     updateProductImage.images = updateProductImage.images.filter(
+//       (image) => image.public_id !== publicId,
+//     );
+//     console.log(updateProductImage.images);
+//     await updateProductImage.save();
+//     await bumpCatalogVersion();
+//     return deletionStatus;
+// }
+
+export const softDelete = async (publicId: string): Promise<IProduct> => {
+  const product = await ProductSoftDelete(publicId);
+
+  if (!product) throw new Error("Failed to delete the product");
+
+  return product.toObject();
 };

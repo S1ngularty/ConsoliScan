@@ -64,3 +64,13 @@ export const updateProduct = async (
 
   return result;
 };
+
+export const ProductSoftDelete = async (
+  productId: string,
+): Promise<ProductDocument | null> => {
+  const result = await Product.findByIdAndUpdate(productId, {
+    deletedAt: new Date(),
+  });
+
+  return result;
+};
