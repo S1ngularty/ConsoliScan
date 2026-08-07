@@ -3,6 +3,7 @@ import {
   getProductById,
   productList,
   searchProduct,
+  updateProduct,
 } from "./product.repository.js";
 import type {
   EditableProductFields,
@@ -79,4 +80,23 @@ export const search = async (word: string): Promise<SearchProductResult[]> => {
   const products = await searchProduct(searchTerm);
 
   return products;
+};
+
+export const update = async (
+  productId: string,
+  payload: Omit<EditableProductFields, "images">,
+  files: Express.Multer.File[],
+): Promise<IProduct> => {
+  let newImages: Pick<IProduct, "images">[] = [];
+
+  // if(files && files.length >0){ TODO: image stream
+  //   let temp = await uploadImage(request.files, "products");
+  //      newImages = Array.isArray(temp) ? temp : [temp];
+  // }
+
+  const product = await updateProduct(productId, payload, newImages);
+
+  if (!product) throw new Error("failed to update the product");
+
+  return product;
 };

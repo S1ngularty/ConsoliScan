@@ -2,6 +2,7 @@ import type { ICategory } from "../category/category.types.js";
 import { type ProductDocument, Product } from "./product.model.js";
 import type {
   EditableProductFields,
+  IProduct,
   SearchProductResult,
 } from "./product.types.js";
 
@@ -40,6 +41,26 @@ export const searchProduct = async (
     .limit(20)
     .select("_id name barcode sku price stockQuantity images category")
     .lean();
+
+  return result;
+};
+
+export const updateProduct = async (
+  productId: string,
+  payload: Omit<EditableProductFields, "images">,
+  images: Pick<IProduct, "images">[],
+): Promise<IProduct | null> => {
+  const result = await Product.findByIdAndUpdate(
+    productId,
+    {
+      ...payload,
+      $push: { images: { $each: images } },
+    },
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
 
   return result;
 };
