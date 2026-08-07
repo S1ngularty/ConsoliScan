@@ -5,6 +5,7 @@ import {
   productList,
   ProductRestore,
   ProductSoftDelete,
+  ProductUpdateStock,
   searchProduct,
   updateProduct,
 } from "./product.repository.js";
@@ -145,6 +146,17 @@ export const hardDelete = async (productId: string): Promise<IProduct> => {
   const product = await ProductHardDelete(productId);
 
   if (!product) throw new Error("Failed to permanently delete the product");
+  // await bumpCatalogVersion();
+
+  return product.toObject();
+};
+
+export const updateStock = async (
+  productId: string,
+  newStock: number,
+): Promise<IProduct> => {
+  const product = await ProductUpdateStock(productId, newStock);
+  if (!product) throw new Error("Failed to update stock the product");
   // await bumpCatalogVersion();
 
   return product.toObject();

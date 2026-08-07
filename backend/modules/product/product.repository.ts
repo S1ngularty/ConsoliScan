@@ -92,3 +92,19 @@ export const ProductHardDelete = async (
 
   return result;
 };
+
+export const ProductUpdateStock = async (
+  productId: string,
+  stock: number,
+): Promise<ProductDocument | null> => {
+  const result = await Product.findByIdAndUpdate(
+    productId,
+    { stockQuantity: stock },
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
+
+  return result;
+};
