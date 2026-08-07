@@ -1,6 +1,7 @@
 import {
   createProduct,
   getProductById,
+  ProductHardDelete,
   productList,
   ProductRestore,
   ProductSoftDelete,
@@ -131,11 +132,20 @@ export const softDelete = async (publicId: string): Promise<IProduct> => {
   return product.toObject();
 };
 
-export const restore = async(productId:string):Promise<IProduct>=>{
-  const product = await ProductRestore(productId)
- 
+export const restore = async (productId: string): Promise<IProduct> => {
+  const product = await ProductRestore(productId);
+
   if (!product) throw new Error("Failed to restore the product");
   // await bumpCatalogVersion();
 
   return product.toObject();
-}
+};
+
+export const hardDelete = async (productId: string): Promise<IProduct> => {
+  const product = await ProductHardDelete(productId);
+
+  if (!product) throw new Error("Failed to permanently delete the product");
+  // await bumpCatalogVersion();
+
+  return product.toObject();
+};

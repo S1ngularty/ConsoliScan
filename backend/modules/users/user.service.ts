@@ -1,4 +1,3 @@
-import { User, type UserDocument } from "./user.model.js";
 import type {
   UpdateUserFields,
   CurrUser,
@@ -55,7 +54,7 @@ export const create = async (
 ): Promise<IUser> => {
   if (!payload) throw new Error("Missing payload");
 
-  const user: UserDocument | null = await createUser(payload);
+  const user = await createUser(payload);
   if (!user) throw new Error("Failed to create the user");
   return user.toObject();
 };

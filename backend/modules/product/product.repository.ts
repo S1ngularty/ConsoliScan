@@ -84,3 +84,11 @@ export const ProductRestore = async (
 
   return result;
 };
+
+export const ProductHardDelete = async (
+  productId: string,
+): Promise<ProductDocument | null> => {
+  const result = await Product.findByIdAndDelete(productId);
+
+  return result;
+};
