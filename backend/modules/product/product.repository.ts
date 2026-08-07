@@ -1,6 +1,8 @@
 import type { ICategory } from "../category/category.types.js";
 import { type ProductDocument, Product } from "./product.model.js";
 import type {
+  Barcodes,
+  BarcodeSearchResult,
   EditableProductFields,
   IProduct,
   SearchProductResult,
@@ -105,6 +107,19 @@ export const ProductUpdateStock = async (
       runValidators: true,
     },
   );
+
+  return result;
+};
+
+export const findProductByBarcode = async (
+  type: Barcodes,
+  data: string,
+): Promise<BarcodeSearchResult | null> => {
+  const result = await Product.findOne({
+    barcode: data,
+    barcodeType: type,
+  })
+    .populate<{ category: ICategory }>("category")
 
   return result;
 };

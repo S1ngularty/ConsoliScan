@@ -2,14 +2,17 @@ import mongoose from "mongoose";
 import type { ProductDocument } from "./product.model.js";
 import type { ICategory } from "../category/category.types.js";
 
-type Barcodes =
-  | "UPC"
-  | "EAN_13"
-  | "EAN_8"
-  | "ISBN_10"
-  | "ISBN_13"
-  | "CODE_128"
-  | "QR";
+export const BARCODE_TYPES = {
+  UPC: "UPC",
+  EAN_13: "EAN_13",
+  EAN_8: "EAN_8",
+  ISBN_10: "ISBN_10",
+  ISBN_13: "ISBN_13",
+  CODE_128: "CODE_128",
+  QR: "QR",
+} as const;
+
+export type Barcodes = (typeof BARCODE_TYPES)[keyof typeof BARCODE_TYPES];
 
 type Units = "kg" | "g" | "pc" | "liter" | "ml" | "pack";
 
@@ -52,13 +55,11 @@ export type EditableProductFields = Omit<
 
 export type SearchProductResult = Pick<
   ProductDocument,
-  | "_id"
-  | "name"
-  | "barcode"
-  | "sku"
-  | "price"
-  | "stockQuantity"
-  | "images"
+  "_id" | "name" | "barcode" | "sku" | "price" | "stockQuantity" | "images"
 > & {
+  category: ICategory;
+};
+
+export type BarcodeSearchResult = Omit<IProduct, "category"> & {
   category: ICategory;
 };

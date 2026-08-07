@@ -1,5 +1,6 @@
 import {
   createProduct,
+  findProductByBarcode,
   getProductById,
   ProductHardDelete,
   productList,
@@ -10,6 +11,8 @@ import {
   updateProduct,
 } from "./product.repository.js";
 import type {
+  Barcodes,
+  BarcodeSearchResult,
   EditableProductFields,
   IProduct,
   IProductImage,
@@ -160,4 +163,16 @@ export const updateStock = async (
   // await bumpCatalogVersion();
 
   return product.toObject();
+};
+
+export const getBarcode = async (
+  // TODO: validate the barcode type first before invoking repository functions
+  type: Barcodes,
+  data: string,
+): Promise<BarcodeSearchResult> => {
+  const product = await findProductByBarcode(type, data);
+
+  if (!product) throw Error("product barcode not found");
+
+  return product;
 };
