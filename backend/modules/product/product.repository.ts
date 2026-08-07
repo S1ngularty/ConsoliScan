@@ -74,3 +74,13 @@ export const ProductSoftDelete = async (
 
   return result;
 };
+
+export const ProductRestore = async (
+  productId: string,
+): Promise<ProductDocument | null> => {
+  const result = await Product.findByIdAndUpdate(productId, {
+    deletedAt: null,
+  });
+
+  return result;
+};
