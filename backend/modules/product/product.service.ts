@@ -165,6 +165,8 @@ export const updateStock = async (
   return product.toObject();
 };
 
+// get barcode now is use by two user (customer & merchandiser)
+//  instead of creating new service, routes, and controllers with minimal changes
 export const getBarcode = async (
   // TODO: validate the barcode type first before invoking repository functions
   type: Barcodes,
@@ -172,7 +174,11 @@ export const getBarcode = async (
 ): Promise<BarcodeSearchResult> => {
   const product = await findProductByBarcode(type, data);
 
-  if (!product) throw Error("product barcode not found");
+  if (!product)
+    return {
+      found: false,
+      barcode: data,
+    };
 
-  return product;
+  return { product: product, found: true, barcode: data };
 };

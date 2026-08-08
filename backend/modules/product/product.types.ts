@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import type { ProductDocument } from "./product.model.js";
 import type { ICategory } from "../category/category.types.js";
+import { read } from "pdfkit";
 
 export const BARCODE_TYPES = {
   UPC: "UPC",
@@ -60,6 +61,12 @@ export type SearchProductResult = Pick<
   category: ICategory;
 };
 
-export type BarcodeSearchResult = Omit<IProduct, "category"> & {
+export type BarcodeQueryResult = Omit<IProduct, "category"> & {
   category: ICategory;
+};
+
+export type BarcodeSearchResult = {
+  product?: BarcodeQueryResult;
+  barcode: string;
+  found: boolean;
 };
