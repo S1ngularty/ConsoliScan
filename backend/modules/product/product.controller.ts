@@ -113,3 +113,19 @@ export const softDelete = async (
     next(error);
   }
 };
+
+export const restore = async (
+  req: Request<{ productId: string }>,
+  res: ResponseDefault<IProduct>,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { productId } = req.params;
+
+    const result = await ProductService.restore(productId);
+
+    wrapResponse("OK", 200, res, result);
+  } catch (error) {
+    next(error);
+  }
+};
