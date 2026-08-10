@@ -7,6 +7,7 @@ import type {
   SearchProductResult,
 } from "./product.types.js";
 import type { ApiResponse, ResponseDefault } from "../../types/api.js";
+import Request from "bigchaindb-driver/types/request.js";
 
 export const create = async (
   req: Request<{}, {}, Omit<EditableProductFields, "images">>,
@@ -140,6 +141,24 @@ export const hardDelete = async (
 
     const result = await ProductService.hardDelete(productId);
 
+    wrapResponse("OK", 200, res, result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateStock = async (
+  req: Request<{ productId: string }, {}, Pick<IProduct, "stockQuantity">>,
+  res: ResponseDefault<IProduct>,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    /* the property name stockQuantity is still initial becuase
+    its still not sure what field the client putting the actual data */
+    const { productId } = req.params;
+    const { stockQuantity } = req.body;
+
+    const result = await ProductService.updateStock(productId, stockQuantity);
     wrapResponse("OK", 200, res, result);
   } catch (error) {
     next(error);
