@@ -129,3 +129,19 @@ export const restore = async (
     next(error);
   }
 };
+
+export const hardDelete = async (
+  req: Request<{ productId: string }>,
+  res: ResponseDefault<IProduct>,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { productId } = req.params;
+
+    const result = await ProductService.hardDelete(productId);
+
+    wrapResponse("OK", 200, res, result);
+  } catch (error) {
+    next(error);
+  }
+};
