@@ -22,5 +22,19 @@ export const create = async (
   }
 };
 
+export const getAll = async (
+  req: Request,
+  res: Response<ApiResponse<IProduct[]>>,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const result = await ProductService.getAll();
+
+    wrapResponse("OK", 200, res, result);
+  } catch (error) {
+    next(error);
+  }
+};
+
 
 
