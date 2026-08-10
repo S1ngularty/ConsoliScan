@@ -36,5 +36,19 @@ export const getAll = async (
   }
 };
 
+export const getById = async (
+  req: Request<{ productId: string }>,
+  res: Response<ApiResponse<IProduct>>,
+  next: NextFunction,
+) => {
+  try {
+    const { productId } = req.params;
+    if (!productId) throw new Error("productID is required");
 
+    const result = await ProductService.getById(productId);
 
+    wrapResponse("OK", 200, res, result);
+  } catch (error) {
+    next(error);
+  }
+};
