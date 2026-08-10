@@ -71,3 +71,27 @@ export const search = async (
     next(error);
   }
 };
+
+export const update = async (
+  req: Request<
+    { productId: string },
+    {},
+    Omit<EditableProductFields, "images">
+  >,
+  res: Response<ApiResponse<IProduct>>,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { productId } = req.params;
+    const { files, body } = req;
+
+    const images = Array.isArray(files) ? files : undefined;
+    if (!productId) throw new Error("productID is required");
+
+    const result = await ProductService.update(productId, body, images);
+
+    wrapResponse("OK", 200, res, result);
+  } catch (error) {
+    next(error);
+  }
+};

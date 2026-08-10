@@ -92,7 +92,7 @@ export const search = async (word: string): Promise<SearchProductResult[]> => {
 export const update = async (
   productId: string,
   payload: Omit<EditableProductFields, "images">,
-  files: Express.Multer.File[],
+  files?: Express.Multer.File[],
 ): Promise<IProduct> => {
   let newImages: Pick<IProduct, "images">[] = [];
 
