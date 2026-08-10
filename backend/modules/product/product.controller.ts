@@ -1,7 +1,11 @@
 import type { Request, NextFunction, Response } from "express";
 import { wrapResponse } from "../../utils/response.util.js";
 import * as ProductService from "./product.service.js";
-import type { EditableProductFields, IProduct } from "./product.types.js";
+import type {
+  EditableProductFields,
+  IProduct,
+  SearchProductResult,
+} from "./product.types.js";
 import type { ApiResponse } from "../../types/api.js";
 
 export const create = async (
@@ -40,12 +44,27 @@ export const getById = async (
   req: Request<{ productId: string }>,
   res: Response<ApiResponse<IProduct>>,
   next: NextFunction,
-) => {
+): Promise<void> => {
   try {
     const { productId } = req.params;
     if (!productId) throw new Error("productID is required");
 
     const result = await ProductService.getById(productId);
+
+    wrapResponse("OK", 200, res, result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const search = async (
+  req: Request<{}, {}, {}, { word: string }>,
+  res: Response<ApiResponse<SearchProductResult[]>>,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { word } = req.query;
+    const result = await ProductService.search(word);
 
     wrapResponse("OK", 200, res, result);
   } catch (error) {
