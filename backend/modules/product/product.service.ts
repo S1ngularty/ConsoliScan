@@ -47,7 +47,7 @@ import slugify from "slugify";
 
 export const create = async (
   payload: Omit<EditableProductFields, "images">,
-  files?: Express.Multer.File[] ,
+  files?: Express.Multer.File[],
 ): Promise<IProduct> => {
   let newImages: IProductImage[] = [];
 

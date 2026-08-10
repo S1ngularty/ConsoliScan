@@ -6,7 +6,7 @@ import type {
   IProduct,
   SearchProductResult,
 } from "./product.types.js";
-import type { ApiResponse } from "../../types/api.js";
+import type { ApiResponse, ResponseDefault } from "../../types/api.js";
 
 export const create = async (
   req: Request<{}, {}, Omit<EditableProductFields, "images">>,
@@ -63,6 +63,8 @@ export const search = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
+    /* from the legacy code the query key is set to q
+      but after migrating i switch it up to word */
     const { word } = req.query;
     const result = await ProductService.search(word);
 
@@ -89,6 +91,22 @@ export const update = async (
     if (!productId) throw new Error("productID is required");
 
     const result = await ProductService.update(productId, body, images);
+
+    wrapResponse("OK", 200, res, result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const softDelete = async (
+  req: Request<{ productId: string }>,
+  res: ResponseDefault<IProduct>,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { productId } = req.params;
+
+    const result = await ProductService.softDelete(productId);
 
     wrapResponse("OK", 200, res, result);
   } catch (error) {
