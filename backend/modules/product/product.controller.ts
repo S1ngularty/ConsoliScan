@@ -1,13 +1,15 @@
 import type { Request, NextFunction, Response } from "express";
 import { wrapResponse } from "../../utils/response.util.js";
 import * as ProductService from "./product.service.js";
-import type {
-  EditableProductFields,
-  IProduct,
-  SearchProductResult,
+import {
+  BARCODE_TYPES,
+  type Barcodes,
+  type BarcodeSearchResult,
+  type EditableProductFields,
+  type IProduct,
+  type SearchProductResult,
 } from "./product.types.js";
 import type { ApiResponse, ResponseDefault } from "../../types/api.js";
-import Request from "bigchaindb-driver/types/request.js";
 
 export const create = async (
   req: Request<{}, {}, Omit<EditableProductFields, "images">>,
@@ -159,6 +161,21 @@ export const updateStock = async (
     const { stockQuantity } = req.body;
 
     const result = await ProductService.updateStock(productId, stockQuantity);
+    wrapResponse("OK", 200, res, result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getBarcode = async (
+  req: Request<{}, {}, {}, { type: Barcodes; data: string }>,
+  res: ResponseDefault<BarcodeSearchResult | null>,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { type, data } = req.query;
+    //TODO: query fields must be validated
+    const result = await ProductService.getBarcode(type, data);
     wrapResponse("OK", 200, res, result);
   } catch (error) {
     next(error);
