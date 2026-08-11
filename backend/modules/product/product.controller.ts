@@ -1,5 +1,5 @@
 import type { Request, NextFunction, Response } from "express";
-import { wrapResponse } from "../../utils/response.util.js";
+import { wrapResponse } from "../../core/utils/response.util.js";
 import * as ProductService from "./product.service.js";
 import {
   BARCODE_TYPES,
@@ -9,7 +9,7 @@ import {
   type IProduct,
   type SearchProductResult,
 } from "./product.types.js";
-import type { ApiResponse, ResponseDefault } from "../../types/api.js";
+import type { ApiResponse, ResponseDefault } from "../../core/types/api.js";
 
 export const create = async (
   req: Request<{}, {}, Omit<EditableProductFields, "images">>,
