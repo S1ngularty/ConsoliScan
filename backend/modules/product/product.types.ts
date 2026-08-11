@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import type { ProductDocument } from "./product.model.js";
 import type { ICategory } from "../category/category.types.js";
-import { read } from "pdfkit";
 
 export const BARCODE_TYPES = {
   UPC: "UPC",
