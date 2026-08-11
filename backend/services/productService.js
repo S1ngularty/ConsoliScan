@@ -106,7 +106,7 @@ const update = async (request = {}) => {
     deletedAt: null,
   };
 
-  if (request.body.discountScopes) {
+  if (request.body.discountScopes) {// this field dont exist anymore
     updateQuery.discountScopes = String(request.body.discountScopes).split(",");
   }
   if (newImages.length > 0) {

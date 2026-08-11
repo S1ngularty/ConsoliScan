@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import * as CategoryService from "./category.service.js";
-import type { ApiResponse } from "../../types/api.js";
+import type { ApiResponse } from "../../core/types/api.js";
 import type {
   CategoryListReturn,
   EditableCategoryFields,

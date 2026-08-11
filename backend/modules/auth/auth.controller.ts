@@ -7,7 +7,7 @@ import type {
   ReturnAuthPayload,
   UserAuthProperties,
 } from "./auth.types.js";
-import type { ApiResponse } from "../../types/api.js";
+import type { ApiResponse } from "../../core/types/api.js";
 
 export const register = async (
   req: Request<{}, {}, RegisterPayload>,

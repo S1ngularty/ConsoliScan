@@ -1,10 +1,6 @@
-import {
-  type Request,
-  type Response,
-  type NextFunction,
-} from "express";
+import { type Request, type Response, type NextFunction } from "express";
 import * as UserService from "./user.service.js";
-import type { ApiResponse } from "../../types/api.js";
+import type { ApiResponse } from "../../core/types/api.js";
 import type {
   EditableUserProperties,
   IUser,
