@@ -1,4 +1,5 @@
 import type {
+  AuthUser,
   JWTtokenProperties,
   LoginPayload,
   RegisterPayload,
@@ -8,6 +9,9 @@ import type {
 import * as AuthRepository from "./auth.repository.js";
 import * as bcrypt from "bcrypt";
 import * as UserService from "../users/user.service.js";
+import { generateToken } from "./auth.token.js";
+
+
 export const register = async (
   payload: RegisterPayload,
 ): Promise<ReturnAuthPayload> => {
@@ -54,7 +58,7 @@ export const login = async (
   const token = userData.getToken();
   if (!token) throw new Error("failed to generate user token");
 
-  const user = userData.buildAuthReturnObject();
+  const user = toAuthUser(userData);
 
   return { user, token };
 };
@@ -69,7 +73,7 @@ export const verifyToken = async (
   // if (user.role === "user") {
   //   eligibilityStatus = await Eligible.findOne({ user: user.userId });
   // }
-  const token = userData?.getToken();
+  const token = generateToken(userData);
   const user = userData?.buildAuthReturnObject();
 
   if (!token) throw new Error("Failed to refresh token");
@@ -90,4 +94,14 @@ export const logout = async (payload: UserAuthProperties): Promise<void> => {
   //   "SUCCESS",
   //   `${request.user.name} logged out to the system as ${request.user.role}`,
   // );
+};
+
+const toAuthUser = (user: AuthUser): UserAuthProperties => {
+  return {
+    userId: String(user._id),
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    status: user.status,
+  };
 };
