@@ -4,6 +4,7 @@ import type {
   EditableUserProperties,
   IUser,
   RolesAndInformationTypes,
+  ReturnPlainUserDocument,
 } from "./user.types.js";
 import {
   createUser,
@@ -57,6 +58,18 @@ export const create = async (
   const user = await createUser(payload);
   if (!user) throw new Error("Failed to create the user");
   return user.toObject();
+};
+
+export const RegisterUser = async (
+  payload: EditableUserProperties,
+): Promise<{ registeredUser: ReturnPlainUserDocument; token: string | null }> => {
+  if (!payload) throw new Error("Missing payload");
+
+  const user = await createUser(payload);
+  const token = user.getToken();
+
+  if (!user) throw new Error("Failed to create the user");
+  return { registeredUser: user.toObject(), token: token };
 };
 
 export const deleteUser = async (userId: string): Promise<IUser> => {

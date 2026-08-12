@@ -1,4 +1,3 @@
-import * as authRepository from "./auth.repository.js";
 import type {
   JWTtokenProperties,
   LoginPayload,
@@ -8,7 +7,7 @@ import type {
 } from "./auth.types.js";
 import * as AuthRepository from "./auth.repository.js";
 import * as bcrypt from "bcrypt";
-
+import * as UserService from "../users/user.service.js";
 export const register = async (
   payload: RegisterPayload,
 ): Promise<ReturnAuthPayload> => {
@@ -16,7 +15,7 @@ export const register = async (
   const { name, email, age, sex, password } = payload;
 
   const hashPassword = await bcrypt.hash(password, 10);
-  const registeredUser = await AuthRepository.registerUser({
+  const { registeredUser, token } = await UserService.RegisterUser({
     name,
     email,
     age,
@@ -31,7 +30,6 @@ export const register = async (
     status: registeredUser.status,
   };
 
-  const token = registeredUser.getToken();
   if (!token) throw new Error("failed to create  a token");
 
   return { user, token };
@@ -55,7 +53,7 @@ export const login = async (
 
   const token = userData.getToken();
   if (!token) throw new Error("failed to generate user token");
- 
+
   const user = userData.buildAuthReturnObject();
 
   return { user, token };

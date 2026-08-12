@@ -12,7 +12,7 @@ export const UpdateUser = async (
   body: UpdateUserFields,
 ): Promise<UserDocument | null> => {
   const result = await User.findByIdAndUpdate(userId, body, {
-    new:true,
+    new: true,
     runValidators: true,
   });
 
