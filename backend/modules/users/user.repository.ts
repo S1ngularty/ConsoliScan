@@ -56,3 +56,11 @@ export const EditRolesAndPermission = async (
   );
   return result;
 };
+
+export const findByEmail = async (
+  email: string,
+): Promise<UserDocument | null> => {
+  const result = await User.findOne({ email: email });
+
+  return result;
+};

@@ -40,7 +40,7 @@ export const login = async (
 ): Promise<ReturnAuthPayload> => {
   const { email, password } = payload;
 
-  let userData = await AuthRepository.findUserByEmail(email);
+  let userData = await UserService.findByEmail(email);
   if (!userData) throw new Error("account not found");
   if (userData.status === "inactive") throw new Error("account is inactive");
 
