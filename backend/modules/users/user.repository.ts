@@ -2,6 +2,7 @@ import { User, type UserDocument } from "./user.model.js";
 import type {
   EditableUserProperties,
   IUser,
+  ReturnPlainUserDocument,
   RolesAndInformationTypes,
   systemRoles,
   UpdateUserFields,
@@ -19,7 +20,7 @@ export const UpdateUser = async (
   return result;
 };
 
-export const getAllUsers = async (excludeUser?: string): Promise<IUser[]> => {
+export const getAllUsers = async (excludeUser?: string): Promise<ReturnPlainUserDocument[]> => {
   const result = await User.find({ _id: { $ne: excludeUser } }).lean();
   return result;
 };

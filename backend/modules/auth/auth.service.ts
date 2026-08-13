@@ -68,13 +68,13 @@ export const verifyToken = async (
 ): Promise<ReturnAuthPayload> => {
   const { userId } = creds;
 
-  const userData = await AuthRepository.findAuthUserById(userId);
+  const userData = await UserService.getById(userId);
   if (!userData) throw new Error("token expired");
   // if (user.role === "user") {
   //   eligibilityStatus = await Eligible.findOne({ user: user.userId });
   // }
   const token = generateToken(userData);
-  const user = userData?.buildAuthReturnObject();
+  const user = toAuthUser(userData)
 
   if (!token) throw new Error("Failed to refresh token");
 

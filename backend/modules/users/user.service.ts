@@ -28,7 +28,9 @@ export const update = async (
   return user?.toObject();
 };
 
-export const getAll = async (user: CurrUser): Promise<IUser[]> => {
+export const getAll = async (
+  user: CurrUser,
+): Promise<ReturnPlainUserDocument[]> => {
   const { userId } = user;
 
   const users = await UserRepository.getAllUsers(userId);
@@ -36,7 +38,9 @@ export const getAll = async (user: CurrUser): Promise<IUser[]> => {
   return users;
 };
 
-export const getById = async (userId: string): Promise<IUser> => {
+export const getById = async (
+  userId: string,
+): Promise<ReturnPlainUserDocument> => {
   const fetchedUser = await UserRepository.getUserById(userId);
 
   if (!fetchedUser) throw new Error("User not found!");
@@ -46,7 +50,7 @@ export const getById = async (userId: string): Promise<IUser> => {
 
 export const create = async (
   payload: EditableUserProperties,
-): Promise<IUser> => {
+): Promise<ReturnPlainUserDocument> => {
   if (!payload) throw new Error("Missing payload");
 
   const user = await UserRepository.createUser(payload);
@@ -69,7 +73,9 @@ export const RegisterUser = async (
   return { registeredUser: user.toObject(), token: token };
 };
 
-export const deleteUser = async (userId: string): Promise<IUser> => {
+export const deleteUser = async (
+  userId: string,
+): Promise<ReturnPlainUserDocument> => {
   if (!userId) throw new Error("Missing userId");
 
   const deletedUser = await UserRepository.userDelete(userId);
@@ -82,7 +88,7 @@ export const deleteUser = async (userId: string): Promise<IUser> => {
 
 export const rolesAndPermission = async (
   data: RolesAndInformationTypes,
-): Promise<IUser> => {
+): Promise<ReturnPlainUserDocument> => {
   const { role, userId } = data;
   const user = await UserRepository.EditRolesAndPermission(userId, role);
 
