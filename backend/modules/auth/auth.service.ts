@@ -6,7 +6,6 @@ import type {
   ReturnAuthPayload,
   UserAuthProperties,
 } from "./auth.types.js";
-import * as AuthRepository from "./auth.repository.js";
 import * as bcrypt from "bcrypt";
 import * as UserService from "../users/user.service.js";
 import { generateToken } from "./auth.token.js";
