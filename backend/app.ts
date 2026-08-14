@@ -42,6 +42,7 @@ app.use("/api", routes.auth);
 app.use("/api/v1", routes.user);
 app.use("/api/v1", routes.category);
 app.use("/api/v1", routes.product);
+app.use("/api/v1", routes.catalog);
 
 app.get("/ping", async (req, res): Promise<void> => {
   res.send("Consoliscan server is alive!");

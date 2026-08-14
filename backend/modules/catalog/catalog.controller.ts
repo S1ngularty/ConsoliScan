@@ -4,6 +4,7 @@ import { wrapResponse } from "../../core/utils/response.util.js";
 import type { ICatalog } from "./catalog.types.js";
 
 export const getVersion = async (
+    req:Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
