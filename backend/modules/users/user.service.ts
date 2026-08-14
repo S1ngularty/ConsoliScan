@@ -121,7 +121,7 @@ export const rolesAndPermission = async (
 export const findByEmail = async (
   email: string,
 ): Promise<UserDocument | null> => {
-  const user = await UserRepository.findByEmail(email);
+  const user = await UserRepository.findByEmailAndFetchPassword(email);
 
   return user;
 };
