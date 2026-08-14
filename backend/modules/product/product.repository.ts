@@ -18,7 +18,7 @@ export const createProduct = async (
 };
 
 export const productList = async (): Promise<ProductDocument[]> => {
-  const result = await Product.find({ deletedAt: null });
+  const result = await Product.find({ deletedAt: null }).populate("category");
   return result;
 };
 
