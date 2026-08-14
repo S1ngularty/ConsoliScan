@@ -58,10 +58,10 @@ export const EditRolesAndPermission = async (
   return result;
 };
 
-export const findByEmail = async (
+export const findByEmailAndFetchPassword = async (
   email: string,
 ): Promise<UserDocument | null> => {
-  const result = await User.findOne({ email: email });
+  const result = await User.findOne({ email: email }).select("+password");
 
   return result;
 };
