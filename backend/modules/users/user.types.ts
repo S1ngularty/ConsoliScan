@@ -111,3 +111,7 @@ export interface EditableUserProperties {
 export type UpdateUserFields = Omit<EditableUserProperties, "email">;
 
 export type RolesAndInformationTypes = Omit<CurrUser, "email">;
+
+export type ReturnPlainUserDocument = IUser & {
+  _id: mongoose.Types.ObjectId;
+};

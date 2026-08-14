@@ -1,3 +1,5 @@
+import type { IUser, ReturnPlainUserDocument } from "../users/user.types.js";
+
 type systemRoles =
   | "user"
   | "admin"
@@ -30,3 +32,4 @@ export interface ReturnAuthPayload {
 }
 
 export type JWTtokenProperties = UserAuthProperties;
+export type AuthUser = ReturnPlainUserDocument;

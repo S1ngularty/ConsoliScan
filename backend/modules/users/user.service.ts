@@ -4,15 +4,10 @@ import type {
   EditableUserProperties,
   IUser,
   RolesAndInformationTypes,
+  ReturnPlainUserDocument,
 } from "./user.types.js";
-import {
-  createUser,
-  EditRolesAndPermission,
-  getAllUsers,
-  getUserById,
-  UpdateUser,
-  userDelete,
-} from "./user.repository.js";
+import * as UserRepository from "./user.repository.js";
+import type { UserDocument } from "./user.model.js";
 // import { uploadImage, deleteAssets } from "../../utils/cloundinaryUtil.js";
 // const Eligibility = require("../models/eligibleModel");
 // const Cart = require("../models/cartModel");
@@ -26,23 +21,27 @@ export const update = async (
   //   if (request.file)
   //     request.body.avatar = await uploadImage([request.file], "users");
 
-  const user = await UpdateUser(userId, payload);
+  const user = await UserRepository.UpdateUser(userId, payload);
   if (!user) throw new Error("User not found");
   // if (user?.avatar?.public_id) deleteAssets([user.avatar.public_id]);
 
   return user?.toObject();
 };
 
-export const getAll = async (user: CurrUser): Promise<IUser[]> => {
+export const getAll = async (
+  user: CurrUser,
+): Promise<ReturnPlainUserDocument[]> => {
   const { userId } = user;
 
-  const users = await getAllUsers(userId);
+  const users = await UserRepository.getAllUsers(userId);
 
   return users;
 };
 
-export const getById = async (userId: string): Promise<IUser> => {
-  const fetchedUser = await getUserById(userId);
+export const getById = async (
+  userId: string,
+): Promise<ReturnPlainUserDocument> => {
+  const fetchedUser = await UserRepository.getUserById(userId);
 
   if (!fetchedUser) throw new Error("User not found!");
 
@@ -51,18 +50,35 @@ export const getById = async (userId: string): Promise<IUser> => {
 
 export const create = async (
   payload: EditableUserProperties,
-): Promise<IUser> => {
+): Promise<ReturnPlainUserDocument> => {
   if (!payload) throw new Error("Missing payload");
 
-  const user = await createUser(payload);
+  const user = await UserRepository.createUser(payload);
   if (!user) throw new Error("Failed to create the user");
   return user.toObject();
 };
 
-export const deleteUser = async (userId: string): Promise<IUser> => {
+export const RegisterUser = async (
+  payload: EditableUserProperties,
+): Promise<{
+  registeredUser: ReturnPlainUserDocument;
+  token: string | null;
+}> => {
+  if (!payload) throw new Error("Missing payload");
+
+  const user = await UserRepository.createUser(payload);
+  const token = user.getToken();
+
+  if (!user) throw new Error("Failed to create the user");
+  return { registeredUser: user.toObject(), token: token };
+};
+
+export const deleteUser = async (
+  userId: string,
+): Promise<ReturnPlainUserDocument> => {
   if (!userId) throw new Error("Missing userId");
 
-  const deletedUser = await userDelete(userId);
+  const deletedUser = await UserRepository.userDelete(userId);
   if (!deletedUser) throw new Error("Failed to delete the user");
   // if (deletedUser.avatar?.public_id)
   //   deleteAssets([deletedUser.avatar.public_id]);
@@ -72,9 +88,9 @@ export const deleteUser = async (userId: string): Promise<IUser> => {
 
 export const rolesAndPermission = async (
   data: RolesAndInformationTypes,
-): Promise<IUser> => {
+): Promise<ReturnPlainUserDocument> => {
   const { role, userId } = data;
-  const user = await EditRolesAndPermission(userId, role);
+  const user = await UserRepository.EditRolesAndPermission(userId, role);
 
   if (!user) throw new Error("Failed to update user role and permission");
   return user.toObject();
@@ -101,3 +117,11 @@ export const rolesAndPermission = async (
 //   // console.log(user);
 //   return user;
 // };
+
+export const findByEmail = async (
+  email: string,
+): Promise<UserDocument | null> => {
+  const user = await UserRepository.findByEmail(email);
+
+  return user;
+};

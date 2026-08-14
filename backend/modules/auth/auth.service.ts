@@ -1,13 +1,15 @@
-import * as authRepository from "./auth.repository.js";
 import type {
+  AuthUser,
   JWTtokenProperties,
   LoginPayload,
   RegisterPayload,
   ReturnAuthPayload,
   UserAuthProperties,
 } from "./auth.types.js";
-import * as AuthRepository from "./auth.repository.js";
 import * as bcrypt from "bcrypt";
+import * as UserService from "../users/user.service.js";
+import { generateToken } from "./auth.token.js";
+
 
 export const register = async (
   payload: RegisterPayload,
@@ -16,7 +18,7 @@ export const register = async (
   const { name, email, age, sex, password } = payload;
 
   const hashPassword = await bcrypt.hash(password, 10);
-  const registeredUser = await AuthRepository.registerUser({
+  const { registeredUser, token } = await UserService.RegisterUser({
     name,
     email,
     age,
@@ -31,7 +33,6 @@ export const register = async (
     status: registeredUser.status,
   };
 
-  const token = registeredUser.getToken();
   if (!token) throw new Error("failed to create  a token");
 
   return { user, token };
@@ -42,7 +43,7 @@ export const login = async (
 ): Promise<ReturnAuthPayload> => {
   const { email, password } = payload;
 
-  let userData = await AuthRepository.findUserByEmail(email);
+  let userData = await UserService.findByEmail(email);
   if (!userData) throw new Error("account not found");
   if (userData.status === "inactive") throw new Error("account is inactive");
 
@@ -55,8 +56,8 @@ export const login = async (
 
   const token = userData.getToken();
   if (!token) throw new Error("failed to generate user token");
- 
-  const user = userData.buildAuthReturnObject();
+
+  const user = toAuthUser(userData);
 
   return { user, token };
 };
@@ -66,13 +67,13 @@ export const verifyToken = async (
 ): Promise<ReturnAuthPayload> => {
   const { userId } = creds;
 
-  const userData = await AuthRepository.findAuthUserById(userId);
+  const userData = await UserService.getById(userId);
   if (!userData) throw new Error("token expired");
   // if (user.role === "user") {
   //   eligibilityStatus = await Eligible.findOne({ user: user.userId });
   // }
-  const token = userData?.getToken();
-  const user = userData?.buildAuthReturnObject();
+  const token = generateToken(userData);
+  const user = toAuthUser(userData)
 
   if (!token) throw new Error("Failed to refresh token");
 
@@ -92,4 +93,14 @@ export const logout = async (payload: UserAuthProperties): Promise<void> => {
   //   "SUCCESS",
   //   `${request.user.name} logged out to the system as ${request.user.role}`,
   // );
+};
+
+const toAuthUser = (user: AuthUser): UserAuthProperties => {
+  return {
+    userId: String(user._id),
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    status: user.status,
+  };
 };
