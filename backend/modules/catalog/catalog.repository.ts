@@ -1,7 +1,7 @@
 import { Catalog, type CatalogDocument } from "./catalog.model.js";
 import type { ICatalog } from "./catalog.types.js";
 
-export const bumpCatalog = async (): Promise<Number> => {
+export const bumpCatalog = async (): Promise<number> => {
   const updated = await Catalog.findOneAndUpdate(
     {},
     {
@@ -16,7 +16,7 @@ export const bumpCatalog = async (): Promise<Number> => {
   return updated.version;
 };
 
-export const getCatalogVersion = async (): Promise<Number> => {
+export const getCatalogVersion = async (): Promise<number> => {
   const current = await Catalog.findOne({});
   if (current) return current.version;
 
