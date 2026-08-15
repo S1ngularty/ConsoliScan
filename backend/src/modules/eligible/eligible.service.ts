@@ -8,7 +8,7 @@ import * as EligibleRepository from "./eligible.respository.js";
 
 export const create = async (
   userId: string,
-  payload: Omit<IEligibleCreate, "idImage" | "userPhoto">,
+  payload: Omit<IEligibleCreate, "idImage" | "userPhoto" | "user">,
   files: EligibleFiles,
 ) /*: Promise<IEligibleLean> */ => {
   const { idFront, idBack, userPhoto } = files;
