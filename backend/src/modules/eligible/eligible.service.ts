@@ -2,6 +2,7 @@ import type {
   EligibleFiles,
   IEligibleCreate,
   IEligibleLean,
+  IEligibleUpdate,
 } from "./eligible.types.js";
 import * as EligibleRepository from "./eligible.respository.js";
 
@@ -52,4 +53,19 @@ export const getAll = async (): Promise<IEligibleLean[]> => {
   );
 
   return eligibles;
+};
+
+export const updateEligibility = async (
+  memberId: string,
+  payload: IEligibleUpdate,
+): Promise<IEligibleLean> => {
+  const updatedEligible = await EligibleRepository.updateEligibility(
+    memberId,
+    payload,
+  );
+
+  if (!updatedEligible)
+    throw new Error("failed to update the user eligibility");
+
+  return updatedEligible;
 };

@@ -1,6 +1,10 @@
 import type { EligibleDocument } from "./eligible.model.js";
 import { Eligible } from "./eligible.model.js";
-import type { IEligible, IEligiblePopulated } from "./eligible.types.js";
+import type {
+  IEligible,
+  IEligiblePopulated,
+  IEligibleUpdate,
+} from "./eligible.types.js";
 
 export const createEligible = async (
   data: IEligible,
@@ -48,6 +52,17 @@ export const getEligibles = async (): Promise<IEligiblePopulated[]> => {
       },
     },
   ]);
+
+  return result;
+};
+
+export const updateEligibility = async (
+  memberId: string,
+  payload: IEligibleUpdate,
+): Promise<EligibleDocument | null> => {
+  const result = await Eligible.findByIdAndUpdate(memberId, payload, {
+    new: true,
+  });
 
   return result;
 };
