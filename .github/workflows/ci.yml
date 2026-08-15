@@ -30,9 +30,9 @@ jobs:
         working-directory: backend
         run: npm ci
 
-      # - name: Build Backend
-      #   working-directory: backend
-      #   run: npm run build
+      - name: Build Backend
+        working-directory: backend
+        run: npm run build
 
       # - name: Test Backend
       #   working-directory: backend
