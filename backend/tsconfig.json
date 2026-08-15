@@ -2,14 +2,14 @@
   // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
     // File Layout
-    // "rootDir": "./src",
-    // "outDir": "./dist",
+    "rootDir": "./",
+    "outDir": "./dist",
 
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
     "module": "nodenext",
     "target": "ES2022",
-    "types": ["node","express","multer"],
+    "types": ["node", "express", "multer"],
     // For nodejs:
     // "lib": ["esnext"],
     // "types": ["node"],
@@ -40,5 +40,12 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true
-  }
+  },
+  "include": ["**/*.ts"] /* Compile any TS file anywhere */,
+  "exclude": [
+    "node_modules",
+    "dist" /* CRITICAL: Prevents infinite compile loops */,
+    "**/*.spec.ts",
+    "**/*.test.ts"
+  ]
 }
