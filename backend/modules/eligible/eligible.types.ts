@@ -1,5 +1,5 @@
-import { Document, Types } from 'mongoose';
-import type { IUser } from '../users/user.types.js';
+import { Document, Types } from "mongoose";
+import type { IUser } from "../users/user.types.js";
 
 // Image interface (for front, back, and userPhoto)
 export interface IImage {
@@ -14,10 +14,15 @@ export interface IIdImages {
 }
 
 // Enum for ID types
-export type IdType = 'pwd' | 'senior';
+export type IdType = "pwd" | "senior";
 
 // Enum for disability types
-export type DisabilityType = 'visual' | 'hearing' | 'physical' | 'mental' | 'multiple';
+export type DisabilityType =
+  | "visual"
+  | "hearing"
+  | "physical"
+  | "mental"
+  | "multiple";
 
 // Main Eligible interface
 export interface IEligible extends Document {
@@ -72,7 +77,7 @@ export interface IEligibleValidationResult {
 }
 
 // Population interface (when user is populated)
-export interface IEligiblePopulated extends Omit<IEligible, 'user'> {
+export interface IEligiblePopulated extends Omit<IEligible, "user"> {
   user: IUser;
 }
 
@@ -95,3 +100,9 @@ export interface IEligiblePaginatedResponse {
   limit: number;
   totalPages: number;
 }
+
+export type EligibleFiles = {
+  readonly idFront?: Express.Multer.File[];
+  readonly idBack?: Express.Multer.File[];
+  readonly userPhoto?: Express.Multer.File[];
+};
