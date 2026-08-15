@@ -1,11 +1,15 @@
-import type { EligibleFiles, IEligibleCreate } from "./eligible.types.js";
+import type {
+  EligibleFiles,
+  IEligibleCreate,
+  IEligibleLean,
+} from "./eligible.types.js";
 import * as EligibleRepository from "./eligible.respository.js";
 
 export const create = async (
   userId: string,
   payload: Omit<IEligibleCreate, "idImage" | "userPhoto">,
   files: EligibleFiles,
-) => {
+) /*: Promise<IEligibleLean> */ => {
   const { idFront, idBack, userPhoto } = files;
 
   // Validate files existence
@@ -40,4 +44,12 @@ export const create = async (
   //   const eligibleUser = await EligibleRepository.createEligible(payload);
 
   // return eligibleUser
+};
+
+export const getAll = async (): Promise<IEligibleLean[]> => {
+  const eligibles = (await EligibleRepository.getEligibles()).map((val) =>
+    val.toObject(),
+  );
+
+  return eligibles;
 };
