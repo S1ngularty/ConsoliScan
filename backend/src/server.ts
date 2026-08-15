@@ -1,5 +1,9 @@
+import path from "path";
 import dotenv from "dotenv";
-dotenv.config({ path: "./core/configs/.env" });
+
+// Force dotenv to always look at the project root folder execution context
+dotenv.config({ path: path.resolve(process.cwd(), ".env") });
+
 import app from "./app.js";
 import http from "http";
 import connectToDatabase from "./core/configs/database.js";
