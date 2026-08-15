@@ -2,13 +2,13 @@ import { Document, Types } from 'mongoose';
 import type { IUser } from '../users/user.types.js';
 
 // Image interface (for front, back, and userPhoto)
-interface IImage {
+export interface IImage {
   public_id: string;
   url: string;
 }
 
 // Image fields for ID front and back
-interface IIdImages {
+export interface IIdImages {
   front: IImage;
   back: IImage;
 }
