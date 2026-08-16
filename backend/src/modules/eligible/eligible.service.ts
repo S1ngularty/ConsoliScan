@@ -2,6 +2,7 @@ import type {
   EligibleFiles,
   IEligibleCreate,
   IEligibleLean,
+  IEligiblePopulated,
   IEligibleUpdate,
 } from "./eligible.types.js";
 import * as EligibleRepository from "./eligible.respository.js";
@@ -47,10 +48,8 @@ export const create = async (
   // return eligibleUser
 };
 
-export const getAll = async (): Promise<IEligibleLean[]> => {
-  const eligibles = (await EligibleRepository.getEligibles()).map((val) =>
-    val.toObject(),
-  );
+export const getAll = async (): Promise<IEligiblePopulated[]> => {
+  const eligibles = await EligibleRepository.getEligibles();
 
   return eligibles;
 };
