@@ -5,6 +5,7 @@ import type {
   EligibleFiles,
   IEligibleCreate,
   IEligibleLean,
+  IEligibleUpdate,
 } from "./eligible.types.js";
 import type { ApiResponse } from "../../core/types/api.js";
 
@@ -29,6 +30,36 @@ export const createEligibleRequest = async (
     //   res,
     //   result,
     // );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAllEligibles = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const result = await EligibleService.getAll();
+
+    wrapResponse("OK", 200, res, result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateEligibilty = async (
+  req: Request<{ memberId: string }, {}, IEligibleUpdate>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { memberId } = req.params;
+    const { body } = req;
+    const result = await EligibleService.updateEligibility(memberId, body);
+
+    wrapResponse("OK", 200, res, result);
   } catch (error) {
     next(error);
   }
