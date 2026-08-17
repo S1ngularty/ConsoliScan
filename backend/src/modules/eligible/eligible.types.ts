@@ -55,7 +55,7 @@ export interface IEligibleCreate {
 }
 
 // Update interface (all fields optional)
-export interface IEligibleUpdate extends Partial<IEligibleCreate> {}
+export interface IEligibleUpdate extends Partial<Omit<IEligibleCreate,"user">> {}
 
 // Query interface for filtering
 export interface IEligibleQuery {

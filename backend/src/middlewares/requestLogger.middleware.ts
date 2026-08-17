@@ -6,7 +6,7 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const logDirectory = path.join(__dirname, "../logs");
+const logDirectory = path.join(__dirname, "../../logs");
 const logFile = path.join(logDirectory, "requests.log");
 const MAX_LOG_SIZE = Number(process.env.MAX_LOG_SIZE || 10) * 1024 * 1024;
 const MAX_TOTAL_SIZE = Number(process.env.MAX_TOTAL_SIZE || 100) * 1024 * 1024;

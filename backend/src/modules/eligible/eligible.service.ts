@@ -1,11 +1,17 @@
-import type { EligibleFiles, IEligibleCreate } from "./eligible.types.js";
+import type {
+  EligibleFiles,
+  IEligibleCreate,
+  IEligibleLean,
+  IEligiblePopulated,
+  IEligibleUpdate,
+} from "./eligible.types.js";
 import * as EligibleRepository from "./eligible.respository.js";
 
 export const create = async (
   userId: string,
-  payload: Omit<IEligibleCreate, "idImage" | "userPhoto">,
+  payload: Omit<IEligibleCreate, "idImage" | "userPhoto" | "user">,
   files: EligibleFiles,
-) => {
+) /*: Promise<IEligibleLean> */ => {
   const { idFront, idBack, userPhoto } = files;
 
   // Validate files existence
@@ -40,4 +46,25 @@ export const create = async (
   //   const eligibleUser = await EligibleRepository.createEligible(payload);
 
   // return eligibleUser
+};
+
+export const getAll = async (): Promise<IEligiblePopulated[]> => {
+  const eligibles = await EligibleRepository.getEligibles();
+
+  return eligibles;
+};
+
+export const updateEligibility = async (
+  memberId: string,
+  payload: IEligibleUpdate,
+): Promise<IEligibleLean> => {
+  const updatedEligible = await EligibleRepository.updateEligibility(
+    memberId,
+    payload,
+  );
+
+  if (!updatedEligible)
+    throw new Error("failed to update the user eligibility");
+
+  return updatedEligible;
 };
