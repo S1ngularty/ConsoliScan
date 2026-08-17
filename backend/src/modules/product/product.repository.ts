@@ -6,6 +6,7 @@ import type {
   BarcodeSearchResult,
   EditableProductFields,
   IProduct,
+  IProductImage,
   SearchProductResult,
 } from "./product.types.js";
 
@@ -51,7 +52,7 @@ export const searchProduct = async (
 export const updateProduct = async (
   productId: string,
   payload: Omit<EditableProductFields, "images">,
-  images: Pick<IProduct, "images">[],
+  images: IProductImage[],
 ): Promise<IProduct | null> => {
   const result = await Product.findByIdAndUpdate(
     productId,
@@ -119,8 +120,7 @@ export const findProductByBarcode = async (
   const result = await Product.findOne({
     barcode: data,
     barcodeType: type,
-  })
-    .populate<{ category: ICategory }>("category")
+  }).populate<{ category: ICategory }>("category");
 
   return result;
 };
