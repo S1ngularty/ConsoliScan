@@ -18,32 +18,9 @@ import type {
   IProductImage,
   SearchProductResult,
 } from "./product.types.js";
+import * as CatalogService from "../catalog/catalog.service.js"
 import slugify from "slugify";
-// const CatalogVersion = require("../models/catalogVersionModel"); TODO
 
-// const { uploadImage, deleteAssets } = require("../utils/cloundinaryUtil");
-
-// TODO: Catalog Versioning
-// const bumpCatalogVersion = async () => {
-//   const updated = await CatalogVersion.findOneAndUpdate(
-//     {},
-//     { $inc: { version: 1 } },
-//     { new: true, upsert: true },
-//   );
-//   return updated?.version || 1;
-// };
-
-// const getCatalogVersion = async () => {
-//   const current = await CatalogVersion.findOne();
-//   if (current) return current.version;
-//   const created = await CatalogVersion.create({ version: 1 });
-//   return created.version;
-// };
-
-// const getCatalog = async () => {
-//   const products = await Product.find({ deletedAt: null }).populate("category");
-//   return products;
-// };
 
 export const create = async (
   payload: Omit<EditableProductFields, "images">,
@@ -63,6 +40,8 @@ export const create = async (
   };
 
   const product = await createProduct(completePayload);
+  
+  CatalogService.bumpVersion() // Side Effect
 
   return product.toObject();
 };
@@ -105,6 +84,8 @@ export const update = async (
 
   if (!product) throw new Error("failed to update the product");
 
+  CatalogService.bumpVersion() // Side Effect
+
   return product;
 };
 
@@ -131,7 +112,7 @@ export const softDelete = async (publicId: string): Promise<IProduct> => {
   const product = await ProductSoftDelete(publicId);
 
   if (!product) throw new Error("Failed to delete the product");
-  // await bumpCatalogVersion();
+  CatalogService.bumpVersion()
 
   return product.toObject();
 };
@@ -140,7 +121,7 @@ export const restore = async (productId: string): Promise<IProduct> => {
   const product = await ProductRestore(productId);
 
   if (!product) throw new Error("Failed to restore the product");
-  // await bumpCatalogVersion();
+  CatalogService.bumpVersion()
 
   return product.toObject();
 };
@@ -149,7 +130,7 @@ export const hardDelete = async (productId: string): Promise<IProduct> => {
   const product = await ProductHardDelete(productId);
 
   if (!product) throw new Error("Failed to permanently delete the product");
-  // await bumpCatalogVersion();
+  CatalogService.bumpVersion()
 
   return product.toObject();
 };
@@ -160,7 +141,7 @@ export const updateStock = async (
 ): Promise<IProduct> => {
   const product = await ProductUpdateStock(productId, newStock);
   if (!product) throw new Error("Failed to update stock the product");
-  // await bumpCatalogVersion();
+  CatalogService.bumpVersion()
 
   return product.toObject();
 };
