@@ -10,7 +10,7 @@ import type {
 
 export const update = async (
   req: Request<{ userId: string }, {}, UpdateUserFields> & {
-    file: Express.Multer.File;
+    file?: Express.Multer.File;
   },
   res: Response<ApiResponse<IUser | null>>,
   next: NextFunction,
@@ -65,7 +65,7 @@ export const getById = async (
 
 export const create = async (
   req: Request<{}, {}, CreateUserProperties> & {
-    file: Express.Multer.File;
+    file?: Express.Multer.File;
   },
   res: Response<ApiResponse<IUser | null>>,
   next: NextFunction,
