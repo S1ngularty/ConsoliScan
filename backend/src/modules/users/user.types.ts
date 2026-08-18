@@ -7,7 +7,7 @@ export type systemRoles =
   | "checker"
   | "merchandiser";
 
-interface IAvatar<T> {
+export interface IAvatar<T> {
   public_id: T;
   url: T;
 }
@@ -89,7 +89,7 @@ export interface CurrUser {
 //   file?: object;
 // }
 
-export interface EditableUserProperties {
+export interface CreateUserProperties {
   name: string;
   email: string;
   password?: string | null;
@@ -105,10 +105,12 @@ export interface EditableUserProperties {
   country?: string;
   zipCode?: string;
 
+  avatar?: IAvatar<string>;
+
   contactNumber?: string;
 }
 
-export type UpdateUserFields = Omit<EditableUserProperties, "email">;
+export type UpdateUserFields = Omit<CreateUserProperties, "email">;
 
 export type RolesAndInformationTypes = Omit<CurrUser, "email">;
 

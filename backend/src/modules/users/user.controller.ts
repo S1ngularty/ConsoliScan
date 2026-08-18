@@ -2,14 +2,16 @@ import { type Request, type Response, type NextFunction } from "express";
 import * as UserService from "./user.service.js";
 import type { ApiResponse } from "../../core/types/api.js";
 import type {
-  EditableUserProperties,
+  CreateUserProperties,
   IUser,
   systemRoles,
   UpdateUserFields,
 } from "./user.types.js";
 
 export const update = async (
-  req: Request<{ userId: string }, {}, UpdateUserFields>,
+  req: Request<{ userId: string }, {}, UpdateUserFields> & {
+    file: Express.Multer.File;
+  },
   res: Response<ApiResponse<IUser | null>>,
   next: NextFunction,
 ): Promise<void> => {
@@ -62,11 +64,14 @@ export const getById = async (
 };
 
 export const create = async (
-  req: Request<{}, {}, EditableUserProperties>,
+  req: Request<{}, {}, CreateUserProperties> & {
+    file: Express.Multer.File;
+  },
   res: Response<ApiResponse<IUser | null>>,
   next: NextFunction,
 ): Promise<void> => {
   try {
+    const { body, file } = req;
     const user = await UserService.create(req.body);
     res.status(200).json({
       message: "OK",
