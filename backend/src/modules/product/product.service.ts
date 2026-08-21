@@ -18,9 +18,9 @@ import type {
   IProductImage,
   SearchProductResult,
 } from "./product.types.js";
-import * as CatalogService from "../catalog/catalog.service.js"
+import * as CatalogService from "../catalog/catalog.service.js";
 import slugify from "slugify";
-
+import { uploadImage, deleteAssets } from "../../core/utils/image.util.js";
 
 export const create = async (
   payload: Omit<EditableProductFields, "images">,
@@ -31,6 +31,8 @@ export const create = async (
   if (files && files.length > 0) {
     //    let temp = await uploadImage(request.files, "products");
     //       newImages = Array.isArray(temp) ? temp : [temp];
+
+    newImages = await uploadImage(files, "products");
   }
 
   payload.slug = slugify(payload.name);
@@ -40,8 +42,8 @@ export const create = async (
   };
 
   const product = await createProduct(completePayload);
-  
-  CatalogService.bumpVersion() // Side Effect
+
+  CatalogService.bumpVersion(); // Side Effect
 
   return product.toObject();
 };
@@ -73,46 +75,58 @@ export const update = async (
   payload: Omit<EditableProductFields, "images">,
   files?: Express.Multer.File[],
 ): Promise<IProduct> => {
-  let newImages: Pick<IProduct, "images">[] = [];
+  let newImages: IProductImage[] = [];
 
   // if(files && files.length >0){ TODO: image stream
   //   let temp = await uploadImage(request.files, "products");
   //      newImages = Array.isArray(temp) ? temp : [temp];
   // }
 
+  if (files && files.length > 0) {
+    newImages = await uploadImage(files, "products");
+  }
+
   const product = await updateProduct(productId, payload, newImages);
 
   if (!product) throw new Error("failed to update the product");
 
-  CatalogService.bumpVersion() // Side Effect
+  CatalogService.bumpVersion(); // Side Effect
 
   return product;
 };
 
-// export const removeImg =  async(publicId:string, productId:string):Promise<boolean>=>{
-//    const { publicId } = request.query;
-//     const { productId } = request.params;
-//     const result = await deleteAssets([publicId]);
-//     const deletionStatus = result?.deleted?.[publicId];
-//     if (deletionStatus !== "deleted" && deletionStatus !== "not_found") {
-//       throw new Error("failed to delete image from Cloudinary");
-//     }
-//     if (!result) throw new Error("failed to delete the image");
-//     const updateProductImage = await Product.findById(productId);
-//     updateProductImage.images = updateProductImage.images.filter(
-//       (image) => image.public_id !== publicId,
-//     );
-//     console.log(updateProductImage.images);
-//     await updateProductImage.save();
-//     await bumpCatalogVersion();
-//     return deletionStatus;
-// }
+export const removeImg = async (
+  publicId: string,
+  productId: string,
+): Promise<boolean> => {
+  
+  const result = await deleteAssets([publicId]);
+  const deletionStatus = result?.deleted?.[publicId];
+
+  if (deletionStatus !== "deleted" && deletionStatus !== "not_found") {
+    throw new Error("failed to delete image from Cloudinary");
+  }
+  if (!result) throw new Error("failed to delete the image");
+  const updateProductImage = await getProductById(productId);
+
+  if (!updateProductImage) throw new Error("product is not found");
+
+  updateProductImage.images = updateProductImage.images.filter(
+    (image) => image.public_id !== publicId,
+  );
+
+  await updateProductImage.save();
+
+  CatalogService.bumpVersion();
+
+  return deletionStatus === "deleted";
+};
 
 export const softDelete = async (publicId: string): Promise<IProduct> => {
   const product = await ProductSoftDelete(publicId);
 
   if (!product) throw new Error("Failed to delete the product");
-  CatalogService.bumpVersion()
+  CatalogService.bumpVersion();
 
   return product.toObject();
 };
@@ -121,7 +135,7 @@ export const restore = async (productId: string): Promise<IProduct> => {
   const product = await ProductRestore(productId);
 
   if (!product) throw new Error("Failed to restore the product");
-  CatalogService.bumpVersion()
+  CatalogService.bumpVersion();
 
   return product.toObject();
 };
@@ -130,7 +144,7 @@ export const hardDelete = async (productId: string): Promise<IProduct> => {
   const product = await ProductHardDelete(productId);
 
   if (!product) throw new Error("Failed to permanently delete the product");
-  CatalogService.bumpVersion()
+  CatalogService.bumpVersion();
 
   return product.toObject();
 };
@@ -141,7 +155,7 @@ export const updateStock = async (
 ): Promise<IProduct> => {
   const product = await ProductUpdateStock(productId, newStock);
   if (!product) throw new Error("Failed to update stock the product");
-  CatalogService.bumpVersion()
+  CatalogService.bumpVersion();
 
   return product.toObject();
 };

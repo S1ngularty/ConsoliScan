@@ -1,14 +1,15 @@
 import type {
   UpdateUserFields,
   CurrUser,
-  EditableUserProperties,
+  CreateUserProperties,
   IUser,
   RolesAndInformationTypes,
   ReturnPlainUserDocument,
+  IAvatar,
 } from "./user.types.js";
 import * as UserRepository from "./user.repository.js";
 import type { UserDocument } from "./user.model.js";
-// import { uploadImage, deleteAssets } from "../../utils/cloundinaryUtil.js";
+import { uploadImage, deleteAssets } from "../../core/utils/image.util.js";
 // const Eligibility = require("../models/eligibleModel");
 // const Cart = require("../models/cartModel");
 // const Order = require("../models/orderModel");
@@ -17,13 +18,19 @@ import type { UserDocument } from "./user.model.js";
 export const update = async (
   userId: string,
   payload: UpdateUserFields,
+  file?: Express.Multer.File,
 ): Promise<IUser> => {
-  //   if (request.file)
-  //     request.body.avatar = await uploadImage([request.file], "users");
+  let avatar: IAvatar<string>[] = [];
+
+  if (file) avatar = await uploadImage([file], "users");
+
+  if (avatar && avatar.length > 0 && typeof avatar[0] !== "undefined")
+    payload.avatar = avatar[0];
 
   const user = await UserRepository.UpdateUser(userId, payload);
   if (!user) throw new Error("User not found");
-  // if (user?.avatar?.public_id) deleteAssets([user.avatar.public_id]);
+
+  if (user?.avatar?.public_id) deleteAssets([user.avatar.public_id]);
 
   return user?.toObject();
 };
@@ -49,9 +56,17 @@ export const getById = async (
 };
 
 export const create = async (
-  payload: EditableUserProperties,
+  payload: CreateUserProperties,
+  file?: Express.Multer.File,
 ): Promise<ReturnPlainUserDocument> => {
   if (!payload) throw new Error("Missing payload");
+
+  let avatar: IAvatar<string>[] = [];
+
+  if (file) avatar = await uploadImage([file], "users");
+
+  if (avatar && avatar.length > 0 && typeof avatar[0] !== "undefined")
+    payload.avatar = avatar[0];
 
   const user = await UserRepository.createUser(payload);
   if (!user) throw new Error("Failed to create the user");
@@ -59,7 +74,7 @@ export const create = async (
 };
 
 export const RegisterUser = async (
-  payload: EditableUserProperties,
+  payload: CreateUserProperties,
 ): Promise<{
   registeredUser: ReturnPlainUserDocument;
   token: string | null;

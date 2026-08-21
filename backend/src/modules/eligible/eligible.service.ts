@@ -6,12 +6,13 @@ import type {
   IEligibleUpdate,
 } from "./eligible.types.js";
 import * as EligibleRepository from "./eligible.respository.js";
+import { uploadImage } from "../../core/utils/image.util.js";
 
 export const create = async (
   userId: string,
   payload: Omit<IEligibleCreate, "idImage" | "userPhoto" | "user">,
   files: EligibleFiles,
-) /*: Promise<IEligibleLean> */ => {
+): Promise<IEligibleLean> => {
   const { idFront, idBack, userPhoto } = files;
 
   // Validate files existence
@@ -24,28 +25,48 @@ export const create = async (
 
   let path = `EligibleIds/${userId}`;
 
-  //Note: All the rest of the statements will only be available once the object storate is enabled
+  // upload the ID images in parallel
+  const [uploadedIdFront, uploadedIdBack, uploadedUserPhoto] =
+    await Promise.all([
+      uploadImage(idFront, path),
+      uploadImage(idBack, path),
+      uploadImage(userPhoto, path),
+    ]);
 
-  //TODO:Upload Image utility is still not migrated
-  //    const [uploadedIdFront, uploadedIdBack, uploadedUserPhoto] = await Promise.all([
-  //       uploadImage(idFront, path),
-  //       uploadImage(idBack, path),
-  //       uploadImage(userPhoto, path)
-  //     ]);
+  if (
+    !uploadedIdFront ||
+    uploadedIdFront.length <= 0 ||
+    typeof uploadedIdFront[0] == "undefined"
+  )
+    throw new Error("Failed to upload user front ID");
 
-  // TODO: Construct the payload (will only be available once the the utility for object storage is enabled)
-  //     const eligibilityData = {
-  //       ...request.body,
-  //       user: userId,
-  //       idImage: {
-  //         front: uploadedIdFront,
-  //         back: uploadedIdBack,
-  //       },
-  //       userPhoto: uploadedUserPhoto,
+  if (
+    !uploadedIdBack ||
+    uploadedIdBack.length <= 0 ||
+    typeof uploadedIdBack[0] == "undefined"
+  )
+    throw new Error("Failed to upload user back ID");
 
-  //   const eligibleUser = await EligibleRepository.createEligible(payload);
+  if (
+    !uploadedUserPhoto ||
+    uploadedUserPhoto.length <= 0 ||
+    typeof uploadedUserPhoto[0] == "undefined"
+  )
+    throw new Error("Failed to upload user photo ID");
 
-  // return eligibleUser
+  let eligibilityData: IEligibleCreate = {
+    ...payload,
+    user: userId,
+    idImage: {
+      front: uploadedIdFront[0],
+      back: uploadedIdBack[0],
+    },
+    userPhoto: uploadedUserPhoto[0],
+  };
+
+  const eligibleUser = await EligibleRepository.createEligible(eligibilityData);
+
+  return eligibleUser.toObject();
 };
 
 export const getAll = async (): Promise<IEligiblePopulated[]> => {

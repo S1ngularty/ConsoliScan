@@ -1,6 +1,6 @@
 import { User, type UserDocument } from "./user.model.js";
 import type {
-  EditableUserProperties,
+  CreateUserProperties,
   IUser,
   ReturnPlainUserDocument,
   RolesAndInformationTypes,
@@ -33,7 +33,7 @@ export const getUserById = async (
 };
 
 export const createUser = async (
-  body: EditableUserProperties,
+  body: CreateUserProperties,
 ): Promise<UserDocument> => {
   const result = await User.create(body);
   return result;

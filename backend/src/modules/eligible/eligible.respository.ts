@@ -2,12 +2,13 @@ import type { EligibleDocument } from "./eligible.model.js";
 import { Eligible } from "./eligible.model.js";
 import type {
   IEligible,
+  IEligibleCreate,
   IEligiblePopulated,
   IEligibleUpdate,
 } from "./eligible.types.js";
 
 export const createEligible = async (
-  data: IEligible,
+  data: IEligibleCreate,
 ): Promise<EligibleDocument> => {
   const result = await Eligible.create(data);
 

@@ -14,7 +14,7 @@ export const createEligibleRequest = async (
     { userId: string },
     {},
     Omit<IEligibleCreate, "idImage" | "userPhoto" | "user">
-  > & { files: EligibleFiles },
+  >,
   res: Response<ApiResponse<IEligibleLean>>,
   next: NextFunction,
 ): Promise<void> => {
@@ -22,14 +22,19 @@ export const createEligibleRequest = async (
     const { userId } = req.params;
     const { body, files } = req;
     if (!userId) throw new Error("userId is required");
-    const result = EligibleService.create(userId, body, files);
 
-    // wrapResponse<IEligibleLean>(
-    //   "Eligibility Request was submitted successfully",
-    //   200,
-    //   res,
-    //   result,
-    // );
+    if (!files) {
+      throw new Error("ID images field are required");
+    }
+    const eligibleFiles = files as EligibleFiles;
+    const result = await EligibleService.create(userId, body, eligibleFiles);
+
+    wrapResponse<IEligibleLean>(
+      "Eligibility Request was submitted successfully",
+      200,
+      res,
+      result,
+    );
   } catch (error) {
     next(error);
   }

@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 // Force dotenv to always look at the project root folder execution context
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
-import app from "./app.js";
+const { default: app } = await import("./app.js");
 import http from "http";
 import connectToDatabase from "./core/configs/database.js";
 // const initSocket = require("./initSocket");
