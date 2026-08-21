@@ -183,7 +183,7 @@ export interface IQueuePayment {
   transactionId: string;
 }
 
-export interface IQueue extends Document {
+export interface IQueue {
   checkoutCode: string;
   user: ObjectId | null;
   userType: UserType;
