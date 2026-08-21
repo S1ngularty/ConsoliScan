@@ -17,3 +17,27 @@ export const createQueue = async (
 
   return result;
 };
+
+export const getQueueOrder = async (
+  checkoutCode: string,
+  userId: string,
+  name: string,
+): Promise<QueueDocument | null> => {
+  const result = await Queue.findOneAndUpdate(
+    { checkoutCode },
+    {
+      cashier: {
+        cashierId: userId,
+        name,
+      },
+      status: "SCANNED",
+      scannedAt: Date.now(),
+    },
+    { new: true },
+  ).populate({
+    path: "items.product",
+    select: "barcode barcodeType category",
+  });
+
+  return result;
+};
