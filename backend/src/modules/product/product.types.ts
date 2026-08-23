@@ -14,7 +14,7 @@ export const BARCODE_TYPES = {
 
 export type Barcodes = (typeof BARCODE_TYPES)[keyof typeof BARCODE_TYPES];
 
-type Units = "kg" | "g" | "pc" | "liter" | "ml" | "pack";
+export type Units = "kg" | "g" | "pc" | "liter" | "ml" | "pack";
 
 export interface IProductImage {
   public_id?: string;
