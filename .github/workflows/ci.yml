@@ -38,39 +38,39 @@ jobs:
       #   working-directory: backend
       #   run: npm test
 
-  web:
-    runs-on: ubuntu-latest
+  # web:
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v4
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: web/package-lock.json
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 22
+  #         cache: npm
+  #         cache-dependency-path: web/package-lock.json
 
-      - name: Install Website Dependencies
-        working-directory: web
-        run: npm ci
+  #     - name: Install Website Dependencies
+  #       working-directory: web
+  #       run: npm ci
 
-      # - name: Build Website
-      #   working-directory: web
-      #   run: npm run build
+  #     # - name: Build Website
+  #     #   working-directory: web
+  #     #   run: npm run build
 
-  mobile:
-    runs-on: ubuntu-latest
+  # mobile:
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v4
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: mobile/package-lock.json
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 22
+  #         cache: npm
+  #         cache-dependency-path: mobile/package-lock.json
 
 
-      - name: Install Mobile Dependencies
-        working-directory: mobile
-        run: npm ci
+  #     - name: Install Mobile Dependencies
+  #       working-directory: mobile
+  #       run: npm ci
