@@ -34,7 +34,11 @@ export const getAll = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const users = await UserService.getAll(req.user!);
+    const { user } = req;
+    if (!user || !user?.userId)
+      throw new Error("user authentication is required");
+    
+    const users = await UserService.getAll(user?.userId);
     res.json({
       success: true,
       message: "OK",
