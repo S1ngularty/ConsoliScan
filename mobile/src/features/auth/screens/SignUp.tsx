@@ -15,7 +15,14 @@ import React, { useEffect } from "react";
 import useAuth from "../hooks/useAuth";
 
 const SignUp = () => {
-  const { email, setEmail, password, setPassword, handleSignUp } = useAuth();
+  const {
+    email,
+    setEmail,
+    password,
+    setPassword,
+    handleSignUp,
+    signUpFetching,
+  } = useAuth();
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -60,6 +67,7 @@ const SignUp = () => {
                 pressed && styles.buttonPressed,
               ]}
               onPress={handleSignUp}
+              disabled={signUpFetching}
             >
               <Text style={styles.createButtonText}>Create Account</Text>
             </Pressable>

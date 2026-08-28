@@ -4,42 +4,80 @@ import { useNavigation } from "@react-navigation/native";
 
 export default function useAuth() {
   const { signUp } = useSignUp();
-  const { signIn, errors, fetchStatus } = useSignIn();
+  const { signIn, errors } = useSignIn();
+
+  const navigation = useNavigation();
+
+  const [signUpFetching, setSignUpFetching] = React.useState(false);
 
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [verificationCode, setVerificationCode] = React.useState("");
 
   const handleSignUp = async () => {
-    const { error } = await signUp.password({
-      emailAddress: email,
-      password: password,
-    });
+    setSignUpFetching(true);
 
-    if (error) {
-      console.log(error);
-      return;
+    try {
+      const { error } = await signUp.password({
+        emailAddress: email,
+        password,
+      });
+
+      if (error) {
+        console.log(error);
+        return;
+      }
+
+      // Clerk told us the email hasn't been verified yet.
+      if (signUp.unverifiedFields.includes("email_address")) {
+        await signUp.verifications.sendEmailCode();
+
+        console.log("Verification code sent!");
+        navigation.navigate("VerifyEmail" as never)
+      }
+    } finally {
+      setSignUpFetching(false);
     }
+  };
 
-    await signUp.verifications.sendEmailCode();
+  const handleVerifyEmail = async () => {
+    setSignUpFetching(true)
+    try {
+      const { error } = await signUp.verifications.verifyEmailCode({
+        code: verificationCode,
+      });
 
-    const needsEmailCode =
-      Array.isArray(signUp.unverifiedFields) &&
-      signUp.unverifiedFields.includes("email_address");
+      if (error) {
+        console.error("email verification error:", error);
+        return;
+      }
 
-    //    if (needsEmailCode) {
-    //      setShowEmailCode(true);
-    //      return;
-    //    }
+      console.log("Verification successful!");
+      console.log("Status:", signUp.status);
 
-    // if (
-    //   signUp.status === "missing_requirements" &&
-    //   (signUp.missingFields?.length ?? 0) > 0
-    // ) {
-    //   router.push("/continue" as Href);
-    //   return;
-    // }
+      if (signUp.status === "complete") {
+        await signUp.finalize();
+        console.log("User is now authenticated!");
+      }
+    } finally {
+      setSignUpFetching(false);
+    }
+  };
 
-    console.log("Sign-up status:", signUp.status);
+  const handleResendCode = async () => {
+    setSignUpFetching(true);
+    try {
+      const { error } = await signUp.verifications.sendEmailCode();
+
+      if (error) {
+        console.log(error);
+        return;
+      }
+
+      console.log("New verification code sent!");
+    } finally {
+      setSignUpFetching(false);
+    }
   };
 
   return {
@@ -48,5 +86,10 @@ export default function useAuth() {
     password,
     setPassword,
     handleSignUp,
+    signUpFetching,
+    verificationCode,
+    setVerificationCode,
+    handleVerifyEmail,
+    handleResendCode,
   };
 }
