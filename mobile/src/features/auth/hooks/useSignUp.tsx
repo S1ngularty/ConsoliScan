@@ -2,9 +2,8 @@ import React from "react";
 import { useSignUp, useSignIn } from "@clerk/expo";
 import { useNavigation } from "@react-navigation/native";
 
-export default function useAuth() {
+export default function useSignUpHook() {
   const { signUp } = useSignUp();
-  const { signIn, errors } = useSignIn();
 
   const navigation = useNavigation();
 

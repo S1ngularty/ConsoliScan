@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useRef } from "react";
-import useAuth from "../hooks/useAuth";
+import useSignUp from "../hooks/useSignUp";
 
 const VerifyEmailScreen = () => {
   const {
@@ -20,7 +20,7 @@ const VerifyEmailScreen = () => {
     handleVerifyEmail,
     handleResendCode,
     signUpFetching,
-  } = useAuth();
+  } = useSignUp();
 
   const inputRefs = useRef<Array<TextInput | null>>([]);
 
