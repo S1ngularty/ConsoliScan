@@ -1,6 +1,7 @@
 import React from "react";
 import { useSignIn } from "@clerk/expo";
 import { useNavigation } from "@react-navigation/native";
+import showToast from "../../../helpers/toast";
 
 const useSignInHook = () => {
   const { signIn } = useSignIn();
@@ -23,7 +24,7 @@ const useSignInHook = () => {
       });
 
       if (error) {
-        console.error("Sign-in creation error:", error);
+        showToast("error", "Authentication Error", error.message);
         return;
       }
 

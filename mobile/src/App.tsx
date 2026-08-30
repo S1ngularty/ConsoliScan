@@ -3,6 +3,8 @@ import { StyleSheet, Text, View } from "react-native";
 import { ClerkProvider } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import RootStack from "./navigation/RootStackNavigator";
+import { toastConfig } from "./helpers/toast";
+import Toast from "react-native-toast-message";
 
 export default function App() {
   return (
@@ -11,6 +13,7 @@ export default function App() {
       tokenCache={tokenCache}
     >
       <RootStack />
+      <Toast config={toastConfig} />
     </ClerkProvider>
   );
 }

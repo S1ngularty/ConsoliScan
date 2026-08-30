@@ -24,8 +24,17 @@ const SignIn = () => {
     navigateToSignUp,
   } = useSignInHook();
 
+  // const [showToastNotification, setShowToastNotification] =
+  //   React.useState(false);
+
+  // React.useEffect(() => {
+  //   setShowToastNotification(true);
+  // }, [errorMessage]);
+
   return (
     <SafeAreaView style={styles.safeArea}>
+      {/* {errorMessage &&
+        (showToast("error", "Authentication", errorMessage) as never)} */}
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
