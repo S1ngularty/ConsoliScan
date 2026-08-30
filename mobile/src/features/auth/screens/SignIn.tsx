@@ -8,22 +8,21 @@ import {
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
-  BackHandler,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import React, { useEffect } from "react";
-import useSignUp from "../hooks/useSignUp";
+import React from "react";
+import useSignInHook from "../hooks/useSignIn";
 
-const SignUp = () => {
+const SignIn = () => {
   const {
     email,
     setEmail,
     password,
     setPassword,
-    handleSignUp,
-    signUpFetching,
-    navigateToSignIn,
-  } = useSignUp();
+    handleSignIn,
+    signInFetching,
+    navigateToSignUp,
+  } = useSignInHook();
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -61,16 +60,27 @@ const SignUp = () => {
               />
             </View>
 
-            {/* Create Account Button */}
+            {/* Sign In Button */}
             <Pressable
               style={({ pressed }) => [
-                styles.createButton,
+                styles.signInButton,
                 pressed && styles.buttonPressed,
+                signInFetching && styles.buttonDisabled,
               ]}
-              onPress={handleSignUp}
-              disabled={signUpFetching}
+              onPress={handleSignIn}
+              disabled={signInFetching}
             >
-              <Text style={styles.createButtonText}>Create Account</Text>
+              <Text style={styles.signInButtonText}>
+                {signInFetching ? "Signing In..." : "Sign In"}
+              </Text>
+            </Pressable>
+
+            {/* Forgot Password Link */}
+            <Pressable
+              onPress={() => console.log("Forgot Password")}
+              style={styles.forgotPasswordContainer}
+            >
+              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </Pressable>
 
             {/* Divider */}
@@ -80,7 +90,7 @@ const SignUp = () => {
               <View style={styles.line} />
             </View>
 
-            {/* Social & Phone Buttons */}
+            {/* Social Buttons */}
             <View style={styles.buttonContainer}>
               {/* Google Button */}
               <Pressable
@@ -106,11 +116,12 @@ const SignUp = () => {
                 <Text style={styles.socialButtonText}>Continue with Phone</Text>
               </Pressable>
             </View>
+
             {/* Sign Up Link */}
             <View style={styles.signUpContainer}>
               <Text style={styles.signUpText}>Don't have an account? </Text>
-              <Pressable onPress={navigateToSignIn}>
-                <Text style={styles.signUpLink}>Sign In</Text>
+              <Pressable onPress={navigateToSignUp}>
+                <Text style={styles.signUpLink}>Sign Up</Text>
               </Pressable>
             </View>
           </View>
@@ -120,7 +131,7 @@ const SignUp = () => {
   );
 };
 
-export default SignUp;
+export default SignIn;
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -133,9 +144,9 @@ const styles = StyleSheet.create({
   },
   innerContainer: {
     flex: 1,
-    justifyContent: "center", // Centers everything vertically
+    justifyContent: "center",
     padding: 30,
-    gap: 15, // Reduced gap slightly to fit the new button
+    gap: 15,
   },
   logoContainer: {
     alignItems: "center",
@@ -159,10 +170,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#FFFFFF",
   },
-  createButton: {
+  signInButton: {
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
-    paddingVertical: 14, // Made smaller (was 18)
+    paddingVertical: 14,
     alignItems: "center",
     marginTop: 5,
     shadowColor: "#000",
@@ -171,10 +182,22 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  createButtonText: {
+  signInButtonText: {
     color: "#2E9E68",
     fontSize: 16,
     fontWeight: "600",
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  forgotPasswordContainer: {
+    alignItems: "flex-end",
+    marginTop: -5,
+  },
+  forgotPasswordText: {
+    color: "rgba(255, 255, 255, 0.8)",
+    fontSize: 14,
+    fontWeight: "500",
   },
   dividerContainer: {
     flexDirection: "row",
@@ -197,7 +220,7 @@ const styles = StyleSheet.create({
   socialButton: {
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
-    paddingVertical: 14, // Made smaller to match Create Account button
+    paddingVertical: 14,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",

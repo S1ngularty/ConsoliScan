@@ -32,7 +32,7 @@ export default function useSignUpHook() {
         await signUp.verifications.sendEmailCode();
 
         console.log("Verification code sent!");
-        navigation.navigate("VerifyEmail" as never)
+        navigation.navigate("VerifyEmail" as never);
       }
     } finally {
       setSignUpFetching(false);
@@ -40,7 +40,7 @@ export default function useSignUpHook() {
   };
 
   const handleVerifyEmail = async () => {
-    setSignUpFetching(true)
+    setSignUpFetching(true);
     try {
       const { error } = await signUp.verifications.verifyEmailCode({
         code: verificationCode,
@@ -78,6 +78,10 @@ export default function useSignUpHook() {
       setSignUpFetching(false);
     }
   };
+  
+  const navigateToSignIn = () => {
+    navigation.navigate("SignIn" as never);
+  };
 
   return {
     email,
@@ -90,5 +94,6 @@ export default function useSignUpHook() {
     setVerificationCode,
     handleVerifyEmail,
     handleResendCode,
+    navigateToSignIn,
   };
 }
