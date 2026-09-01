@@ -10,10 +10,6 @@ import type {
 import * as UserRepository from "./user.repository.js";
 import type { UserDocument } from "./user.model.js";
 import { uploadImage, deleteAssets } from "../../core/utils/image.util.js";
-// const Eligibility = require("../models/eligibleModel");
-// const Cart = require("../models/cartModel");
-// const Order = require("../models/orderModel");
-// const { createLog } = require("../services/activityLogsService");
 
 export const update = async (
   userId: string,
@@ -36,9 +32,8 @@ export const update = async (
 };
 
 export const getAll = async (
-  user: CurrUser,
+  userId:string,
 ): Promise<ReturnPlainUserDocument[]> => {
-  const { userId } = user;
 
   const users = await UserRepository.getAllUsers(userId);
 
@@ -110,28 +105,6 @@ export const rolesAndPermission = async (
   if (!user) throw new Error("Failed to update user role and permission");
   return user.toObject();
 };
-
-// exports.getHomeScreenData = async (request) => {
-//   const { userId } = request.user;
-//   const [userInfo, eligibilityInfo, cartInfo, orderCount] = await Promise.all([
-//     User.findById(userId).lean(),
-//     Eligibility.findOne({ user: userId }).lean(),
-//     Cart.findOne({ user: userId }).lean(),
-//     Order.find({ user: userId }).countDocuments(),
-//   ]);
-
-//   const user = {
-//     firstName: userInfo.firstName,
-//     lastName: userInfo.lastName,
-//     eligibilityDiscountUsage: userInfo.eligibiltyDiscountUsage || {},
-//     loyaltyPoints: userInfo.loyaltyPoints || 0,
-//     is_eligibility_verified: eligibilityInfo?.isVerified || false,
-//     cartItemCount: cartInfo?.items.length || 0,
-//     orderCount,
-//   };
-//   // console.log(user);
-//   return user;
-// };
 
 export const findByEmail = async (
   email: string,

@@ -5,28 +5,14 @@ export type systemRoles =
   | "admin"
   | "super_admin"
   | "checker"
-  | "merchandiser";
 
 export interface IAvatar<T> {
   public_id: T;
   url: T;
 }
 
-interface ILoyaltyHistory {
-  event: "earn" | "redeem";
-  points: number;
-  date: Date;
-}
-
-interface IEligibilityDiscountUsage {
-  discountUsed: number;
-  purchasedUsed: number;
-  weekStart: Date;
-  weekEnd: Date;
-}
 
 export interface IUser {
-  firebaseUid?: string;
   name: string;
   email: string;
   password?: string | null;
@@ -48,12 +34,6 @@ export interface IUser {
 
   role: systemRoles;
 
-  loyaltyPoints?: number;
-
-  loyaltyHistory?: ILoyaltyHistory[];
-  eligibilityDiscountUsage?: IEligibilityDiscountUsage;
-
-  savedItems?: mongoose.Schema.Types.ObjectId[];
 
   status?: "active" | "inactive";
 

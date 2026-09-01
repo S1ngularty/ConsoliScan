@@ -7,13 +7,6 @@ type UserModel = Model<IUser, {}, IUserMethods>;
 
 const userSchema = new Schema<IUser, UserModel, IUserMethods>(
   {
-    firebaseUid: {
-      type: String,
-      // required: true,
-      unique: true,
-      sparse: true,
-      index: true,
-    },
     name: {
       type: String,
       required: true,
@@ -84,30 +77,6 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
       default: "user",
       enum: ["user", "admin", "super_admin", "checker", "merchandiser"],
     },
-    loyaltyPoints: {
-      type: Number,
-      default: 0,
-    },
-    loyaltyHistory: [
-      {
-        event: { type: String, enum: ["earn", "redeem"] },
-        points: Number,
-        date: Date,
-      },
-    ],
-
-    eligibilityDiscountUsage: {
-      discountUsed: Number,
-      purchasedUsed: Number,
-      weekStart: Date,
-      weekEnd: Date,
-    },
-    savedItems: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Product",
-      },
-    ],
     status: {
       type: String,
       default: "active",

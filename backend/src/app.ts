@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import { clerkMiddleware } from "@clerk/express";
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use(requestLogger);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
+app.use(clerkMiddleware());
 
 app.use("/api", routes.auth);
 app.use("/api/v1", routes.user);

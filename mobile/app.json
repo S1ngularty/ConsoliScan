@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "ConsoliScan",
+    "slug": "consoliscan-mini",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/ConsoliScan-icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/ConsoliScan-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/ConsoliScan-icon.png"
+    },
+    "plugins": [
+      "@clerk/expo",
+      "expo-secure-store"
+    ]
+  }
+}
